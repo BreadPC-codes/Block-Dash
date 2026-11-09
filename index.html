@@ -395,7 +395,7 @@ body.touch .kbd-hint{display:none}
       <div class="card">
         <h3>GOAL</h3>
         <p>Walls of blocks sweep toward you in <b>waves</b> of eight rows. Get past all eight and <b>WAVE SURVIVED</b> goes up by one.</p>
-        <p>Slip through the holes, jump the low parts, dive, or <b>jump on top</b> and ride. A wall that catches you <b>pushes you</b> toward the edge. Get shoved off or touch a live laser and the run is over.</p>
+        <p>Slip through the holes, jump the low parts, dive, or <b>jump on top</b> and ride. A wall that catches you <b>pushes you</b> toward the edge. Fall off the front or back edge, or touch a laser fence on the sides, and the run is over.</p>
       </div>
       <div class="card">
         <h3>CONTROLS</h3>
@@ -414,7 +414,7 @@ body.touch .kbd-hint{display:none}
       <div class="leg"><span class="sw laser"></span><div><b>Laser fence</b><small>Always on along both edges. Touch it and you're out. Only a jump from the top of a block clears it.</small></div></div>
     </div>
     <h3>DIFFICULTY</h3>
-    <p>The blocks start slow and get 5% faster every 20 waves. Each wave has its own colour, and the next wave only starts once the last one has left the map. Harder patterns unlock as you go, and from wave 6 a pattern can arrive mirrored. Every wave is checked by the pattern engine, so there is always a way through on the ground.</p>
+    <p>The blocks start slow and get 5% faster every 20 waves. Each wave has its own colour, a new wall comes at most every 7 seconds, and the next wave only starts once the last one has left the map. Harder patterns unlock as you go, and from wave 6 a pattern can arrive mirrored. Every wave is checked by the pattern engine, so there is always a way through on the ground.</p>
     <h3>PATTERN LIBRARY</h3>
     <div class="plib" id="pattern-lib"></div>
     <div class="actions"><button class="btn primary" id="btn-howto-back">BACK</button></div>
@@ -432,6 +432,21 @@ body.touch .kbd-hint{display:none}
         <div class="ctl"><div class="seg" id="set-quality" role="radiogroup" aria-label="Graphics quality">
           <button data-v="low" role="radio">LOW</button><button data-v="medium" role="radio">MEDIUM</button><button data-v="high" role="radio">HIGH</button>
         </div></div>
+      </div>
+    </section>
+    <section>
+      <h3>CAMERA</h3>
+      <div class="setting">
+        <div class="lbl"><label for="set-fov">Field of view</label><small>Wider shows more of the arena.</small></div>
+        <div class="ctl"><input type="range" id="set-fov" min="45" max="100" step="1"><span class="val" id="val-fov"></span></div>
+      </div>
+      <div class="setting">
+        <div class="lbl"><label for="set-camx">Camera offset X</label><small>Moves the camera left or right.</small></div>
+        <div class="ctl"><input type="range" id="set-camx" min="-6" max="6" step="0.25"><span class="val" id="val-camx"></span></div>
+      </div>
+      <div class="setting">
+        <div class="lbl"><label for="set-camy">Camera offset Y</label><small>Moves the camera up or down.</small></div>
+        <div class="ctl"><input type="range" id="set-camy" min="-4" max="8" step="0.25"><span class="val" id="val-camy"></span></div>
       </div>
     </section>
     <section>
@@ -571,7 +586,7 @@ const fmtTime = (s) => { s = Math.max(0, Math.floor(s)); return String(Math.floo
 // ---------------------------------------------------------------------
 const LANES = 10, LANE_W = 2, HALF_W = (LANES * LANE_W) / 2, RIM = 0.3;
 const PATTERN_COLS = 8;                                  // patterns are authored 8 wide (A–H)
-const Z_NEAR = 14, Z_FAR = -44, Z_SPAWN = -38;           // obstacles travel toward +z
+const Z_NEAR = 14, Z_FAR = -44, Z_SPAWN = Z_FAR + 1.2;   // obstacles rise at the far edge and travel toward +z
 const ARENA_LEN = Z_NEAR - Z_FAR, ARENA_MID = (Z_NEAR + Z_FAR) / 2;
 const laneX = (i) => -HALF_W + LANE_W * (i + 0.5);
 
@@ -591,7 +606,6 @@ const LASER_BEAMS = [0.45, 1.2, 1.95, 2.7];
 // Player
 const P_HALF_W = 0.36, P_HALF_D = 0.36, P_HEIGHT = 1.3;
 const P_START_X = 0, P_START_Z = -4;
-const GATE_STOP = Z_SPAWN + 2.5;                         // the spawn gate is a solid barrier
 // Dive: press jump again in the air
 const DIVE_SPEED = 16, DIVE_UP = 5.2, DIVE_SLIDE = 0.3, P_HEIGHT_FLAT = 0.75;
 const MOVE_SPEED = 9.5, ACCEL = 80, DECEL = 100, AIR_ACCEL = 34;
@@ -602,6 +616,7 @@ const COYOTE_TIME = 0.09, JUMP_BUFFER = 0.13;
 
 // Pattern engine tuning
 const EMERGE_DUR = 0.45, MIN_ROW_SPACING = 5.0, EMPTY_SPACING = 5.5;
+const WALL_GAP = 7;                                       // seconds between two walls, at least
 const DEMO_SPEED = 6, MIRROR_FROM = 5, SAFETY = 0.1, EDGE_MARGIN = 0.55;
 const MAX_STEP = 1 / 120;
 
@@ -984,11 +999,12 @@ function defaultQuality() {
   if (COARSE) return mem <= 3 || cores <= 4 ? 'low' : 'medium';
   return 'high';
 }
-const DEFAULTS = Object.freeze({ quality: defaultQuality(), mouseSens: 1, cameraSens: 1, touchSens: 1, joySize: 1, volume: 0.7, sfx: true, music: true, vibration: true });
+const DEFAULTS = Object.freeze({ quality: defaultQuality(), fov: 60, camX: 0, camY: 0, mouseSens: 1, cameraSens: 1, touchSens: 1, joySize: 1, volume: 0.7, sfx: true, music: true, vibration: true });
 function sanitizeSettings(s) {
   const num = (v, lo, hi, d) => (Number.isFinite(+v) ? clamp(+v, lo, hi) : d);
   return {
     quality: ['low', 'medium', 'high'].includes(s.quality) ? s.quality : DEFAULTS.quality,
+    fov: num(s.fov, 45, 100, 60), camX: num(s.camX, -6, 6, 0), camY: num(s.camY, -4, 8, 0),
     mouseSens: num(s.mouseSens, 0.2, 2, 1), cameraSens: num(s.cameraSens, 0.3, 2, 1),
     touchSens: num(s.touchSens, 0.5, 2, 1), joySize: num(s.joySize, 0.7, 1.4, 1),
     volume: num(s.volume, 0, 1, 0.7), sfx: s.sfx !== false, music: s.music !== false, vibration: s.vibration !== false,
@@ -1421,31 +1437,6 @@ scene.add(arena);
   arena.add(under);
 })();
 
-let gateVeil = null;
-(function buildGate() {
-  const g = new THREE.Group();
-  const px = HALF_W + RIM + 0.55;
-  const pillarMat = new THREE.MeshStandardMaterial({ color: 0x2b2470, roughness: 0.45, metalness: 0.25, emissive: 0x1a0f44 });
-  const glow = new THREE.MeshBasicMaterial({ color: 0xff5fb0, toneMapped: false });
-  for (const s of [-1, 1]) {
-    const p = new THREE.Mesh(new THREE.BoxGeometry(0.9, 6.6, 0.9), pillarMat);
-    p.position.set(s * px, 3.3, 0); p.castShadow = true; g.add(p);
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.1, 5.9, 0.1), glow);
-    strip.position.set(s * (px - 0.47), 3.3, 0.32); g.add(strip);
-  }
-  const beam = new THREE.Mesh(new THREE.BoxGeometry(px * 2 + 0.9, 0.8, 0.9), pillarMat);
-  beam.position.set(0, 6.9, 0); g.add(beam);
-  const beamStrip = new THREE.Mesh(new THREE.BoxGeometry(px * 2 - 0.5, 0.1, 0.1), glow);
-  beamStrip.position.set(0, 6.47, 0.32); g.add(beamStrip);
-  gateVeil = new THREE.Mesh(new THREE.PlaneGeometry(px * 2 - 0.9, 6.4),
-    new THREE.MeshBasicMaterial({ map: TEX.veil, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
-  gateVeil.position.set(0, 3.2, -0.25); g.add(gateVeil);
-  const line = new THREE.Mesh(new THREE.PlaneGeometry(FLOOR_W, 0.28).rotateX(-Math.PI / 2), glow);
-  line.position.set(0, 0.025, 1.4); g.add(line);
-  g.position.set(0, 0, Z_SPAWN - 1.4);
-  scene.add(g);
-})();
-
 // Floating background cubes
 const decor = (() => {
   const mat = new THREE.MeshStandardMaterial({ map: TEX.block, roughness: 0.45, metalness: 0.1 });
@@ -1583,10 +1574,10 @@ const world = {
     if (mode === 'game') {
       const v = speedForWave(0);
       this.speed = this.targetSpeed = v;
-      this.firstZ = P_START_Z - P_HALF_D - ROW_HALF_D - v * 3.4;   // ~3.4 s before the first row arrives
+      this.firstZ = Z_SPAWN - 0.5 - 0.35 * v;                       // every wall, even the first, comes from the far edge
     } else {
       this.speed = this.targetSpeed = DEMO_SPEED;
-      this.firstZ = -14;
+      this.firstZ = Z_SPAWN - 0.5;
     }
     this.emergeDelay = 0.35;
     this.ensureQueue();
@@ -1606,6 +1597,7 @@ const world = {
     const mirrored = demo ? Math.random() < 0.5 : index >= MIRROR_FROM && Math.random() < 0.5;
     const speed = demo ? DEMO_SPEED : speedForWave(index);
     const vDesign = speed * 1.06;
+    const wallGap = WALL_GAP * speed;                      // distance that keeps walls WALL_GAP seconds apart
     const comfort = demo ? 0.45 : comfortForWave(index);
     const breather = demo ? 1.5 : breatherForWave(index);
     const cellRows = pattern.rows.map((r) => padRow(mirrored ? r.cells.slice().reverse() : r.cells));
@@ -1617,13 +1609,13 @@ const world = {
     const solid = plan.solid, zs = new Array(8).fill(0), lead = solid[0];
     let zFirst;
     if (this.lastSolidZ === null) zFirst = this.firstZ - lead * EMPTY_SPACING;
-    else zFirst = Math.min(this.lastSolidZ - dist(plan.interTime), this.lastRowZ - (lead + 1) * EMPTY_SPACING);
+    else zFirst = Math.min(this.firstZ - lead * EMPTY_SPACING, this.lastSolidZ - Math.max(dist(plan.interTime), wallGap));
     const startRef = this.lastRowZ === null ? zFirst + (lead + 1) * EMPTY_SPACING : this.lastRowZ;
     for (let i = 0; i < lead; i++) zs[i] = lerp(startRef, zFirst, (i + 1) / (lead + 1));
     zs[lead] = zFirst;
     for (let k = 1; k < solid.length; k++) {
       const a = solid[k - 1], b = solid[k];
-      zs[b] = zs[a] - Math.max(dist(plan.gaps[k - 1]), (b - a) * EMPTY_SPACING);
+      zs[b] = zs[a] - Math.max(dist(plan.gaps[k - 1]), (b - a) * EMPTY_SPACING, wallGap);
       for (let i = a + 1; i < b; i++) zs[i] = lerp(zs[a], zs[b], (i - a) / (b - a));
     }
     const last = solid[solid.length - 1];
@@ -1662,17 +1654,18 @@ const world = {
   ensureQueue() {
     if (!this.lastWave) { this.queueWave(); return; }
     if (!this.lastWave.rows.every((r) => r.falling || r.sinking || r.remove)) return;
-    this.lastRowZ = this.lastSolidZ = null;
+    this.lastRowZ = null;
     this.prev = null;
-    this.firstZ = Z_SPAWN - 0.5;                          // the new wave starts at the gate
-    this.queueWave();
+    this.firstZ = Z_SPAWN - 0.5;                          // the new wave starts at the far edge,
+    this.queueWave();                                     // but never sooner than WALL_GAP after the last wall
   },
 
   step(h) {
     this.time += h;
     this.speed = damp(this.speed, this.targetSpeed, 1.8, h);
     const dz = this.speed * h;
-    if (this.lastRowZ !== null) { this.lastRowZ += dz; this.lastSolidZ += dz; }
+    if (this.lastRowZ !== null) this.lastRowZ += dz;
+    if (this.lastSolidZ !== null) this.lastSolidZ += dz;
     if (this.emergeDelay > 0) this.emergeDelay -= h;
     let removeAny = false;
     for (const row of this.rows) {
@@ -1871,7 +1864,6 @@ const world = {
     }
     crushMat.emissiveIntensity = 0.55 + 0.35 * Math.sin(this.time * 6);
     this.flash = Math.max(0, this.flash - dt * 1.6);
-    if (gateVeil) gateVeil.material.opacity = 0.45 + 0.15 * Math.sin(this.time * 2.2) + 0.4 * this.flash;
   },
 };
 
@@ -2071,7 +2063,6 @@ const player = (() => {
       if (!this.grounded) this.vy -= (this.vy > 0 ? G_UP : G_DOWN) * h;
       const prevY = this.y;
       this.x += this.vx * h; this.z += (this.vz + this.carry) * h; this.y += this.vy * h;
-      if (this.z < GATE_STOP) { this.z = GATE_STOP; if (this.vz + this.carry < 0) this.vz = -this.carry; }
       if (this.platform) return;                          // world.support() keeps us on the block
       const onArena = Math.abs(this.x) <= HALF_W + RIM && this.z >= Z_FAR && this.z <= Z_NEAR;
       if (this.grounded) {
@@ -2336,7 +2327,7 @@ function updateCamera(dt) {
   } else {
     const over = c.mode === 'over' && c.focus;           // game over: frame the spot where the run ended
     const px = over ? c.focus.x : player.x, pz = over ? c.focus.z : player.z, py = over ? c.focus.y : player.y;
-    c.target.set(px * P.followX, P.height + Math.max(0, py) * 0.35, pz + P.dist);
+    c.target.set(px * P.followX + settings.camX, P.height + settings.camY + Math.max(0, py) * 0.35, pz + P.dist);
     c.lookT.set(px * P.lookX, 0.6 + Math.max(0, py) * 0.3, pz - P.look);
     if (py < -0.2) {                                   // falling: hold height and watch the player drop
       c.target.y = Math.max(P.height * 0.85, 4);
@@ -2363,7 +2354,7 @@ function updateCamera(dt) {
   const sh = c.shake * c.shake * 0.6;
   camera.position.set(c.pos.x + (Math.random() - 0.5) * sh, c.pos.y + (Math.random() - 0.5) * sh, c.pos.z + (Math.random() - 0.5) * sh);
   camera.lookAt(c.look);
-  const fov = c.mode === 'menu' ? lerp(50, 64, P.t) : P.fov;
+  const fov = c.mode === 'menu' ? lerp(50, 64, P.t) : settings.fov + 15 * P.t;   // portrait screens get a little extra
   if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = damp(camera.fov, fov, 3, dt); camera.updateProjectionMatrix(); }
   sky.position.copy(camera.position);
   stars.pts.position.copy(camera.position);
@@ -2685,6 +2676,9 @@ function syncSettingsUI() {
     b.setAttribute('aria-checked', on ? 'true' : 'false');
   }
   const ranges = [
+    ['set-fov', 'val-fov', 'fov', (v) => `${Math.round(v)}°`],
+    ['set-camx', 'val-camx', 'camX', (v) => `${v > 0 ? '+' : ''}${v.toFixed(2)}`],
+    ['set-camy', 'val-camy', 'camY', (v) => `${v > 0 ? '+' : ''}${v.toFixed(2)}`],
     ['set-mouse', 'val-mouse', 'mouseSens', (v) => `${v.toFixed(1)}×`],
     ['set-camera', 'val-camera', 'cameraSens', (v) => `${v.toFixed(1)}×`],
     ['set-touch', 'val-touch', 'touchSens', (v) => `${v.toFixed(1)}×`],
@@ -2725,6 +2719,9 @@ function bindSettingsUI() {
       applySettings(); syncSettingsUI(); saveSettings();
     });
   };
+  bindRange('set-fov', 'fov');
+  bindRange('set-camx', 'camX');
+  bindRange('set-camy', 'camY');
   bindRange('set-mouse', 'mouseSens');
   bindRange('set-camera', 'cameraSens');
   bindRange('set-touch', 'touchSens');
