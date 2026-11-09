@@ -230,9 +230,8 @@ input[type=range]:focus-visible{outline:2px solid var(--cyan);outline-offset:6px
 .leg{display:flex;gap:12px;align-items:center;background:var(--panel-2);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 12px}
 .leg small{display:block;color:var(--muted);font-size:12px;line-height:1.35;margin-top:2px}
 .sw{width:40px;height:40px;border-radius:9px;flex:none;display:grid;place-items:center;font-family:var(--display);font-size:16px;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.35)}
-.sw.solid{background:linear-gradient(90deg,#ff4d5e 0 50%,#4a6bff 50%) top/100% 45% no-repeat,linear-gradient(90deg,#ff8a3d 0 35%,#48d16a 35% 70%,#ff5fa2 70%) bottom/100% 55% no-repeat;
-  box-shadow:inset 0 2px 0 rgba(255,255,255,.35),0 3px 0 rgba(0,0,0,.35)}
-.sw.low{height:22px;background:repeating-linear-gradient(45deg,#ffd23f 0 7px,#2b2140 7px 12px);box-shadow:0 3px 0 #8a6a00;color:transparent;text-shadow:none}
+.sw.solid{height:44px;background:linear-gradient(180deg,#ff6b78 0 47%,#9b2335 47% 53%,#ff4d5e 53%);box-shadow:inset 0 2px 0 rgba(255,255,255,.35),0 3px 0 rgba(0,0,0,.35)}
+.sw.low{height:22px;background:linear-gradient(180deg,#ff6b78,#ff4d5e);box-shadow:inset 0 2px 0 rgba(255,255,255,.35),0 3px 0 rgba(0,0,0,.35)}
 .sw.move{background:linear-gradient(160deg,#d08bff,#8a2be2);box-shadow:0 0 14px rgba(196,107,255,.65),0 3px 0 #4b1585}
 .sw.laser{background:repeating-linear-gradient(180deg,transparent 0 6px,#ff3b4f 6px 8px),linear-gradient(90deg,#2a2450 0 4px,transparent 4px calc(100% - 4px),#2a2450 calc(100% - 4px));
   box-shadow:0 0 12px rgba(255,59,79,.55)}
@@ -242,7 +241,7 @@ input[type=range]:focus-visible{outline:2px solid var(--cyan);outline-offset:6px
 .pmeta{font-size:11px;color:var(--muted);margin-bottom:8px}
 .pgrid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px}
 .pgrid .c{aspect-ratio:1;border-radius:2px;background:rgba(255,255,255,.07)}
-.pgrid .c.s{background:#ff6b5e}.pgrid .c.j{background:#ffd23f}.pgrid .c.m{background:#b44dff;box-shadow:0 0 5px rgba(180,77,255,.7)}
+.pgrid .c.s{background:#ff4d5e}.pgrid .c.j{background:#ffa3ab}.pgrid .c.m{background:#b44dff;box-shadow:0 0 5px rgba(180,77,255,.7)}
 
 /* Pause / Game over */
 .pause-panel,.go-panel{width:min(440px,100%);text-align:center}
@@ -409,13 +408,13 @@ body.touch .kbd-hint{display:none}
     </div>
     <h3>OBSTACLES</h3>
     <div class="legend">
-      <div class="leg"><span class="sw solid"></span><div><b>Block wall</b><small>Too tall to jump. If it catches you it pushes you back, so slide sideways into a hole before you run out of floor.</small></div></div>
-      <div class="leg"><span class="sw low"></span><div><b>Low block</b><small>Jump over it, dive over it, or land on it and ride. Climb from here onto the tall blocks.</small></div></div>
+      <div class="leg"><span class="sw solid"></span><div><b>Stacked blocks</b><small>Two or three blocks high, too tall to jump. If a wall catches you it pushes you back, so slide sideways into a hole before you run out of floor.</small></div></div>
+      <div class="leg"><span class="sw low"></span><div><b>Single block</b><small>As tall as you. One jump gets you on top. Ride it, hop off, or climb from it onto a stack.</small></div></div>
       <div class="leg"><span class="sw move"></span><div><b>Crusher</b><small>Rises and slams down. Get caught underneath and you're bonked away.</small></div></div>
       <div class="leg"><span class="sw laser"></span><div><b>Laser fence</b><small>Lines both edges and switches on and off. Only the skilled get around the blocks that way.</small></div></div>
     </div>
     <h3>DIFFICULTY</h3>
-    <p>Every wave you clear makes the blocks a little faster and the lasers stay on longer. Harder patterns unlock as you go, and from wave 6 a pattern can arrive mirrored. Every wave is checked by the pattern engine, so there is always a way through on the ground.</p>
+    <p>The blocks start slow and get 5% faster every 20 waves. Each wave has its own colour. Harder patterns unlock as you go, the lasers stay on a bit longer, and from wave 6 a pattern can arrive mirrored. Every wave is checked by the pattern engine, so there is always a way through on the ground.</p>
     <h3>PATTERN LIBRARY</h3>
     <div class="plib" id="pattern-lib"></div>
     <div class="actions"><button class="btn primary" id="btn-howto-back">BACK</button></div>
@@ -575,13 +574,12 @@ const Z_NEAR = 14, Z_FAR = -44, Z_SPAWN = -38;           // obstacles travel tow
 const ARENA_LEN = Z_NEAR - Z_FAR, ARENA_MID = (Z_NEAR + Z_FAR) / 2;
 const laneX = (i) => -HALF_W + LANE_W * (i + 0.5);
 
-// Obstacles. Every '#' cell is a tall wall section built from one or two rectangular blocks.
-const BLOCK_W = 1.86, BLOCK_D = 1.86;                     // footprint of one cell
-const H_BASE = 1.9, H_WALL = 2.2, H_TALL = 2.75;
-const LOW_H = 0.6, LOW_D = 1.25;                          // 'J' low barrier
-const CRUSH_H = 1.7, CRUSH_UP = 2.15;                     // 'M' crusher (bottom height when raised)
+// Obstacles are built from identical blocks about as tall as the runner.
+// 'J' = one block (jump onto it), '#' = a stack of 2–3 blocks (too tall to jump).
+const BLOCK_W = 1.86, BLOCK_D = 1.86, BLOCK_H = 1.45;
+const CRUSH_H = BLOCK_H, CRUSH_UP = 2.0;                  // 'M' crusher (bottom height when raised)
 // Collision: front faces are a little forgiving; tops match the visuals so you can stand on them.
-const HIT_HALF_W = 0.9, HIT_HALF_D = 0.86, HIT_LOW_HALF_D = 0.56;
+const HIT_HALF_W = 0.9, HIT_HALF_D = 0.86;
 const ROW_HALF_D = 0.86;
 const STEP_UP = 0.3;                                      // land on any top this close above your feet
 
@@ -596,21 +594,21 @@ const GATE_STOP = Z_SPAWN + 2.5;                         // the spawn gate is a 
 // Dive: press jump again in the air
 const DIVE_SPEED = 13, DIVE_UP = 4.2, DIVE_SLIDE = 0.3, P_HEIGHT_FLAT = 0.75;
 const MOVE_SPEED = 9.5, ACCEL = 80, DECEL = 100, AIR_ACCEL = 34;
-const G_UP = 30, G_DOWN = 46, JUMP_V = 10.2;
+const G_UP = 30, G_DOWN = 46, JUMP_V = 10.6;
 const JUMP_APEX = JUMP_V ** 2 / (2 * G_UP);
 const AIR_TIME = JUMP_V / G_UP + Math.sqrt((2 * JUMP_APEX) / G_DOWN);
 const COYOTE_TIME = 0.09, JUMP_BUFFER = 0.13;
 
 // Pattern engine tuning
 const EMERGE_DUR = 0.45, MIN_ROW_SPACING = 5.0, EMPTY_SPACING = 5.5;
-const DEMO_SPEED = 8, MIRROR_FROM = 5, SAFETY = 0.1, EDGE_MARGIN = 0.55;
+const DEMO_SPEED = 6, MIRROR_FROM = 5, SAFETY = 0.1, EDGE_MARGIN = 0.55;
 const MAX_STEP = 1 / 120;
 
 // ---------------------------------------------------------------------
 // 3. Difficulty curve
 // ---------------------------------------------------------------------
-const speedForWave = (w) => 9 + 9.5 * (1 - Math.exp(-w / 15));          // 9 → ~18.5 u/s
-const comfortForWave = (w) => 0.2 + 0.36 * Math.exp(-w / 10);           // spare reaction time per row (s)
+const speedForWave = (w) => 7 * Math.pow(1.05, Math.floor(w / 20));    // slow start, 5% faster every 20 waves
+const comfortForWave = (w) => 0.22 + 0.34 * Math.exp(-w / 16);          // spare reaction time per row (s)
 const breatherForWave = (w) => 1.25 + 0.85 * Math.exp(-w / 10);         // pause between waves (s)
 const crusherPeriodForWave = (w) => Math.max(1.3, 2.1 - w * 0.03);      // crusher cycle (s)
 const laserOnFracForWave = (w) => 0.7 + 0.12 * (1 - Math.exp(-w / 12));   // share of each cycle a laser is live
@@ -1282,14 +1280,6 @@ TEX.block = canvasTex(128, 128, (g, w) => {
   g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 3; roundRect(g, 8, 8, w - 16, w - 16, 11); g.stroke();
   g.fillStyle = 'rgba(40,20,80,.06)'; roundRect(g, 28, 28, w - 56, w - 56, 9); g.fill();
 });
-TEX.hazard = canvasTex(128, 128, (g, w) => {
-  g.fillStyle = '#ffd23f'; g.fillRect(0, 0, w, w);
-  g.fillStyle = '#2b2140';
-  for (let i = -w; i < w * 2; i += 32) {
-    g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 16, 0); g.lineTo(i + 16 - w, w); g.lineTo(i - w, w); g.closePath(); g.fill();
-  }
-  g.strokeStyle = '#fff6c2'; g.lineWidth = 6; g.strokeRect(3, 3, w - 6, w - 6);
-});
 function chevrons(g, color) {
   g.fillStyle = color;
   for (const y of [30, 62]) {
@@ -1564,40 +1554,15 @@ function makeInstanced(geo, mat, cap, shadows = true) {
 const crushMat = new THREE.MeshStandardMaterial({ map: TEX.crush, emissiveMap: TEX.crushGlow, emissive: 0xffffff, emissiveIntensity: 0.7, roughness: 0.35, metalness: 0.15 });
 const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);      // scaled per block part
 const MESH = {
-  '#': makeInstanced(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.block, roughness: 0.45, metalness: 0.05 }), 480),
-  J: makeInstanced(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.hazard, roughness: 0.5, metalness: 0.05, emissive: 0x3a2a00, emissiveIntensity: 0.6 }), 160),
+  '#': makeInstanced(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.block, roughness: 0.45, metalness: 0.05 }), 720),
   M: makeInstanced(UNIT_BOX, crushMat, 160),
   mk: makeInstanced(new THREE.PlaneGeometry(BLOCK_W, BLOCK_D).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({ map: TEX.marker, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
       polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }), 160, false),
 };
-// Toy-block colours, one set per wave.
-const WAVE_PALETTES = [
-  ['#ff4d5e', '#ff8a3d', '#fff0d2', '#4a6bff'],
-  ['#4a6bff', '#ff5fa2', '#fff0d2', '#ff8a3d'],
-  ['#48d16a', '#ff8a3d', '#4a6bff', '#fff0d2'],
-  ['#ff5fa2', '#a6e22e', '#ff4d5e', '#fff0d2'],
-  ['#ff6f61', '#4a6bff', '#a6e22e', '#ff5fa2'],
-].map((list) => list.map((c) => new THREE.Color(c)));
-
-// A '#' cell becomes one or two rectangular blocks, always filling the cell's footprint at ground level.
-function solidParts(pal) {
-  const col = () => pick(pal).clone().offsetHSL(0, 0, rand(-0.04, 0.04));
-  const box = (h, { ox = 0, oz = 0, w = BLOCK_W, d = BLOCK_D, y0 = 0 } = {}) => ({ ox, oz, w, d, y0, h, color: col() });
-  const r = Math.random();
-  if (r < 0.42) return [box(H_WALL)];
-  if (r < 0.57) return [box(H_TALL)];
-  if (r < 0.72) {                                         // stack: a smaller block on a base
-    const w = rand(0.95, 1.35), d = rand(0.95, 1.35);
-    return [box(H_BASE), box(0.65, { y0: H_BASE, w, d, ox: rand(-1, 1) * (BLOCK_W - w) / 2, oz: rand(-1, 1) * (BLOCK_D - d) / 2 })];
-  }
-  if (r < 0.86) {                                         // two half-width blocks of different heights
-    const w = BLOCK_W / 2, first = Math.random() < 0.5;
-    return [box(first ? H_WALL : H_TALL, { w, ox: -w / 2 }), box(first ? H_TALL : H_WALL, { w, ox: w / 2 })];
-  }
-  const d = BLOCK_D / 2;                                  // step: the front block is lower than the back one
-  return [box(H_BASE, { d, oz: d / 2 }), box(H_TALL, { d, oz: -d / 2 })];
-}
+// One colour per wave, and the next wave always gets a different one.
+// (Purple stays reserved for crushers, cyan for the runner.)
+const WAVE_COLORS = ['#ff4d5e', '#3d7bff', '#3ccf6d', '#ff8a2a', '#ff5fa2', '#ffd23f', '#a6e22e', '#f4f1ff'].map((c) => new THREE.Color(c));
 
 // Crusher ('M') vertical cycle: hover up → slam down → rest → rise.
 function crusherBottom(t, b) {
@@ -1614,7 +1579,7 @@ const _p = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1), _c = new THRE
 const world = {
   mode: 'demo', rows: [], waves: [], nextIndex: 0,
   lastRowZ: null, lastSolidZ: null, prev: null, lastPatternId: null,
-  speed: DEMO_SPEED, targetSpeed: DEMO_SPEED, time: 0, firstZ: -14, emergeDelay: 0, flash: 0, laserOnFrac: 0.7,
+  speed: DEMO_SPEED, targetSpeed: DEMO_SPEED, time: 0, firstZ: -14, emergeDelay: 0, flash: 0, laserOnFrac: 0.7, demoColor: 0,
 
   reset(mode) {
     for (const r of this.rows) if (r.emerged && !r.falling && !r.sinking) { r.sinking = true; r.sinkT = 0; }
@@ -1678,7 +1643,7 @@ const world = {
     this.lastSolidZ = zs[last];
     this.lastRowZ = zs[7];
 
-    const pal = WAVE_PALETTES[demo ? Math.floor(Math.random() * WAVE_PALETTES.length) : index % WAVE_PALETTES.length];
+    const color = WAVE_COLORS[(demo ? this.demoColor++ : index) % WAVE_COLORS.length];
     const period = demo ? 2.0 : crusherPeriodForWave(index);
     const wave = { index, pattern, mirrored, demo, rows: [], speed, announced: false };
     for (let i = 0; i < 8; i++) {
@@ -1691,11 +1656,11 @@ const world = {
       for (let lane = 0; lane < LANES; lane++) {
         const c = cells[lane];
         if (c === '.') continue;
-        const parts = c === '#' ? solidParts(pal)
-          : c === 'J' ? [{ ox: 0, oz: 0, w: BLOCK_W, d: LOW_D, y0: 0, h: LOW_H, color: WHITE }]
-          : [{ ox: 0, oz: 0, w: BLOCK_W, d: BLOCK_D, y0: 0, h: CRUSH_H, color: WHITE }];
-        row.blocks.push({ type: c, lane, x: laneX(lane), y: -2.6, vy: 0, parts, phase: (i * 0.23 + lane * 0.11) % 1, period,
-          down: false, fy: 0, fvy: 0, rot: 0, rotV: 0, rotZ: 0 });
+        const units = c === '#' ? (Math.random() < 0.25 ? 3 : 2) : 1;     // stacks of whole blocks
+        const h = units * BLOCK_H;
+        const parts = [{ ox: 0, oz: 0, w: BLOCK_W, d: BLOCK_D, y0: 0, h, color: c === 'M' ? WHITE : color }];
+        row.blocks.push({ type: c, lane, x: laneX(lane), y: -(h + 0.3), vy: 0, units, riseH: h + 0.3, parts,
+          phase: (i * 0.23 + lane * 0.11) % 1, period, down: false, fy: 0, fvy: 0, rot: 0, rotV: 0, rotZ: 0 });
       }
       wave.rows.push(row);
       this.rows.push(row);
@@ -1737,7 +1702,6 @@ const world = {
       }
       row.emergeT += h;
       const k = row.emergeT >= EMERGE_DUR ? 1 : easeOutBack(clamp(row.emergeT / EMERGE_DUR, 0, 1));
-      const rise = (k - 1) * 2.6;
       for (const b of row.blocks) {
         const prevY = b.y;
         if (b.type === 'M') {
@@ -1745,8 +1709,8 @@ const world = {
           const isDown = base <= 0.001;
           if (isDown && !b.down && row.emergeT > EMERGE_DUR) game.onSlam(row, b);
           b.down = isDown;
-          b.y = base + rise;
-        } else b.y = rise;
+          b.y = base + (k - 1) * b.riseH;
+        } else b.y = (k - 1) * b.riseH;
         b.vy = (b.y - prevY) / h;
       }
       if (row.z - 0.3 > Z_NEAR) {        // tipped over the near edge
@@ -1860,30 +1824,30 @@ const world = {
   },
 
   render(dt) {
-    const n = { '#': 0, J: 0, M: 0, mk: 0 };
+    const n = { '#': 0, M: 0, mk: 0 };
     for (const row of this.rows) {
       if (!row.emerged) continue;
       const sinkOff = row.sinking ? -2.8 * easeInOutQuad(clamp(row.sinkT / 0.4, 0, 1)) : 0;
       for (const b of row.blocks) {
-        const mesh = MESH[b.type];
+        const key = b.type === 'M' ? 'M' : '#', mesh = MESH[key], color = b.parts[0].color;
         if (row.falling) {
           _e.set(b.rot, 0, b.rotZ * row.fallT);
           _q.setFromEuler(_e);
           _mb.compose(_p.set(b.x, b.fy, row.z), _q, _one);
         }
-        for (const part of b.parts) {
-          const i = n[b.type];
+        for (let u = 0; u < b.units; u++) {                 // a stack is drawn as whole blocks
+          const i = n[key];
           if (i >= mesh.instanceMatrix.count) break;
-          n[b.type]++;
-          _mp.makeScale(part.w, part.h, part.d);
+          n[key]++;
+          _mp.makeScale(BLOCK_W, BLOCK_H, BLOCK_D);
           if (row.falling) {
-            _mp.setPosition(part.ox, part.y0, part.oz);
+            _mp.setPosition(0, u * BLOCK_H, 0);
             _m4.multiplyMatrices(_mb, _mp);
           } else {
-            _m4.copy(_mp).setPosition(b.x + part.ox, b.y + part.y0 + sinkOff, row.z + part.oz);
+            _m4.copy(_mp).setPosition(b.x, b.y + u * BLOCK_H + sinkOff, row.z);
           }
           mesh.setMatrixAt(i, _m4);
-          mesh.setColorAt(i, part.color);
+          mesh.setColorAt(i, color);
         }
         if (b.type === 'M' && !row.falling && !row.sinking && row.emergeT > 0 && n.mk < MESH.mk.instanceMatrix.count) {
           const near = 1 - clamp(b.y / CRUSH_UP, 0, 1);       // marker glows as the crusher descends
@@ -1938,7 +1902,7 @@ const lasers = (() => {
   }
   segs.forEach((s, i) => LASER_BEAMS.forEach((y, j) => {
     const idx = i * nb + j, len = segLen - 0.3, cz = (s.z0 + s.z1) / 2;
-    cores.setMatrixAt(idx, m4.makeScale(0.045, 0.045, len).setPosition(s.side * LASER_X, y, cz));
+    cores.setMatrixAt(idx, m4.makeScale(0.065, 0.065, len).setPosition(s.side * LASER_X, y, cz));
     glows.setMatrixAt(idx, m4.makeScale(0.2, 0.2, len).setPosition(s.side * LASER_X, y, cz));
     cores.setColorAt(idx, col.setScalar(0));
     glows.setColorAt(idx, col.setScalar(0));
@@ -1951,11 +1915,12 @@ const lasers = (() => {
       for (const s of segs) {
         const p = ((((t / LASER_PERIOD) + s.phase) % 1) + 1) % 1;
         s.state = p < onFrac ? 'on' : p > 1 - warnFrac ? 'warn' : 'off';
+        s.warnK = s.state === 'warn' ? (p - (1 - warnFrac)) / warnFrac : 0;
       }
     },
-    render(t) {
+    render() {
       segs.forEach((s, i) => {
-        const lv = s.state === 'on' ? 0.85 + 0.15 * Math.sin(t * 40 + i) : s.state === 'warn' ? (Math.floor(t * 14) % 2) * 0.35 : 0;
+        const lv = s.state === 'on' ? 1 : s.state === 'warn' ? 0.06 + 0.3 * s.warnK : 0;   // steady, no flicker
         for (let j = 0; j < nb; j++) {
           cores.setColorAt(i * nb + j, col.copy(ON).multiplyScalar(lv));
           glows.setColorAt(i * nb + j, col.copy(GLOW).multiplyScalar(lv * 0.4));
@@ -3054,7 +3019,7 @@ function applyQualityScene() {
   decor.setCount(q.decor);
   dust.setCount(q.dust);
   stars.setCount(q.stars);
-  for (const key of ['#', 'J', 'M']) { MESH[key].castShadow = q.shadows; MESH[key].receiveShadow = q.shadows; }
+  for (const key of ['#', 'M']) { MESH[key].castShadow = q.shadows; MESH[key].receiveShadow = q.shadows; }
 }
 function createRenderer() {
   const q = QUALITY[settings.quality];
@@ -3178,7 +3143,7 @@ function update(rawDt) {
   particles.update(vdt);
   rings.update(vdt);
   world.render(vdt);
-  lasers.render(world.time);
+  lasers.render();
   bgTime += dt;
   decor.update(bgTime);
   dust.update(dt, (frozen ? 0 : world.speed) * 0.2);
@@ -3252,7 +3217,7 @@ function init() {
       rowSafety, planWave, SAMPLES, LIBRARY, speedForWave, laneX,
       tick(dt) { update(dt); }, draw() { renderer.render(scene, camera); },
       info() { return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, pixelRatio: renderer.getPixelRatio() }; },
-      consts: { P_START_Z, P_HALF_W, P_HALF_D, P_HEIGHT, ROW_HALF_D, HIT_LOW_H: LOW_H, HIT_LOW_HALF_D, HIT_HALF_D, JUMP_V, G_UP, G_DOWN, AIR_TIME, MOVE_SPEED, CRUSH_UP, LANES, Z_SPAWN },
+      consts: { P_START_Z, P_HALF_W, P_HALF_D, P_HEIGHT, ROW_HALF_D, BLOCK_H, BLOCK_D, HIT_HALF_D, JUMP_V, G_UP, G_DOWN, AIR_TIME, MOVE_SPEED, CRUSH_UP, LANES, Z_SPAWN },
     };
   }
 }
