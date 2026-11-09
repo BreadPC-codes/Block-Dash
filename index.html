@@ -376,7 +376,7 @@ body.touch .kbd-hint{display:none}
         <span class="tile" style="--c1:#aebdff;--c2:#5b6cff;--c3:#2a35a3;--d:.63s">H</span>
       </span>
     </h1>
-    <p class="tagline">Dodge the blocks. Jump the barriers. Survive the waves.</p>
+    <p class="tagline">Dodge the walls. Jump, dive, don't get pushed off.</p>
     <div class="best-card"><span class="star">★</span>PERSONAL BEST <b id="menu-best">0</b><span id="menu-best-unit">WAVES</span></div>
     <button class="btn primary big" id="btn-play">▶&nbsp; PLAY</button>
     <div class="menu-row">
@@ -395,23 +395,23 @@ body.touch .kbd-hint{display:none}
     <div class="howto-grid">
       <div class="card">
         <h3>GOAL</h3>
-        <p>Blocks sweep toward you in <b>waves</b> of eight rows. Get past all eight rows and <b>WAVE SURVIVED</b> goes up by one.</p>
-        <p>Slip through the gaps, hop over the barriers, or <b>jump on top of the blocks</b> and ride them. Running into the front of a block, getting crushed, touching a live laser or falling off the edge ends the run.</p>
+        <p>Walls of blocks sweep toward you in <b>waves</b> of eight rows. Get past all eight and <b>WAVE SURVIVED</b> goes up by one.</p>
+        <p>Slip through the holes, jump the low parts, dive, or <b>jump on top</b> and ride. A wall that catches you <b>pushes you</b> toward the edge. Get shoved off or touch a live laser and the run is over.</p>
       </div>
       <div class="card">
         <h3>CONTROLS</h3>
         <div class="ctrl"><span class="k">W A S D</span><span class="k">← ↑ → ↓</span> Move</div>
-        <div class="ctrl"><span class="k">SPACE</span> Jump</div>
+        <div class="ctrl"><span class="k">SPACE</span> Jump · press again in the air to <b>&nbsp;dive</b></div>
         <div class="ctrl"><span class="k">ESC</span><span class="k">P</span> Pause</div>
         <div class="ctrl"><span class="k">MOUSE DRAG</span> Look around (springs back)</div>
-        <div class="ctrl"><span class="k">TOUCH</span> Joystick (bottom-left) moves · <span class="k">JUMP</span> button (bottom-right)</div>
+        <div class="ctrl"><span class="k">TOUCH</span> Joystick (bottom-left) moves · <span class="k">JUMP</span> (bottom-right), tap again in the air to dive</div>
       </div>
     </div>
     <h3>OBSTACLES</h3>
     <div class="legend">
-      <div class="leg"><span class="sw solid"></span><div><b>Block stacks</b><small>Don't run into the front. Lower stacks can be jumped onto and ridden, but hop off before they reach the edge.</small></div></div>
-      <div class="leg"><span class="sw low"></span><div><b>Low barrier</b><small>Jump over it or land on it.</small></div></div>
-      <div class="leg"><span class="sw move"></span><div><b>Crusher</b><small>Rises and slams down. Slip under while it is up, or ride on top.</small></div></div>
+      <div class="leg"><span class="sw solid"></span><div><b>Block wall</b><small>Too tall to jump. If it catches you it pushes you back, so slide sideways into a hole before you run out of floor.</small></div></div>
+      <div class="leg"><span class="sw low"></span><div><b>Low block</b><small>Jump over it, dive over it, or land on it and ride. Climb from here onto the tall blocks.</small></div></div>
+      <div class="leg"><span class="sw move"></span><div><b>Crusher</b><small>Rises and slams down. Get caught underneath and you're bonked away.</small></div></div>
       <div class="leg"><span class="sw laser"></span><div><b>Laser fence</b><small>Lines both edges and switches on and off. Only the skilled get around the blocks that way.</small></div></div>
     </div>
     <h3>DIFFICULTY</h3>
@@ -571,13 +571,13 @@ const fmtTime = (s) => { s = Math.max(0, Math.floor(s)); return String(Math.floo
 // 2. World constants (units are metres-ish; 1 lane = 2 units)
 // ---------------------------------------------------------------------
 const LANES = 8, LANE_W = 2, HALF_W = (LANES * LANE_W) / 2, RIM = 0.3;
-const Z_NEAR = 16, Z_FAR = -66, Z_SPAWN = -60;           // obstacles travel toward +z
+const Z_NEAR = 14, Z_FAR = -44, Z_SPAWN = -38;           // obstacles travel toward +z
 const ARENA_LEN = Z_NEAR - Z_FAR, ARENA_MID = (Z_NEAR + Z_FAR) / 2;
 const laneX = (i) => -HALF_W + LANE_W * (i + 0.5);
 
-// Obstacles. Every '#' cell is built from one or two rectangular blocks of different sizes.
+// Obstacles. Every '#' cell is a tall wall section built from one or two rectangular blocks.
 const BLOCK_W = 1.86, BLOCK_D = 1.86;                     // footprint of one cell
-const H_LOW = 1.0, H_MID = 1.45, H_HIGH = 2.2, H_TOWER = 2.9;
+const H_BASE = 1.9, H_WALL = 2.2, H_TALL = 2.75;
 const LOW_H = 0.6, LOW_D = 1.25;                          // 'J' low barrier
 const CRUSH_H = 1.7, CRUSH_UP = 2.15;                     // 'M' crusher (bottom height when raised)
 // Collision: front faces are a little forgiving; tops match the visuals so you can stand on them.
@@ -591,7 +591,10 @@ const LASER_BEAMS = [0.4, 1.05, 1.7, 2.35];
 
 // Player
 const P_HALF_W = 0.36, P_HALF_D = 0.36, P_HEIGHT = 1.3;
-const P_START_X = 0, P_START_Z = 3;
+const P_START_X = 0, P_START_Z = -4;
+const GATE_STOP = Z_SPAWN + 2.5;                         // the spawn gate is a solid barrier
+// Dive: press jump again in the air
+const DIVE_SPEED = 13, DIVE_UP = 4.2, DIVE_SLIDE = 0.3, P_HEIGHT_FLAT = 0.75;
 const MOVE_SPEED = 9.5, ACCEL = 80, DECEL = 100, AIR_ACCEL = 34;
 const G_UP = 30, G_DOWN = 46, JUMP_V = 10.2;
 const JUMP_APEX = JUMP_V ** 2 / (2 * G_UP);
@@ -606,7 +609,7 @@ const MAX_STEP = 1 / 120;
 // ---------------------------------------------------------------------
 // 3. Difficulty curve
 // ---------------------------------------------------------------------
-const speedForWave = (w) => 10 + 14.5 * (1 - Math.exp(-w / 16));        // 10 → ~24.5 u/s
+const speedForWave = (w) => 9 + 9.5 * (1 - Math.exp(-w / 15));          // 9 → ~18.5 u/s
 const comfortForWave = (w) => 0.2 + 0.36 * Math.exp(-w / 10);           // spare reaction time per row (s)
 const breatherForWave = (w) => 1.25 + 0.85 * Math.exp(-w / 10);         // pause between waves (s)
 const crusherPeriodForWave = (w) => Math.max(1.3, 2.1 - w * 0.03);      // crusher cycle (s)
@@ -738,6 +741,67 @@ const PATTERN_DEFS = [
   3 | # . # # # # . # |
   2 | M . M . . M . M |
   1 | # # # . . # # # |` },
+  // ----- wall waves: full-width walls with holes to slip through and low parts to jump -----
+  { id: 'wallrush', name: 'Wall Rush', minWave: 0, rating: 1, wall: true, ascii: `
+      A B C D E F G H
+  8 | # # # . . # # # |
+  7 | . . . . . . . . |
+  6 | # # # # J J # # |
+  5 | . . . . . . . . |
+  4 | # . . # # # # # |
+  3 | . . . . . . . . |
+  2 | # # # # # # . . |
+  1 | J J J J J J J J |` },
+  { id: 'hopwall', name: 'Hop or Hole', minWave: 1, rating: 2, wall: true, ascii: `
+      A B C D E F G H
+  8 | # # J J # # . # |
+  7 | . . . . . . . . |
+  6 | # . # # J J # # |
+  5 | . . . . . . . . |
+  4 | J J # # # # . # |
+  3 | . . . . . . . . |
+  2 | # # . # # J J # |
+  1 | # # # J J # # # |` },
+  { id: 'slider', name: 'Slider', minWave: 2, rating: 2, wall: true, ascii: `
+      A B C D E F G H
+  8 | . # # # # # # # |
+  7 | . . . . . . . . |
+  6 | # # # . # # # # |
+  5 | . . . . . . . . |
+  4 | # # # # # # . # |
+  3 | . . . . . . . . |
+  2 | # # J J J J # # |
+  1 | # # # # . # # # |` },
+  { id: 'twinwall', name: 'Twin Walls', minWave: 3, rating: 3, wall: true, ascii: `
+      A B C D E F G H
+  8 | # # . # # # . # |
+  7 | # # . # # # . # |
+  6 | . . . . . . . . |
+  5 | # # # # J J # # |
+  4 | # # # # J J # # |
+  3 | . . . . . . . . |
+  2 | J J # # # # # . |
+  1 | J J # # # # # . |` },
+  { id: 'crushwall', name: 'Crusher Wall', minWave: 6, rating: 4, wall: true, ascii: `
+      A B C D E F G H
+  8 | # # M M # # . # |
+  7 | . . . . . . . . |
+  6 | # . # # M M # # |
+  5 | . . . . . . . . |
+  4 | # # J J # # M # |
+  3 | . . . . . . . . |
+  2 | M # # . # # # M |
+  1 | J J J J J J J J |` },
+  { id: 'lastgap', name: 'Last Gap', minWave: 8, rating: 5, wall: true, ascii: `
+      A B C D E F G H
+  8 | . # # # # # # # |
+  7 | . . . . . . . . |
+  6 | # # # # # # # . |
+  5 | . . . . . . . . |
+  4 | # # # . # # # # |
+  3 | . . . . . . . . |
+  2 | # J # # # # J # |
+  1 | # # # # # . # # |` },
   { id: 'gauntlet', name: 'The Gauntlet', minWave: 10, rating: 5, ascii: `
       A B C D E F G H
   8 | # . . # # . . # |
@@ -749,7 +813,7 @@ const PATTERN_DEFS = [
   2 | . # # M M # # . |
   1 | J J # # # # J J |` },
 ];
-const FIXED_OPENING = ['corridor', 'jump', 'alternating'];   // gentle introduction for waves 1-3
+const FIXED_OPENING = ['wallrush', 'corridor', 'hopwall'];   // gentle introduction for waves 1-3
 
 // --- Parser: ASCII grid → { rows: [{ rowNumber, cells[8] }] } in arrival order (8 → 1)
 const SYMBOLS = new Set(['#', '.', 'J', 'M']);
@@ -896,7 +960,7 @@ function choosePattern(index, demo, lastId) {
   const target = demo ? 2.6 : clamp(1.2 + index / 3.2, 1, 5);
   let total = 0;
   const weights = pool.map((p) => {
-    const w = (p.id === lastId ? 0.03 : 1) * (Math.exp(-((p.rating - target) ** 2) / 1.8) + 0.12);
+    const w = (p.id === lastId ? 0.03 : 1) * (p.wall ? 2.2 : 1) * (Math.exp(-((p.rating - target) ** 2) / 1.8) + 0.12);
     total += w; return w;
   });
   let r = Math.random() * total;
@@ -1069,6 +1133,19 @@ const audio = {
         this.tone({ f0: 990, dur: 0.22, type: 'square', vol: 0.05, delay: 0.1, lp: 2600 });
         break;
       case 'tick': this.tone({ f0: 520, dur: 0.09, type: 'square', vol: 0.05, lp: 2000 }); break;
+      case 'push':
+        this.noise({ dur: 0.12, vol: 0.22, f0: 320, type: 'lowpass' });
+        this.tone({ f0: 110, f1: 60, dur: 0.14, type: 'sine', vol: 0.22 });
+        break;
+      case 'dive':
+        this.noise({ dur: 0.26, vol: 0.12, f0: 700, f1: 2600, type: 'bandpass', q: 1.4 });
+        this.tone({ f0: 420, f1: 880, dur: 0.16, type: 'triangle', vol: 0.06 });
+        break;
+      case 'bonk':
+        this.tone({ f0: 620, f1: 160, dur: 0.22, type: 'sine', vol: 0.2 });
+        this.tone({ f0: 1200, dur: 0.06, type: 'square', vol: 0.05, lp: 3000 });
+        this.noise({ dur: 0.15, vol: 0.18, f0: 400, type: 'lowpass' });
+        break;
       case 'zap':
         this.tone({ f0: 1500, f1: 160, dur: 0.45, type: 'sawtooth', vol: 0.12, lp: 3200 });
         this.tone({ f0: 60, dur: 0.35, type: 'square', vol: 0.08, lp: 600 });
@@ -1508,20 +1585,18 @@ function solidParts(pal) {
   const col = () => pick(pal).clone().offsetHSL(0, 0, rand(-0.04, 0.04));
   const box = (h, { ox = 0, oz = 0, w = BLOCK_W, d = BLOCK_D, y0 = 0 } = {}) => ({ ox, oz, w, d, y0, h, color: col() });
   const r = Math.random();
-  if (r < 0.2) return [box(H_LOW)];
-  if (r < 0.4) return [box(H_MID)];
-  if (r < 0.56) return [box(H_HIGH)];
-  if (r < 0.7) {                                          // stack: a smaller block on a base
-    const base = Math.random() < 0.5 ? H_LOW : H_MID, w = rand(0.95, 1.35), d = rand(0.95, 1.35);
-    return [box(base), box(0.75, { y0: base, w, d, ox: rand(-1, 1) * (BLOCK_W - w) / 2, oz: rand(-1, 1) * (BLOCK_D - d) / 2 })];
+  if (r < 0.42) return [box(H_WALL)];
+  if (r < 0.57) return [box(H_TALL)];
+  if (r < 0.72) {                                         // stack: a smaller block on a base
+    const w = rand(0.95, 1.35), d = rand(0.95, 1.35);
+    return [box(H_BASE), box(0.65, { y0: H_BASE, w, d, ox: rand(-1, 1) * (BLOCK_W - w) / 2, oz: rand(-1, 1) * (BLOCK_D - d) / 2 })];
   }
-  if (r < 0.82) {                                         // step: low front half, tall back half
-    const d = BLOCK_D / 2;
-    return [box(H_LOW, { d, oz: d / 2 }), box(H_HIGH, { d, oz: -d / 2 })];
+  if (r < 0.86) {                                         // two half-width blocks of different heights
+    const w = BLOCK_W / 2, first = Math.random() < 0.5;
+    return [box(first ? H_WALL : H_TALL, { w, ox: -w / 2 }), box(first ? H_TALL : H_WALL, { w, ox: w / 2 })];
   }
-  if (r < 0.91) return [box(H_TOWER, { d: 1.3 })];        // slim tower
-  const w = BLOCK_W / 2, lowFirst = Math.random() < 0.5;  // two half-width blocks of different heights
-  return [box(lowFirst ? H_LOW : H_MID, { w, ox: -w / 2 }), box(lowFirst ? H_MID : H_LOW, { w, ox: w / 2 })];
+  const d = BLOCK_D / 2;                                  // step: the front block is lower than the back one
+  return [box(H_BASE, { d, oz: d / 2 }), box(H_TALL, { d, oz: -d / 2 })];
 }
 
 // Crusher ('M') vertical cycle: hover up → slam down → rest → rise.
@@ -1699,21 +1774,22 @@ const world = {
     } else p.leavePlatform();
   },
 
-  // Player vs obstacle boxes: land on tops, slide along sides, get knocked out by fronts and crushers.
+  // Player vs obstacle boxes. Tops: land on them. Sides: solid. The front of an incoming wall
+  // pushes you along with it; a crusher coming down bonks you away. Returns a contact event.
   resolve(p) {
-    const pz0 = p.z - P_HALF_D, pz1 = p.z + P_HALF_D;
+    const pz0 = p.z - P_HALF_D, pz1 = p.z + P_HALF_D, ph = p.height;
     const sweeping = this.speed - p.carry > 1;            // blocks move toward a player who isn't riding along
-    let land = null;
+    let land = null, event = null;
     for (const row of this.rows) {
       if (!row.emerged || row.falling || row.sinking || !row.blocks.length) continue;
-      if (row.z + ROW_HALF_D + 0.1 < pz0 || row.z - ROW_HALF_D - 0.1 > pz1) continue;
+      if (row.z + BLOCK_D / 2 + 0.1 < pz0 || row.z - BLOCK_D / 2 - 0.1 > pz1) continue;
       for (const b of row.blocks) {
         for (const part of b.parts) {
-          const hx = part.w / 2 - 0.03, hz = part.d / 2 - 0.07, cx = b.x + part.ox, cz = row.z + part.oz;
+          const hx = part.w / 2 - 0.03, hz = part.d / 2, cx = b.x + part.ox, cz = row.z + part.oz;
           const x0 = cx - hx, x1 = cx + hx, z0 = cz - hz, z1 = cz + hz;
-          if (x1 <= p.x - P_HALF_W || x0 >= p.x + P_HALF_W || z1 <= pz0 || z0 >= pz1) continue;
+          if (x1 <= p.x - P_HALF_W || x0 >= p.x + P_HALF_W || z1 <= p.z - P_HALF_D || z0 >= p.z + P_HALF_D) continue;
           const y0 = b.y + part.y0, y1 = y0 + part.h;
-          if (y1 <= p.y + 1e-4 || y0 >= p.y + P_HEIGHT) continue;
+          if (y1 <= p.y + 1e-4 || y0 >= p.y + ph) continue;
           if (y1 - p.y <= STEP_UP) {                        // feet are just below the top: land on it
             if (!land || y1 > land.top) land = { row, block: b, part, top: y1 };
             continue;
@@ -1724,21 +1800,38 @@ const world = {
           const tX = p.vx < 0 ? (x1 - (p.x - P_HALF_W)) / -p.vx : p.vx > 0 ? (p.x + P_HALF_W - x0) / p.vx : Infinity;
           const tZ = (relZ >= 0 ? z1 - pz0 : pz1 - z0) / Math.max(Math.abs(relZ), 1e-3);
           const closeY = p.vy - b.vy;                       // > 0: closing from below
-          const tY = (p.y + P_HEIGHT - y0) / Math.max(closeY, 1e-3);
-          if (b.type === 'M' && closeY > 0.5 && tY < tX && tY < tZ) return { kind: 'crush', row, block: b };
+          const tY = (p.y + ph - y0) / Math.max(closeY, 1e-3);
+          if (closeY > 0.5 && tY < tX && tY < tZ) {         // underside: a crusher coming down, or a head bump
+            if (b.vy < -0.5) {
+              p.z = z1 + P_HALF_D + 0.02;                   // squeezed out in front of it
+              p.stun(0.7, rand(-1.5, 1.5), 5, this.speed + 4);
+              event = { kind: 'bonk', row, block: b };
+            } else {
+              p.y = y0 - ph - 1e-3;
+              p.vy = Math.min(p.vy, -2);
+              event = event || { kind: 'bump', row, block: b };
+            }
+            continue;
+          }
           if (tX <= tZ) {                                   // brushed a side: blocks are solid
             p.x = p.x < cx ? x0 - P_HALF_W - 1e-3 : x1 + P_HALF_W + 1e-3;
             p.vx = 0;
             continue;
           }
-          if (sweeping) return { kind: 'hit', row, block: b };   // the front of an incoming block
+          if (sweeping) {                                   // the wall shoves the player along
+            p.z = z1 + P_HALF_D + 1e-3;
+            if (p.vz < 0) p.vz = 0;
+            if (!event) event = { kind: 'push', row, block: b, fresh: p.pushT > 0.25 };
+            p.pushT = 0;
+            continue;
+          }
           p.z = p.z < cz ? z0 - P_HALF_D - 1e-3 : z1 + P_HALF_D + 1e-3;   // riding along: just a wall
           p.vz = 0;
         }
       }
     }
     if (land) p.landOn(land, this.speed);
-    return null;
+    return event;
   },
 
   // A row counts as passed once it is completely behind the player.
@@ -1884,7 +1977,7 @@ const lasers = (() => {
     check(p) {
       const ax = Math.abs(p.x);
       if (ax + P_HALF_W < LASER_X || ax - P_HALF_W > LASER_X) return 0;
-      if (p.y > top + 0.05 || p.y + P_HEIGHT < LASER_BEAMS[0] - 0.05) return 0;
+      if (p.y > top + 0.05 || p.y + p.height < LASER_BEAMS[0] - 0.05) return 0;
       const side = p.x < 0 ? -1 : 1;
       for (const s of segs) if (s.side === side && s.state === 'on' && p.z + P_HALF_D > s.z0 && p.z - P_HALF_D < s.z1) return side;
       return 0;
@@ -1962,17 +2055,21 @@ const player = (() => {
   return {
     root, x: P_START_X, y: 0, z: P_START_Z, vx: 0, vy: 0, vz: 0,
     grounded: true, coyote: 0, jumpBuf: 0, platform: null, carry: 0,
-    squash: 0, lean: 0, yaw: 0, runPhase: 0, blinkT: 2, blink: 0, t: 0, ko: null, flat: false, flicker: 0,
+    diving: false, dived: false, slideT: 0, stunT: 0, pushT: 9, spinX: 0, diveBlend: 0,
+    squash: 0, lean: 0, yaw: 0, runPhase: 0, blinkT: 2, blink: 0, t: 0, ko: null, flicker: 0,
     get visible() { return root.visible; },
+    get height() { return this.diving || this.slideT > 0 ? P_HEIGHT_FLAT : P_HEIGHT; },
 
     reset() {
       this.x = P_START_X; this.z = P_START_Z; this.y = 4.5;
       this.vx = this.vz = this.vy = 0;
       this.grounded = false; this.coyote = 0; this.jumpBuf = 0;
       this.platform = null; this.carry = 0;
+      this.diving = false; this.dived = false; this.slideT = 0; this.stunT = 0; this.pushT = 9; this.spinX = 0; this.diveBlend = 0;
       this.squash = 0; this.lean = 0; this.yaw = 0;
-      this.ko = null; this.flat = false; this.flicker = 0;
+      this.ko = null; this.flicker = 0;
       visual.rotation.set(0, 0, 0);
+      visual.position.set(0, 0, 0);
       visual.scale.set(1, 1, 1);
       visual.visible = true;
       root.visible = true;
@@ -1985,37 +2082,73 @@ const player = (() => {
       this.y = l.top; this.vy = 0; this.grounded = true;
       this.platform = { row: l.row, block: l.block, part: l.part };
       this.carry = speed;
-      if (airborne) game.onLand(impact);
+      if (airborne) this.touchDown(impact);
     },
     leavePlatform() { this.platform = null; this.grounded = false; },   // keeps the block's momentum (carry)
+    touchDown(impact) {
+      this.dived = false;
+      if (this.diving) { this.diving = false; this.slideT = DIVE_SLIDE; }   // belly-slide after a dive
+      game.onLand(impact);
+    },
+    // Knocked about by a crusher: no control for a moment, tumbling through the air.
+    stun(time, vx, vy, vz) {
+      this.stunT = time;
+      this.vx = vx; this.vy = vy; this.vz = vz;
+      this.grounded = false; this.platform = null; this.carry = 0;
+      this.diving = false; this.slideT = 0; this.dived = true;
+    },
 
     step(h, control) {
-      const ix = control ? input.moveX : 0, iz = control ? input.moveZ : 0;
-      const a = this.grounded ? (ix || iz ? ACCEL : DECEL) : AIR_ACCEL;
-      let dx = ix * MOVE_SPEED - this.vx, dz = iz * MOVE_SPEED - this.vz;
-      const dl = Math.hypot(dx, dz), md = a * h;
-      if (dl > md) { dx *= md / dl; dz *= md / dl; }
-      this.vx += dx; this.vz += dz;
+      this.pushT += h;
+      const stunned = this.stunT > 0;
+      if (stunned) this.stunT -= h;
+      if (this.diving || stunned) {
+        const drag = Math.max(0, 1 - (stunned && this.grounded ? 8 : 1.2) * h);   // keep the momentum
+        this.vx *= drag; this.vz *= drag;
+      } else if (this.slideT > 0) {
+        this.slideT -= h;
+        const f = Math.max(0, 1 - 5 * h);                  // belly-slide friction
+        this.vx *= f; this.vz *= f;
+      } else {
+        const ix = control ? input.moveX : 0, iz = control ? input.moveZ : 0;
+        const a = this.grounded ? (ix || iz ? ACCEL : DECEL) : AIR_ACCEL;
+        let dx = ix * MOVE_SPEED - this.vx, dz = iz * MOVE_SPEED - this.vz;
+        const dl = Math.hypot(dx, dz), md = a * h;
+        if (dl > md) { dx *= md / dl; dz *= md / dl; }
+        this.vx += dx; this.vz += dz;
+      }
       this.jumpBuf = Math.max(0, this.jumpBuf - h);
       this.coyote = this.grounded ? COYOTE_TIME : Math.max(0, this.coyote - h);
-      if (control && this.jumpBuf > 0 && this.coyote > 0 && this.y > -0.05) {
-        this.vy = JUMP_V; this.grounded = false; this.platform = null; this.coyote = 0; this.jumpBuf = 0;
-        game.onJump();
+      if (control && !stunned && this.slideT <= 0 && this.jumpBuf > 0) {
+        if (this.coyote > 0 && this.y > -0.05) {           // jump
+          this.vy = JUMP_V; this.grounded = false; this.platform = null; this.coyote = 0; this.jumpBuf = 0; this.dived = false;
+          game.onJump();
+        } else if (!this.grounded && !this.dived && !(this.vy < 0 && this.y > -0.05 && this.y < 0.35)) {
+          // second press in the air: dive forward (or in the steering direction)
+          let dx = input.moveX, dz = input.moveZ;
+          const l = Math.hypot(dx, dz);
+          if (l < 0.25) { dx = -Math.sin(this.yaw); dz = -Math.cos(this.yaw); } else { dx /= l; dz /= l; }
+          this.vx = dx * DIVE_SPEED; this.vz = dz * DIVE_SPEED;
+          this.vy = Math.max(this.vy, DIVE_UP);
+          this.diving = true; this.dived = true; this.jumpBuf = 0;
+          game.onDive();
+        }
       }
       if (this.platform) this.carry = world.speed;
       if (!this.grounded) this.vy -= (this.vy > 0 ? G_UP : G_DOWN) * h;
       const prevY = this.y;
       this.x += this.vx * h; this.z += (this.vz + this.carry) * h; this.y += this.vy * h;
-      if (this.platform) return;                        // world.support() keeps us on the block
+      if (this.z < GATE_STOP) { this.z = GATE_STOP; if (this.vz + this.carry < 0) this.vz = -this.carry; }
+      if (this.platform) return;                          // world.support() keeps us on the block
       const onArena = Math.abs(this.x) <= HALF_W + RIM && this.z >= Z_FAR && this.z <= Z_NEAR;
       if (this.grounded) {
         if (onArena) { this.y = 0; this.vy = 0; }
-        else this.grounded = false;                     // walked off the edge
+        else this.grounded = false;                       // walked off the edge
       } else if (this.y <= 0 && prevY >= -0.001 && this.vy <= 0 && onArena) {
         const impact = -this.vy;
         this.y = 0; this.vy = 0; this.grounded = true;
-        this.vz += this.carry * 0.45; this.carry = 0;   // momentum from a ridden block becomes a short slide
-        game.onLand(impact);
+        this.vz += this.carry * 0.45; this.carry = 0;     // momentum from a ridden block becomes a short slide
+        this.touchDown(impact);
       } else if (this.y < -0.02 && this.y > -1.4) {
         // Below the surface the platform's sides behave like walls.
         const ax = Math.abs(this.x);
@@ -2029,16 +2162,10 @@ const player = (() => {
     },
     fell() { return !this.grounded && this.y < -0.9; },
 
-    // Knock-out reactions: tumble away (hit / laser) or get flattened (crusher).
-    knockOut(kind, side = 0) {
-      if (kind === 'crush') { this.flat = true; return; }
-      if (kind === 'zap') {
-        this.flicker = 0.45;
-        this.ko = { vx: side * 5.5, vy: 6.5, vz: 0, sx: rand(-4, 4), sz: -side * 9 };
-        return;
-      }
-      const s = Math.random() < 0.5 ? -1 : 1;
-      this.ko = { vx: s * rand(2, 4), vy: 10, vz: 3 + world.speed * 0.25, sx: rand(7, 11), sz: s * rand(2, 5) };
+    // Laser hit: thrown away from the fence, flickering.
+    knockOut(side = 0) {
+      this.flicker = 0.45;
+      this.ko = { vx: side * 5.5, vy: 6.5, vz: 0, sx: rand(-4, 4), sz: -side * 9 };
     },
     koStep(h) {
       if (!this.ko) return;
@@ -2050,11 +2177,6 @@ const player = (() => {
       root.position.set(this.x, this.y, this.z);
       if (!root.visible || dt <= 0) return;
       this.t += dt;
-      if (this.flat) {
-        const sx = damp(visual.scale.x, 1.55, 18, dt);
-        visual.scale.set(sx, damp(visual.scale.y, 0.13, 18, dt), sx);
-        return;
-      }
       if (this.ko) {
         visual.rotation.x += this.ko.sx * dt;
         visual.rotation.z += this.ko.sz * dt;
@@ -2074,9 +2196,30 @@ const player = (() => {
       let dyaw = targetYaw - this.yaw;
       dyaw = ((((dyaw + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) - Math.PI;
       this.yaw += dyaw * (1 - Math.exp(-(sp > 1.2 ? 14 : 5) * dt));
-      this.lean = damp(this.lean, this.grounded ? -0.2 * k : 0.05, 10, dt);
-      visual.rotation.set(this.lean, this.yaw, 0);
-      if (this.grounded) {
+      const flat = this.diving || this.slideT > 0;
+      this.diveBlend = damp(this.diveBlend, flat ? 1 : 0, flat ? 18 : 9, dt);
+      const pushed = this.pushT < 0.12;
+      this.lean = damp(this.lean, pushed ? 0.35 : this.grounded ? -0.2 * k : 0.05, 10, dt);
+      // Tumble while stunned in the air, then roll back upright.
+      if (this.stunT > 0 && !this.grounded) this.spinX += 11 * dt;
+      else this.spinX = damp(this.spinX, Math.round(this.spinX / (Math.PI * 2)) * Math.PI * 2, 10, dt);
+      visual.rotation.set(lerp(this.lean, -1.42, this.diveBlend) + this.spinX, this.yaw, 0);
+      visual.position.y = 0.32 * this.diveBlend;
+      if (this.diveBlend > 0.5) {                        // superhero dive: arms forward, legs straight back
+        pose(arms, [2.95, 2.95], [0.2, 0.2]);
+        pose(legs, [-0.2, -0.05]);
+        hips.position.y = 0.42;
+      } else if (this.stunT > 0) {                       // dizzy
+        const f = this.t * 20;
+        pose(arms, [Math.sin(f) * 0.7, -Math.sin(f) * 0.7], [1.2, 1.2]);
+        pose(legs, [Math.sin(f) * 0.6, -Math.sin(f) * 0.6]);
+        hips.position.y = 0.42;
+      } else if (pushed) {                               // shoved by a wall: brace against it, feet scrambling
+        const f = this.t * 24;
+        pose(arms, [1.45, 1.45], [0.18, 0.18]);
+        pose(legs, [Math.sin(f) * 0.7, -Math.sin(f) * 0.7]);
+        hips.position.y = 0.42;
+      } else if (this.grounded) {
         if (sp > 0.4) this.runPhase += dt * (8 + sp);
         const sw = Math.sin(this.runPhase) * k;
         pose(legs, [sw * 0.95, -sw * 0.95]);
@@ -2096,7 +2239,7 @@ const player = (() => {
       this.blinkT -= dt;
       if (this.blinkT < 0) { this.blinkT = rand(2, 5); this.blink = 0.13; }
       if (this.blink > 0) this.blink -= dt;
-      eyes.scale.y = this.blink > 0 ? 0.15 : 1;
+      eyes.scale.y = this.blink > 0 || this.stunT > 0 ? 0.15 : 1;
     },
   };
 })();
@@ -2259,7 +2402,7 @@ function updateCamera(dt) {
   let k, kl;
   if (c.mode === 'menu') {
     c.angle += dt * 0.06;
-    const r = 46 * (1 + P.t * 0.45);
+    const r = 38 * (1 + P.t * 0.45);
     c.target.set(Math.sin(c.angle) * r, 18 + Math.sin(c.angle * 0.7) * 3 + P.t * 8, ARENA_MID + 4 + Math.cos(c.angle) * r);
     c.lookT.set(0, -1, ARENA_MID - 2);
     k = 1.1; kl = 1.4;
@@ -2334,8 +2477,8 @@ function updateMenuHint() {
   const el = $('menu-hint');
   if (!el) return;
   el.innerHTML = touchMode
-    ? 'Left thumb: <kbd>JOYSTICK</kbd> to move · Right thumb: <kbd>JUMP</kbd>'
-    : '<kbd>WASD</kbd> / <kbd>ARROWS</kbd> move · <kbd>SPACE</kbd> jump · <kbd>ESC</kbd> pause';
+    ? 'Left thumb: <kbd>JOYSTICK</kbd> to move · Right thumb: <kbd>JUMP</kbd>, tap again to dive'
+    : '<kbd>WASD</kbd> / <kbd>ARROWS</kbd> move · <kbd>SPACE</kbd> jump, again to dive · <kbd>ESC</kbd> pause';
 }
 
 window.addEventListener('keydown', (e) => {
@@ -2761,35 +2904,44 @@ const game = {
     deathTimer = 0;
     releaseJoystick();
     camCtl.focus.set(player.x, Math.max(0, player.y), clamp(player.z, Z_FAR, Z_NEAR));
-    const px = player.x, py = player.y + 0.8, pz = player.z;
-    if (cause === 'hit' || cause === 'crush') {
-      const t = info.block.type;
-      run.causeText = cause === 'crush' ? 'Flattened by a crusher'
-        : t === 'J' ? 'Tripped over a low barrier' : t === 'M' ? 'Smacked by a crusher' : 'Ran into a block';
-      player.knockOut(cause);
-      particles.burst(px, py, pz, 22, ['#ffd23f', '#ffffff', '#fff27a'], { speed: 6, up: 6, size: [0.1, 0.22], life: [0.7, 1.3] });
-      particles.burst(px, py, pz - 0.5, 10, ['#' + info.block.parts[0].color.getHexString(), '#23c3ff'], { speed: 5, up: 5, size: [0.14, 0.28], life: [0.7, 1.2] });
-      camCtl.shake = 1;
-      timeScale = 0.3;
-      audio.play('hit');
-      vibrate([90, 50, 160]);
-    } else if (cause === 'zap') {
+    if (cause === 'zap') {
       run.causeText = 'Zapped by a laser fence';
-      player.knockOut('zap', info.side);
-      particles.burst(px, py, pz, 26, ['#ff3048', '#ffffff', '#ff9aa8'], { speed: 7, up: 5, size: [0.06, 0.16], life: [0.4, 0.9], grav: 0.4 });
+      player.knockOut(info.side);
+      particles.burst(player.x, player.y + 0.8, player.z, 26, ['#ff3048', '#ffffff', '#ff9aa8'], { speed: 7, up: 5, size: [0.06, 0.16], life: [0.4, 0.9], grav: 0.4 });
       camCtl.shake = 0.8;
       timeScale = 0.35;
+      hud.flash('hit');
+      camCtl.mode = 'over';
       audio.play('zap');
       vibrate([40, 30, 40, 30, 120]);
-    } else {
-      run.causeText = 'Fell off the arena';
-      camCtl.shake = 0.3;
-      audio.play('fall');
-      vibrate([60, 40, 220]);
       return;
     }
-    hud.flash('hit');
-    camCtl.mode = 'over';
+    run.causeText = player.pushT < 0.8 ? 'Pushed off the edge by a wall'
+      : player.carry > 0 ? 'Rode a block off the edge' : 'Fell off the arena';
+    camCtl.shake = 0.3;
+    audio.play('fall');
+    vibrate([60, 40, 220]);
+  },
+  onContact(c) {
+    if (c.kind === 'push') {
+      if (!c.fresh) return;
+      audio.play('push');
+      vibrate(14);
+      camCtl.shake = Math.max(camCtl.shake, 0.25);
+      particles.burst(player.x, 0.1, player.z - P_HALF_D, 6, ['#cfc6ff', '#ffffff'], { speed: 2.4, up: 1.6, size: [0.07, 0.15], life: [0.3, 0.5], grav: 0.6, bounce: 0, carry: world.speed });
+    } else if (c.kind === 'bonk') {
+      audio.play('bonk');
+      vibrate([30, 20, 50]);
+      camCtl.shake = Math.max(camCtl.shake, 0.55);
+      particles.burst(player.x, player.y + 1.3, player.z, 12, ['#ffd23f', '#ffffff', '#c46bff'], { speed: 3.5, up: 4, size: [0.08, 0.16], life: [0.5, 0.9], grav: 0.5 });
+    } else if (c.kind === 'bump') {
+      audio.play('push');
+    }
+  },
+  onDive() {
+    audio.play('dive');
+    vibrate(8);
+    particles.burst(player.x, player.y + 0.4, player.z, 6, ['#ffffff', '#23c3ff'], { speed: 1.8, up: 0.8, size: [0.06, 0.12], life: [0.25, 0.45], grav: 0.2, bounce: 0 });
   },
   gameOver() {
     setState('gameover');
@@ -2969,8 +3121,8 @@ function simulate(dt, active) {
       player.step(h, true);
       world.step(h);
       world.support(player);
-      const hit = world.resolve(player);
-      if (hit) { game.die(hit.kind, hit); continue; }
+      const contact = world.resolve(player);
+      if (contact) game.onContact(contact);
       const zap = lasers.check(player);
       if (zap) { game.die('zap', { side: zap }); continue; }
       if (player.fell()) { game.die('fall'); continue; }
@@ -3100,7 +3252,7 @@ function init() {
       rowSafety, planWave, SAMPLES, LIBRARY, speedForWave, laneX,
       tick(dt) { update(dt); }, draw() { renderer.render(scene, camera); },
       info() { return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, pixelRatio: renderer.getPixelRatio() }; },
-      consts: { P_HALF_W, P_HALF_D, P_HEIGHT, ROW_HALF_D, HIT_LOW_H: LOW_H, HIT_LOW_HALF_D, HIT_HALF_D, JUMP_V, G_UP, G_DOWN, AIR_TIME, MOVE_SPEED, CRUSH_UP, LANES, Z_SPAWN },
+      consts: { P_START_Z, P_HALF_W, P_HALF_D, P_HEIGHT, ROW_HALF_D, HIT_LOW_H: LOW_H, HIT_LOW_HALF_D, HIT_HALF_D, JUMP_V, G_UP, G_DOWN, AIR_TIME, MOVE_SPEED, CRUSH_UP, LANES, Z_SPAWN },
     };
   }
 }
