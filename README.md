@@ -2,7 +2,9 @@
 
 A single-player 3D obstacle survival game in one file: `index.html` (HTML, CSS and JavaScript, with [Three.js](https://threejs.org/) r170 loaded from a CDN).
 
-Blocks sweep across a floating 8-lane arena in waves. Steer through the gaps, jump the low barriers and time the crushers. Every wave you fully survive adds one to the **WAVE SURVIVED** counter.
+Stacks of toy blocks sweep across a floating 8-lane arena in waves. Steer through the gaps, hop over low barriers, or jump on top of the lower stacks and ride them. Laser fences along both edges switch on and off, so going around the blocks over the edge takes real timing. Every wave you fully survive adds one to the **WAVE SURVIVED** counter.
+
+You play as a chunky little party-game runner (an original character) who runs, jumps, flails and tumbles.
 
 ## Running it
 
@@ -34,20 +36,29 @@ Each wave is an 8×8 ASCII grid. Columns `A`–`H` are the lanes. Rows arrive in
 
 | Symbol | Meaning |
 |---|---|
-| `#` | Solid block, too tall to jump |
+| `#` | Block stack: one or two rectangular blocks of different sizes and heights |
 | `.` | Gap |
-| `J` | Low barrier: jump it or go around |
-| `M` | Moving crusher: rises and slams down; pass under only while it is raised |
+| `J` | Low barrier: jump over it or land on it |
+| `M` | Moving crusher: rises and slams down; pass under while it is raised, or ride on top |
+
+What ends a run:
+
+- Getting hit by the front of an incoming block (brushing a block's side only stops you).
+- Getting crushed under a crusher.
+- Touching a laser fence while it's on.
+- Falling off the arena, including riding a block off the near edge.
+
+Landing on top of any block is safe. Low stacks (1.0 and 1.45 units) can be reached from the floor, and taller ones only from a lower block. While you stand on a block it carries you toward the near edge, and when you jump off you keep that momentum. Blocks that move along with you act as solid walls.
 
 The six patterns from the brief (Basic Corridor, Alternating Gaps, Double Corridors, Jump Challenge, Narrow Zigzag, Moving Obstacles) are included verbatim. Six more unlock as the wave count grows: Hurdle Run, Staircase, Hop Scotch, Split Decision, Crusher Alley and The Gauntlet.
 
 The pattern engine parses each grid and rejects malformed or impossible patterns when the page loads. It then lays out every wave with a survivability solver:
 
-- The arena width is sampled every 0.1 units, and each row is classified as free, needs a jump, or blocked for the player's hitbox. Crushers count as blocked, so a wave never depends on crusher timing.
+- The arena width is sampled every 0.1 units, and each row is classified as free, needs a jump, or blocked for the player's hitbox. Block stacks and crushers count as blocked, so a wave never depends on climbing, riding or crusher timing.
 - For each pair of consecutive rows, the solver works out how long the player needs to get from any position they could be in to the nearest safe spot in the next row. This accounts for acceleration, landing after a jump and setting up the next jump. Rows are then spaced so that much time always exists at the current speed, plus a reaction margin.
 - Waves are spaced the same way, so the first row of the next wave is always reachable from wherever the last one could leave you.
 
-Speed rises after every cleared wave, the reaction margin shrinks, harder patterns become more likely, and from wave 6 a pattern may arrive mirrored.
+Speed rises after every cleared wave, the reaction margin shrinks, the lasers stay on for a larger part of each cycle, harder patterns become more likely, and from wave 6 a pattern may arrive mirrored. The patterns are authored with the chessboard-style `A`–`H` / `8`–`1` grid below, but no lane letters or row numbers are drawn in the game.
 
 ### Adding a pattern
 

@@ -230,15 +230,17 @@ input[type=range]:focus-visible{outline:2px solid var(--cyan);outline-offset:6px
 .leg{display:flex;gap:12px;align-items:center;background:var(--panel-2);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 12px}
 .leg small{display:block;color:var(--muted);font-size:12px;line-height:1.35;margin-top:2px}
 .sw{width:40px;height:40px;border-radius:9px;flex:none;display:grid;place-items:center;font-family:var(--display);font-size:16px;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.35)}
-.sw.solid{background:linear-gradient(160deg,#ff8a6a,#ff4d5e);box-shadow:inset 0 2px 0 rgba(255,255,255,.4),0 3px 0 #9b2335}
+.sw.solid{background:linear-gradient(90deg,#ff4d5e 0 50%,#4a6bff 50%) top/100% 45% no-repeat,linear-gradient(90deg,#ff8a3d 0 35%,#48d16a 35% 70%,#ff5fa2 70%) bottom/100% 55% no-repeat;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.35),0 3px 0 rgba(0,0,0,.35)}
 .sw.low{height:22px;background:repeating-linear-gradient(45deg,#ffd23f 0 7px,#2b2140 7px 12px);box-shadow:0 3px 0 #8a6a00;color:transparent;text-shadow:none}
 .sw.move{background:linear-gradient(160deg,#d08bff,#8a2be2);box-shadow:0 0 14px rgba(196,107,255,.65),0 3px 0 #4b1585}
-.sw.gap{background:rgba(255,255,255,.05);border:2px dashed rgba(255,255,255,.3);color:var(--muted)}
+.sw.laser{background:repeating-linear-gradient(180deg,transparent 0 6px,#ff3b4f 6px 8px),linear-gradient(90deg,#2a2450 0 4px,transparent 4px calc(100% - 4px),#2a2450 calc(100% - 4px));
+  box-shadow:0 0 12px rgba(255,59,79,.55)}
 .plib{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
 .pcard{background:var(--panel-2);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 10px 12px}
 .pname{font-family:var(--display);font-size:12px;letter-spacing:.04em;color:#fff;margin-bottom:2px}
 .pmeta{font-size:11px;color:var(--muted);margin-bottom:8px}
-.pgrid{display:grid;grid-template-columns:11px repeat(8,1fr);gap:2px;font-size:8px;line-height:1;color:var(--muted);text-align:center;align-items:center}
+.pgrid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px}
 .pgrid .c{aspect-ratio:1;border-radius:2px;background:rgba(255,255,255,.07)}
 .pgrid .c.s{background:#ff6b5e}.pgrid .c.j{background:#ffd23f}.pgrid .c.m{background:#b44dff;box-shadow:0 0 5px rgba(180,77,255,.7)}
 
@@ -338,7 +340,7 @@ body.touch .kbd-hint{display:none}
       <div class="wave-num" id="wave-num" role="status" aria-label="Waves survived"><span class="n">0</span></div>
       <div class="wave-sparks" id="wave-sparks"></div>
     </div>
-    <div class="wave-pips" id="wave-pips" title="Rows of the incoming wave (8 → 1)"></div>
+    <div class="wave-pips" id="wave-pips" title="Rows of the current wave"></div>
     <div class="hud-time">TIME <span id="hud-time">00:00</span></div>
   </div>
   <div class="hud-right">
@@ -393,8 +395,8 @@ body.touch .kbd-hint{display:none}
     <div class="howto-grid">
       <div class="card">
         <h3>GOAL</h3>
-        <p>Blocks sweep toward you in <b>waves</b>. Each wave is an <b>8 × 8 pattern</b>: lanes <b>A–H</b> run across the arena, and rows <b>8 → 1</b> arrive one after another. Get through every gap until row&nbsp;1 has passed, and <b>WAVE SURVIVED</b> goes up by one.</p>
-        <p>Touch any obstacle or fall off the edge and the run ends.</p>
+        <p>Blocks sweep toward you in <b>waves</b> of eight rows. Get past all eight rows and <b>WAVE SURVIVED</b> goes up by one.</p>
+        <p>Slip through the gaps, hop over the barriers, or <b>jump on top of the blocks</b> and ride them. Running into the front of a block, getting crushed, touching a live laser or falling off the edge ends the run.</p>
       </div>
       <div class="card">
         <h3>CONTROLS</h3>
@@ -407,13 +409,13 @@ body.touch .kbd-hint{display:none}
     </div>
     <h3>OBSTACLES</h3>
     <div class="legend">
-      <div class="leg"><span class="sw solid">#</span><div><b>Solid block</b><small>Too tall to jump. Steer through a gap.</small></div></div>
-      <div class="leg"><span class="sw low">J</span><div><b>Low barrier</b><small>Jump over it, or go around it.</small></div></div>
-      <div class="leg"><span class="sw move">M</span><div><b>Crusher</b><small>Rises and slams down. Avoid it, or pass under while it is raised.</small></div></div>
-      <div class="leg"><span class="sw gap">.</span><div><b>Gap</b><small>Safe passage.</small></div></div>
+      <div class="leg"><span class="sw solid"></span><div><b>Block stacks</b><small>Don't run into the front. Lower stacks can be jumped onto and ridden, but hop off before they reach the edge.</small></div></div>
+      <div class="leg"><span class="sw low"></span><div><b>Low barrier</b><small>Jump over it or land on it.</small></div></div>
+      <div class="leg"><span class="sw move"></span><div><b>Crusher</b><small>Rises and slams down. Slip under while it is up, or ride on top.</small></div></div>
+      <div class="leg"><span class="sw laser"></span><div><b>Laser fence</b><small>Lines both edges and switches on and off. Only the skilled get around the blocks that way.</small></div></div>
     </div>
     <h3>DIFFICULTY</h3>
-    <p>Every wave you clear makes the blocks a little faster. Harder patterns unlock as you go, and from wave 6 a pattern can arrive mirrored. Every wave is checked by the pattern engine, so there is always a way through.</p>
+    <p>Every wave you clear makes the blocks a little faster and the lasers stay on longer. Harder patterns unlock as you go, and from wave 6 a pattern can arrive mirrored. Every wave is checked by the pattern engine, so there is always a way through on the ground.</p>
     <h3>PATTERN LIBRARY</h3>
     <div class="plib" id="pattern-lib"></div>
     <div class="actions"><button class="btn primary" id="btn-howto-back">BACK</button></div>
@@ -569,22 +571,26 @@ const fmtTime = (s) => { s = Math.max(0, Math.floor(s)); return String(Math.floo
 // 2. World constants (units are metres-ish; 1 lane = 2 units)
 // ---------------------------------------------------------------------
 const LANES = 8, LANE_W = 2, HALF_W = (LANES * LANE_W) / 2, RIM = 0.3;
-const Z_NEAR = 10, Z_FAR = -66, Z_SPAWN = -60;           // obstacles travel toward +z
+const Z_NEAR = 16, Z_FAR = -66, Z_SPAWN = -60;           // obstacles travel toward +z
 const ARENA_LEN = Z_NEAR - Z_FAR, ARENA_MID = (Z_NEAR + Z_FAR) / 2;
-const LETTERS = 'ABCDEFGH';
 const laneX = (i) => -HALF_W + LANE_W * (i + 0.5);
 
-// Obstacle visuals
-const BLOCK_W = 1.9, BLOCK_H = 2.0, BLOCK_D = 1.9;        // '#'
-const LOW_H = 0.6, LOW_D = 1.25;                          // 'J'
-const CRUSH_H = 1.7, CRUSH_UP = 2.15;                     // 'M' (bottom height when raised)
-// Obstacle hitboxes (slightly forgiving compared to the visuals)
-const HIT_HALF_W = 0.88, HIT_HALF_D = 0.86, HIT_BLOCK_H = 1.94;
-const HIT_LOW_HALF_D = 0.56, HIT_LOW_H = 0.52;
+// Obstacles. Every '#' cell is built from one or two rectangular blocks of different sizes.
+const BLOCK_W = 1.86, BLOCK_D = 1.86;                     // footprint of one cell
+const H_LOW = 1.0, H_MID = 1.45, H_HIGH = 2.2, H_TOWER = 2.9;
+const LOW_H = 0.6, LOW_D = 1.25;                          // 'J' low barrier
+const CRUSH_H = 1.7, CRUSH_UP = 2.15;                     // 'M' crusher (bottom height when raised)
+// Collision: front faces are a little forgiving; tops match the visuals so you can stand on them.
+const HIT_HALF_W = 0.9, HIT_HALF_D = 0.86, HIT_LOW_HALF_D = 0.56;
 const ROW_HALF_D = 0.86;
+const STEP_UP = 0.3;                                      // land on any top this close above your feet
+
+// Laser fences along both long edges of the arena
+const LASER_X = HALF_W + RIM + 0.06, LASER_SEG = 8.2, LASER_PERIOD = 3.2, LASER_WARN = 0.4;
+const LASER_BEAMS = [0.4, 1.05, 1.7, 2.35];
 
 // Player
-const P_HALF_W = 0.36, P_HALF_D = 0.36, P_HEIGHT = 1.2;
+const P_HALF_W = 0.36, P_HALF_D = 0.36, P_HEIGHT = 1.3;
 const P_START_X = 0, P_START_Z = 3;
 const MOVE_SPEED = 9.5, ACCEL = 80, DECEL = 100, AIR_ACCEL = 34;
 const G_UP = 30, G_DOWN = 46, JUMP_V = 10.2;
@@ -604,6 +610,7 @@ const speedForWave = (w) => 10 + 14.5 * (1 - Math.exp(-w / 16));        // 10 �
 const comfortForWave = (w) => 0.2 + 0.36 * Math.exp(-w / 10);           // spare reaction time per row (s)
 const breatherForWave = (w) => 1.25 + 0.85 * Math.exp(-w / 10);         // pause between waves (s)
 const crusherPeriodForWave = (w) => Math.max(1.3, 2.1 - w * 0.03);      // crusher cycle (s)
+const laserOnFracForWave = (w) => 0.7 + 0.12 * (1 - Math.exp(-w / 12));   // share of each cycle a laser is live
 const DIFFICULTY = [
   { min: 0, name: 'EASY', color: '#4ade80' },
   { min: 3, name: 'NORMAL', color: '#38bdf8' },
@@ -1062,6 +1069,11 @@ const audio = {
         this.tone({ f0: 990, dur: 0.22, type: 'square', vol: 0.05, delay: 0.1, lp: 2600 });
         break;
       case 'tick': this.tone({ f0: 520, dur: 0.09, type: 'square', vol: 0.05, lp: 2000 }); break;
+      case 'zap':
+        this.tone({ f0: 1500, f1: 160, dur: 0.45, type: 'sawtooth', vol: 0.12, lp: 3200 });
+        this.tone({ f0: 60, dur: 0.35, type: 'square', vol: 0.08, lp: 600 });
+        this.noise({ dur: 0.4, vol: 0.25, f0: 3200, f1: 500, type: 'bandpass', q: 2 });
+        break;
       case 'pause': this.tone({ f0: 700, f1: 420, dur: 0.14, type: 'triangle', vol: 0.08 }); break;
     }
   },
@@ -1184,7 +1196,6 @@ function roundRect(g, x, y, w, h, r) {
   g.closePath();
 }
 const FLOOR_W = HALF_W * 2 + RIM * 2;
-const DISPLAY_FONT = '"Bungee", "Arial Black", Impact, sans-serif';
 const TEX = {};
 TEX.block = canvasTex(128, 128, (g, w) => {
   g.fillStyle = '#b4b0cf'; g.fillRect(0, 0, w, w);
@@ -1262,21 +1273,6 @@ TEX.pulse = canvasTex(512, 256, (g, w, h) => {
 });
 TEX.pulse.wrapT = THREE.RepeatWrapping;
 TEX.pulse.repeat.set(1, ARENA_LEN / 16);
-TEX.letters = canvasTex(1024, 128, (g, w, h) => {
-  const ux = w / FLOOR_W;
-  g.font = `64px ${DISPLAY_FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillStyle = 'rgba(225,215,255,.26)';
-  for (let i = 0; i < LANES; i++) g.fillText(LETTERS[i], (RIM + (i + 0.5) * LANE_W) * ux, h / 2 + 4);
-});
-TEX.rowNum = {};
-for (let n = 1; n <= 8; n++) {
-  TEX.rowNum[n] = canvasTex(128, 128, (g) => {
-    g.fillStyle = 'rgba(16,10,40,.8)'; g.beginPath(); g.arc(64, 64, 54, 0, Math.PI * 2); g.fill();
-    g.strokeStyle = 'rgba(255,255,255,.65)'; g.lineWidth = 5; g.stroke();
-    g.fillStyle = '#fff'; g.font = `66px ${DISPLAY_FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText(String(n), 64, 68);
-  });
-}
 TEX.radial = canvasTex(128, 128, (g, w) => {
   const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
   gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.4, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
@@ -1315,13 +1311,6 @@ TEX.sun = canvasTex(256, 256, (g) => {
   for (let i = 0; i < 6; i++) { const y = 140 + i * 11; g.clearRect(0, y, 256, 2 + i * 1.1); }
   g.restore();
 });
-if (document.fonts && document.fonts.ready) {
-  document.fonts.ready.then(() => {
-    TEX.letters.userData.redraw();
-    for (let n = 1; n <= 8; n++) TEX.rowNum[n].userData.redraw();
-  }).catch(() => {});
-}
-
 // ---------------------------------------------------------------------
 // 10. Static world: sky, floating arena, spawn gate, decorations
 // ---------------------------------------------------------------------
@@ -1374,13 +1363,6 @@ let pulseMat = null;
   const pulse = new THREE.Mesh(new THREE.PlaneGeometry(W, ARENA_LEN).rotateX(-Math.PI / 2), pulseMat);
   pulse.position.set(0, 0.015, ARENA_MID);
   arena.add(pulse);
-  const lettersMat = new THREE.MeshBasicMaterial({ map: TEX.letters, transparent: true, depthWrite: false,
-    polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -3 });
-  for (const z of [P_START_Z + 2.6, Z_SPAWN + 3.2]) {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(W, 2).rotateX(-Math.PI / 2), lettersMat);
-    m.position.set(0, 0.02, z);
-    arena.add(m);
-  }
 })();
 
 let gateVeil = null;
@@ -1503,28 +1485,43 @@ function makeInstanced(geo, mat, cap, shadows = true) {
   return m;
 }
 const crushMat = new THREE.MeshStandardMaterial({ map: TEX.crush, emissiveMap: TEX.crushGlow, emissive: 0xffffff, emissiveIntensity: 0.7, roughness: 0.35, metalness: 0.15 });
+const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);      // scaled per block part
 const MESH = {
-  '#': makeInstanced(new THREE.BoxGeometry(BLOCK_W, BLOCK_H, BLOCK_D).translate(0, BLOCK_H / 2, 0),
-    new THREE.MeshStandardMaterial({ map: TEX.block, roughness: 0.42, metalness: 0.06 }), 320),
-  J: makeInstanced(new THREE.BoxGeometry(BLOCK_W, LOW_H, LOW_D).translate(0, LOW_H / 2, 0),
-    new THREE.MeshStandardMaterial({ map: TEX.hazard, roughness: 0.5, metalness: 0.05, emissive: 0x3a2a00, emissiveIntensity: 0.6 }), 160),
-  M: makeInstanced(new THREE.BoxGeometry(BLOCK_W, CRUSH_H, BLOCK_D).translate(0, CRUSH_H / 2, 0), crushMat, 160),
+  '#': makeInstanced(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.block, roughness: 0.45, metalness: 0.05 }), 480),
+  J: makeInstanced(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.hazard, roughness: 0.5, metalness: 0.05, emissive: 0x3a2a00, emissiveIntensity: 0.6 }), 160),
+  M: makeInstanced(UNIT_BOX, crushMat, 160),
   mk: makeInstanced(new THREE.PlaneGeometry(BLOCK_W, BLOCK_D).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({ map: TEX.marker, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
       polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }), 160, false),
 };
-const PALETTES = [
-  ['#ff4d5e', '#ff8a4a'], ['#ff5fa2', '#ff4d6d'], ['#7ddc1f', '#25d488'], ['#ff7a1a', '#ff3d3d'], ['#f4f2ff', '#b9aeff'],
-].map(([a, b]) => [new THREE.Color(a), new THREE.Color(b)]);
+// Toy-block colours, one set per wave.
+const WAVE_PALETTES = [
+  ['#ff4d5e', '#ff8a3d', '#fff0d2', '#4a6bff'],
+  ['#4a6bff', '#ff5fa2', '#fff0d2', '#ff8a3d'],
+  ['#48d16a', '#ff8a3d', '#4a6bff', '#fff0d2'],
+  ['#ff5fa2', '#a6e22e', '#ff4d5e', '#fff0d2'],
+  ['#ff6f61', '#4a6bff', '#a6e22e', '#ff5fa2'],
+].map((list) => list.map((c) => new THREE.Color(c)));
 
-// Row-number labels ("8", "7", … "1") that travel beside each row
-const LABELS = [];
-for (let i = 0; i < 26; i++) {
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.rowNum[1], transparent: true, depthWrite: false, opacity: 0.85 }));
-  s.scale.set(1.05, 1.05, 1);
-  s.visible = false;
-  scene.add(s);
-  LABELS.push(s);
+// A '#' cell becomes one or two rectangular blocks, always filling the cell's footprint at ground level.
+function solidParts(pal) {
+  const col = () => pick(pal).clone().offsetHSL(0, 0, rand(-0.04, 0.04));
+  const box = (h, { ox = 0, oz = 0, w = BLOCK_W, d = BLOCK_D, y0 = 0 } = {}) => ({ ox, oz, w, d, y0, h, color: col() });
+  const r = Math.random();
+  if (r < 0.2) return [box(H_LOW)];
+  if (r < 0.4) return [box(H_MID)];
+  if (r < 0.56) return [box(H_HIGH)];
+  if (r < 0.7) {                                          // stack: a smaller block on a base
+    const base = Math.random() < 0.5 ? H_LOW : H_MID, w = rand(0.95, 1.35), d = rand(0.95, 1.35);
+    return [box(base), box(0.75, { y0: base, w, d, ox: rand(-1, 1) * (BLOCK_W - w) / 2, oz: rand(-1, 1) * (BLOCK_D - d) / 2 })];
+  }
+  if (r < 0.82) {                                         // step: low front half, tall back half
+    const d = BLOCK_D / 2;
+    return [box(H_LOW, { d, oz: d / 2 }), box(H_HIGH, { d, oz: -d / 2 })];
+  }
+  if (r < 0.91) return [box(H_TOWER, { d: 1.3 })];        // slim tower
+  const w = BLOCK_W / 2, lowFirst = Math.random() < 0.5;  // two half-width blocks of different heights
+  return [box(lowFirst ? H_LOW : H_MID, { w, ox: -w / 2 }), box(lowFirst ? H_MID : H_LOW, { w, ox: w / 2 })];
 }
 
 // Crusher ('M') vertical cycle: hover up → slam down → rest → rise.
@@ -1536,13 +1533,13 @@ function crusherBottom(t, b) {
   return CRUSH_UP * easeInOutQuad((p - 0.72) / 0.28);
 }
 
-const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler();
-const _p = new THREE.Vector3(), _s = new THREE.Vector3(1, 1, 1), _c = new THREE.Color();
+const _m4 = new THREE.Matrix4(), _mb = new THREE.Matrix4(), _mp = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler();
+const _p = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1), _c = new THREE.Color();
 
 const world = {
   mode: 'demo', rows: [], waves: [], nextIndex: 0,
   lastRowZ: null, lastSolidZ: null, prev: null, lastPatternId: null,
-  speed: DEMO_SPEED, targetSpeed: DEMO_SPEED, time: 0, firstZ: -14, emergeDelay: 0, flash: 0,
+  speed: DEMO_SPEED, targetSpeed: DEMO_SPEED, time: 0, firstZ: -14, emergeDelay: 0, flash: 0, laserOnFrac: 0.7,
 
   reset(mode) {
     for (const r of this.rows) if (r.emerged && !r.falling && !r.sinking) { r.sinking = true; r.sinkT = 0; }
@@ -1557,9 +1554,11 @@ const world = {
       const v = speedForWave(0);
       this.speed = this.targetSpeed = v;
       this.firstZ = P_START_Z - P_HALF_D - ROW_HALF_D - v * 3.4;   // ~3.4 s before the first row arrives
+      this.laserOnFrac = laserOnFracForWave(0);
     } else {
       this.speed = this.targetSpeed = DEMO_SPEED;
       this.firstZ = -14;
+      this.laserOnFrac = 0.7;
     }
     this.emergeDelay = 0.35;
     this.ensureQueue();
@@ -1568,7 +1567,7 @@ const world = {
   setMode(mode) {
     this.mode = mode;
     this.waves = [];
-    if (mode === 'demo') this.targetSpeed = DEMO_SPEED;
+    if (mode === 'demo') { this.targetSpeed = DEMO_SPEED; this.laserOnFrac = 0.7; }
   },
 
   queueWave() {
@@ -1604,7 +1603,7 @@ const world = {
     this.lastSolidZ = zs[last];
     this.lastRowZ = zs[7];
 
-    const pal = PALETTES[demo ? Math.floor(Math.random() * PALETTES.length) : index % PALETTES.length];
+    const pal = WAVE_PALETTES[demo ? Math.floor(Math.random() * WAVE_PALETTES.length) : index % WAVE_PALETTES.length];
     const period = demo ? 2.0 : crusherPeriodForWave(index);
     const wave = { index, pattern, mirrored, demo, rows: [], speed, announced: false };
     for (let i = 0; i < 8; i++) {
@@ -1617,8 +1616,10 @@ const world = {
       for (let lane = 0; lane < LANES; lane++) {
         const c = cells[lane];
         if (c === '.') continue;
-        const color = c === '#' ? pal[0].clone().lerp(pal[1], lane / 7).offsetHSL(0, 0, (i % 2) * 0.035) : WHITE;
-        row.blocks.push({ type: c, lane, x: laneX(lane), y: -2.6, color, phase: (i * 0.23 + lane * 0.11) % 1, period,
+        const parts = c === '#' ? solidParts(pal)
+          : c === 'J' ? [{ ox: 0, oz: 0, w: BLOCK_W, d: LOW_D, y0: 0, h: LOW_H, color: WHITE }]
+          : [{ ox: 0, oz: 0, w: BLOCK_W, d: BLOCK_D, y0: 0, h: CRUSH_H, color: WHITE }];
+        row.blocks.push({ type: c, lane, x: laneX(lane), y: -2.6, vy: 0, parts, phase: (i * 0.23 + lane * 0.11) % 1, period,
           down: false, fy: 0, fvy: 0, rot: 0, rotV: 0, rotZ: 0 });
       }
       wave.rows.push(row);
@@ -1663,6 +1664,7 @@ const world = {
       const k = row.emergeT >= EMERGE_DUR ? 1 : easeOutBack(clamp(row.emergeT / EMERGE_DUR, 0, 1));
       const rise = (k - 1) * 2.6;
       for (const b of row.blocks) {
+        const prevY = b.y;
         if (b.type === 'M') {
           const base = crusherBottom(this.time, b);
           const isDown = base <= 0.001;
@@ -1670,6 +1672,7 @@ const world = {
           b.down = isDown;
           b.y = base + rise;
         } else b.y = rise;
+        b.vy = (b.y - prevY) / h;
       }
       if (row.z - 0.3 > Z_NEAR) {        // tipped over the near edge
         row.falling = true;
@@ -1682,24 +1685,59 @@ const world = {
     this.ensureQueue();
   },
 
-  // Axis-aligned box test between the player and every nearby obstacle.
-  collide(p) {
-    const px0 = p.x - P_HALF_W, px1 = p.x + P_HALF_W, py0 = p.y, py1 = p.y + P_HEIGHT;
+  // Keep a riding player on the block they stand on; drop them once they walk off it.
+  support(p) {
+    const pf = p.platform;
+    if (!pf) return;
+    const { row, block: b, part } = pf;
+    if (row.falling || row.sinking || row.remove) { p.leavePlatform(); return; }
+    const cx = b.x + part.ox, cz = row.z + part.oz;
+    if (Math.abs(p.x - cx) <= part.w / 2 + 0.04 && Math.abs(p.z - cz) <= part.d / 2 + 0.04) {
+      p.y = b.y + part.y0 + part.h;
+      p.vy = 0;
+      p.carry = this.speed;
+    } else p.leavePlatform();
+  },
+
+  // Player vs obstacle boxes: land on tops, slide along sides, get knocked out by fronts and crushers.
+  resolve(p) {
     const pz0 = p.z - P_HALF_D, pz1 = p.z + P_HALF_D;
+    const sweeping = this.speed - p.carry > 1;            // blocks move toward a player who isn't riding along
+    let land = null;
     for (const row of this.rows) {
       if (!row.emerged || row.falling || row.sinking || !row.blocks.length) continue;
-      if (row.z + HIT_HALF_D < pz0 || row.z - HIT_HALF_D > pz1) continue;
+      if (row.z + ROW_HALF_D + 0.1 < pz0 || row.z - ROW_HALF_D - 0.1 > pz1) continue;
       for (const b of row.blocks) {
-        if (b.x + HIT_HALF_W < px0 || b.x - HIT_HALF_W > px1) continue;
-        let y0 = b.y, y1, hd;
-        if (b.type === '#') { y1 = b.y + HIT_BLOCK_H; hd = HIT_HALF_D; }
-        else if (b.type === 'J') { y1 = b.y + HIT_LOW_H; hd = HIT_LOW_HALF_D; }
-        else { y0 = b.y + 0.04; y1 = b.y + CRUSH_H - 0.04; hd = HIT_HALF_D; }
-        if (row.z + hd < pz0 || row.z - hd > pz1) continue;
-        if (y1 <= py0 || y0 >= py1) continue;
-        return { row, block: b };
+        for (const part of b.parts) {
+          const hx = part.w / 2 - 0.03, hz = part.d / 2 - 0.07, cx = b.x + part.ox, cz = row.z + part.oz;
+          const x0 = cx - hx, x1 = cx + hx, z0 = cz - hz, z1 = cz + hz;
+          if (x1 <= p.x - P_HALF_W || x0 >= p.x + P_HALF_W || z1 <= pz0 || z0 >= pz1) continue;
+          const y0 = b.y + part.y0, y1 = y0 + part.h;
+          if (y1 <= p.y + 1e-4 || y0 >= p.y + P_HEIGHT) continue;
+          if (y1 - p.y <= STEP_UP) {                        // feet are just below the top: land on it
+            if (!land || y1 > land.top) land = { row, block: b, part, top: y1 };
+            continue;
+          }
+          // How long ago did the overlap start on each axis? Only the face that is moving into
+          // the other box counts (otherwise a block that is just leaving looks like a new hit).
+          const relZ = this.speed - (p.vz + p.carry);       // > 0: the block is gaining on the player
+          const tX = p.vx < 0 ? (x1 - (p.x - P_HALF_W)) / -p.vx : p.vx > 0 ? (p.x + P_HALF_W - x0) / p.vx : Infinity;
+          const tZ = (relZ >= 0 ? z1 - pz0 : pz1 - z0) / Math.max(Math.abs(relZ), 1e-3);
+          const closeY = p.vy - b.vy;                       // > 0: closing from below
+          const tY = (p.y + P_HEIGHT - y0) / Math.max(closeY, 1e-3);
+          if (b.type === 'M' && closeY > 0.5 && tY < tX && tY < tZ) return { kind: 'crush', row, block: b };
+          if (tX <= tZ) {                                   // brushed a side: blocks are solid
+            p.x = p.x < cx ? x0 - P_HALF_W - 1e-3 : x1 + P_HALF_W + 1e-3;
+            p.vx = 0;
+            continue;
+          }
+          if (sweeping) return { kind: 'hit', row, block: b };   // the front of an incoming block
+          p.z = p.z < cz ? z0 - P_HALF_D - 1e-3 : z1 + P_HALF_D + 1e-3;   // riding along: just a wall
+          p.vz = 0;
+        }
       }
     }
+    if (land) p.landOn(land, this.speed);
     return null;
   },
 
@@ -1730,24 +1768,30 @@ const world = {
 
   render(dt) {
     const n = { '#': 0, J: 0, M: 0, mk: 0 };
-    let label = 0;
     for (const row of this.rows) {
       if (!row.emerged) continue;
       const sinkOff = row.sinking ? -2.8 * easeInOutQuad(clamp(row.sinkT / 0.4, 0, 1)) : 0;
       for (const b of row.blocks) {
-        const mesh = MESH[b.type], i = n[b.type];
-        if (i >= mesh.instanceMatrix.count) continue;
-        n[b.type]++;
+        const mesh = MESH[b.type];
         if (row.falling) {
           _e.set(b.rot, 0, b.rotZ * row.fallT);
           _q.setFromEuler(_e);
-          _p.set(b.x, b.fy, row.z);
-          _m4.compose(_p, _q, _s);
-        } else {
-          _m4.makeTranslation(b.x, b.y + sinkOff, row.z);
+          _mb.compose(_p.set(b.x, b.fy, row.z), _q, _one);
         }
-        mesh.setMatrixAt(i, _m4);
-        mesh.setColorAt(i, b.color);
+        for (const part of b.parts) {
+          const i = n[b.type];
+          if (i >= mesh.instanceMatrix.count) break;
+          n[b.type]++;
+          _mp.makeScale(part.w, part.h, part.d);
+          if (row.falling) {
+            _mp.setPosition(part.ox, part.y0, part.oz);
+            _m4.multiplyMatrices(_mb, _mp);
+          } else {
+            _m4.copy(_mp).setPosition(b.x + part.ox, b.y + part.y0 + sinkOff, row.z + part.oz);
+          }
+          mesh.setMatrixAt(i, _m4);
+          mesh.setColorAt(i, part.color);
+        }
         if (b.type === 'M' && !row.falling && !row.sinking && row.emergeT > 0 && n.mk < MESH.mk.instanceMatrix.count) {
           const near = 1 - clamp(b.y / CRUSH_UP, 0, 1);       // marker glows as the crusher descends
           _m4.makeTranslation(b.x, 0.03, row.z);
@@ -1756,14 +1800,6 @@ const world = {
           n.mk++;
         }
       }
-      if (!row.falling && !row.sinking && label < LABELS.length && row.z < Z_NEAR - 1) {
-        const s = LABELS[label++];
-        const rise = clamp(row.emergeT / EMERGE_DUR, 0, 1);
-        s.visible = true;
-        s.material.map = TEX.rowNum[row.rowNumber];
-        s.position.set(-HALF_W - RIM - 1.05, 0.8 + (rise - 1) * 1.6, row.z);
-        s.material.opacity = (row.empty ? 0.42 : 0.9) * rise * clamp((Z_NEAR - 1 - row.z) / 3, 0, 1);
-      }
     }
     for (const key in MESH) {
       const m = MESH[key];
@@ -1771,7 +1807,6 @@ const world = {
       m.instanceMatrix.needsUpdate = true;
       m.instanceColor.needsUpdate = true;
     }
-    for (let i = label; i < LABELS.length; i++) LABELS[i].visible = false;
     crushMat.emissiveIntensity = 0.55 + 0.35 * Math.sin(this.time * 6);
     this.flash = Math.max(0, this.flash - dt * 1.6);
     pulseMat.opacity = 0.3 + 0.7 * this.flash;
@@ -1780,71 +1815,179 @@ const world = {
 };
 
 // ---------------------------------------------------------------------
-// 12. Player: a small block robot with squash & stretch
+// 11b. Laser fences along both long edges. Segments pulse on and off, so
+//      going around the blocks over the edge takes good timing.
+// ---------------------------------------------------------------------
+const lasers = (() => {
+  const nSeg = Math.round(ARENA_LEN / LASER_SEG), segLen = ARENA_LEN / nSeg, nb = LASER_BEAMS.length;
+  const top = LASER_BEAMS[nb - 1];
+  const segs = [];
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < nSeg; i++) {
+      segs.push({ side, z0: Z_FAR + i * segLen, z1: Z_FAR + (i + 1) * segLen, phase: (i * 0.137 + (side > 0 ? 0.5 : 0)) % 1, state: 'on' });
+    }
+  }
+  const postH = top + 0.4;
+  const posts = new THREE.InstancedMesh(new THREE.BoxGeometry(0.24, postH, 0.24).translate(0, postH / 2, 0),
+    new THREE.MeshStandardMaterial({ color: 0x2a2452, roughness: 0.35, metalness: 0.6, emissive: 0x0d0820 }), (nSeg + 1) * 2);
+  const lights = new THREE.InstancedMesh(new THREE.BoxGeometry(0.3, 0.09, 0.3), new THREE.MeshBasicMaterial({ toneMapped: false }), (nSeg + 1) * 2 * nb);
+  const beamMat = () => new THREE.MeshBasicMaterial({ transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  const cores = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), beamMat(), segs.length * nb);
+  const glows = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), beamMat(), segs.length * nb);
+  const m4 = new THREE.Matrix4(), col = new THREE.Color();
+  const ON = new THREE.Color(0xff3048), GLOW = new THREE.Color(0xff1f3d), DIM = new THREE.Color(0x3a0a12);
+  let k = 0, l = 0;
+  for (const side of [-1, 1]) {
+    for (let i = 0; i <= nSeg; i++) {
+      posts.setMatrixAt(k++, m4.makeTranslation(side * LASER_X, 0, Z_FAR + i * segLen));
+      for (const y of LASER_BEAMS) { lights.setMatrixAt(l, m4.makeTranslation(side * LASER_X, y, Z_FAR + i * segLen)); lights.setColorAt(l++, DIM); }
+    }
+  }
+  segs.forEach((s, i) => LASER_BEAMS.forEach((y, j) => {
+    const idx = i * nb + j, len = segLen - 0.3, cz = (s.z0 + s.z1) / 2;
+    cores.setMatrixAt(idx, m4.makeScale(0.045, 0.045, len).setPosition(s.side * LASER_X, y, cz));
+    glows.setMatrixAt(idx, m4.makeScale(0.2, 0.2, len).setPosition(s.side * LASER_X, y, cz));
+    cores.setColorAt(idx, col.setScalar(0));
+    glows.setColorAt(idx, col.setScalar(0));
+  }));
+  for (const m of [posts, lights, cores, glows]) { m.frustumCulled = false; scene.add(m); }
+  posts.castShadow = true;
+  const warnFrac = LASER_WARN / LASER_PERIOD;
+  return {
+    tick(t, onFrac) {
+      for (const s of segs) {
+        const p = ((((t / LASER_PERIOD) + s.phase) % 1) + 1) % 1;
+        s.state = p < onFrac ? 'on' : p > 1 - warnFrac ? 'warn' : 'off';
+      }
+    },
+    render(t) {
+      segs.forEach((s, i) => {
+        const lv = s.state === 'on' ? 0.85 + 0.15 * Math.sin(t * 40 + i) : s.state === 'warn' ? (Math.floor(t * 14) % 2) * 0.35 : 0;
+        for (let j = 0; j < nb; j++) {
+          cores.setColorAt(i * nb + j, col.copy(ON).multiplyScalar(lv));
+          glows.setColorAt(i * nb + j, col.copy(GLOW).multiplyScalar(lv * 0.4));
+        }
+      });
+      let li = 0;
+      for (let side = 0; side < 2; side++) {
+        for (let i = 0; i <= nSeg; i++) {
+          const before = i > 0 && segs[side * nSeg + i - 1].state === 'on';
+          const after = i < nSeg && segs[side * nSeg + i].state === 'on';
+          for (let j = 0; j < nb; j++) lights.setColorAt(li++, before || after ? ON : DIM);
+        }
+      }
+      cores.instanceColor.needsUpdate = true;
+      glows.instanceColor.needsUpdate = true;
+      lights.instanceColor.needsUpdate = true;
+    },
+    // Side (-1 / 1) of a live laser the player's body is touching, or 0.
+    check(p) {
+      const ax = Math.abs(p.x);
+      if (ax + P_HALF_W < LASER_X || ax - P_HALF_W > LASER_X) return 0;
+      if (p.y > top + 0.05 || p.y + P_HEIGHT < LASER_BEAMS[0] - 0.05) return 0;
+      const side = p.x < 0 ? -1 : 1;
+      for (const s of segs) if (s.side === side && s.state === 'on' && p.z + P_HALF_D > s.z0 && p.z - P_HALF_D < s.z1) return side;
+      return 0;
+    },
+  };
+})();
+
+// ---------------------------------------------------------------------
+// 12. Player: a chunky little party-game runner (original design)
 // ---------------------------------------------------------------------
 const player = (() => {
   const root = new THREE.Group();
   const visual = new THREE.Group();
+  visual.rotation.order = 'YXZ';
   root.add(visual);
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x45e3ff, map: TEX.block, roughness: 0.32, metalness: 0.08, emissive: 0x0b4a66, emissiveIntensity: 0.55 });
-  const darkMat = new THREE.MeshStandardMaterial({ color: 0x1b1640, roughness: 0.5, metalness: 0.2 });
-  const glowMat = new THREE.MeshBasicMaterial({ color: 0xfff27a, toneMapped: false });
-  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xa8f7ff, toneMapped: false });
-  const BODY_Y = 0.57;
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.86, 0.9), bodyMat);
-  body.position.y = BODY_Y; body.castShadow = true;
-  visual.add(body);
-  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.34, 0.05), darkMat);   // face looks toward the blocks (-z)
-  visor.position.set(0, 0.12, -0.46);
-  body.add(visor);
+  const mat = (color, roughness = 0.55) => new THREE.MeshStandardMaterial({ color, roughness, metalness: 0.02 });
+  const M = {
+    skin: mat(0xffcfa1), shirt: mat(0x23c3ff, 0.5), stripe: mat(0xffffff, 0.5), shorts: mat(0x3a3fa8),
+    shoe: mat(0xffffff, 0.45), sole: mat(0xff4d5e), cap: mat(0xff4d5e, 0.45), eye: mat(0xffffff, 0.25),
+    pupil: mat(0x1b1530, 0.3), cheek: mat(0xff8f9a, 0.6),
+  };
+  const add = (parent, geo, material, x = 0, y = 0, z = 0) => {
+    const m = new THREE.Mesh(geo, material);
+    m.position.set(x, y, z);
+    m.castShadow = true;
+    parent.add(m);
+    return m;
+  };
+  const figure = new THREE.Group();                     // 12% larger than the hitbox for readability
+  figure.scale.setScalar(1.12);
+  visual.add(figure);
+  const hips = new THREE.Group();
+  hips.position.y = 0.42;
+  figure.add(hips);
+  const torso = add(hips, new THREE.CapsuleGeometry(0.23, 0.16, 6, 16), M.shirt, 0, 0.27, 0);
+  add(hips, new THREE.CylinderGeometry(0.236, 0.236, 0.08, 18), M.stripe, 0, 0.13, 0);
+  add(hips, new THREE.CylinderGeometry(0.236, 0.215, 0.15, 18), M.shorts, 0, 0.03, 0);
+  const head = new THREE.Group();
+  head.position.y = 0.66;
+  hips.add(head);
+  add(head, new THREE.SphereGeometry(0.26, 22, 16), M.skin);
   const eyes = new THREE.Group();
-  eyes.position.set(0, 0.12, -0.49);
-  body.add(eyes);
+  head.add(eyes);
   for (const s of [-1, 1]) {
-    const e = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.17, 0.02), eyeMat);
-    e.position.x = s * 0.15;
-    eyes.add(e);
+    add(eyes, new THREE.SphereGeometry(0.068, 12, 10), M.eye, s * 0.095, 0.03, -0.215);
+    add(eyes, new THREE.SphereGeometry(0.036, 10, 8), M.pupil, s * 0.095, 0.03, -0.276);
+    add(head, new THREE.SphereGeometry(0.045, 8, 6), M.cheek, s * 0.16, -0.06, -0.19).scale.set(1, 0.6, 0.5);
   }
-  const pack = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.42, 0.12), darkMat);      // back panel faces the camera
-  pack.position.set(0, -0.02, 0.5);
-  body.add(pack);
-  const core = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.18, 0.03), glowMat);
-  core.position.set(0, 0, 0.07);
-  pack.add(core);
-  const antenna = new THREE.Group();
-  antenna.position.set(0, 0.43, 0);
-  body.add(antenna);
-  const stalk = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.3, 0.06), darkMat);
-  stalk.position.y = 0.15;
-  antenna.add(stalk);
-  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 10), glowMat);
-  tip.position.y = 0.33;
-  antenna.add(tip);
-  const feet = [-1, 1].map((s) => {
-    const f = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.14, 0.42), darkMat);
-    f.position.set(s * 0.22, 0.07, 0); f.castShadow = true;
-    visual.add(f);
-    return f;
+  add(head, new THREE.TorusGeometry(0.055, 0.016, 6, 14, Math.PI), M.pupil, 0, -0.07, -0.245).rotation.z = Math.PI;   // smile
+  add(head, new THREE.SphereGeometry(0.272, 22, 10, 0, Math.PI * 2, 0, Math.PI / 2), M.cap, 0, 0.03, 0);              // cap
+  add(head, new THREE.CylinderGeometry(0.2, 0.2, 0.035, 20, 1, false, Math.PI / 2, Math.PI), M.cap, 0, 0.05, -0.12);  // brim
+  add(head, new THREE.SphereGeometry(0.04, 8, 6), M.stripe, 0, 0.3, 0);
+  const arms = [-1, 1].map((s) => {
+    const shoulder = new THREE.Group();
+    shoulder.position.set(s * 0.25, 0.43, 0);
+    hips.add(shoulder);
+    add(shoulder, new THREE.CapsuleGeometry(0.07, 0.15, 4, 10), M.shirt, 0, -0.12, 0);
+    add(shoulder, new THREE.SphereGeometry(0.085, 12, 10), M.skin, 0, -0.29, 0);
+    shoulder.userData.s = s;
+    return shoulder;
   });
+  const legs = [-1, 1].map((s) => {
+    const hip = new THREE.Group();
+    hip.position.set(s * 0.11, 0, 0);
+    hips.add(hip);
+    add(hip, new THREE.CapsuleGeometry(0.085, 0.16, 4, 10), M.skin, 0, -0.17, 0);
+    add(hip, new THREE.CapsuleGeometry(0.085, 0.12, 4, 10), M.shoe, 0, -0.335, -0.04).rotation.x = Math.PI / 2;
+    add(hip, new THREE.BoxGeometry(0.15, 0.03, 0.27), M.sole, 0, -0.405, -0.04);
+    return hip;
+  });
+  const pose = (arr, x, z) => arr.forEach((g, i) => g.rotation.set(x[i], 0, z ? z[i] * g.userData.s : 0));
   scene.add(root);
   root.visible = false;
 
   return {
     root, x: P_START_X, y: 0, z: P_START_Z, vx: 0, vy: 0, vz: 0,
-    grounded: true, coyote: 0, jumpBuf: 0,
-    squash: 0, tiltX: 0, tiltZ: 0, yaw: 0, runPhase: 0, blinkT: 2, blink: 0,
-    antX: 0, antZ: 0, antVX: 0, antVZ: 0,
+    grounded: true, coyote: 0, jumpBuf: 0, platform: null, carry: 0,
+    squash: 0, lean: 0, yaw: 0, runPhase: 0, blinkT: 2, blink: 0, t: 0, ko: null, flat: false, flicker: 0,
     get visible() { return root.visible; },
 
     reset() {
       this.x = P_START_X; this.z = P_START_Z; this.y = 4.5;
       this.vx = this.vz = this.vy = 0;
       this.grounded = false; this.coyote = 0; this.jumpBuf = 0;
-      this.squash = 0; this.tiltX = this.tiltZ = this.yaw = 0;
+      this.platform = null; this.carry = 0;
+      this.squash = 0; this.lean = 0; this.yaw = 0;
+      this.ko = null; this.flat = false; this.flicker = 0;
+      visual.rotation.set(0, 0, 0);
+      visual.scale.set(1, 1, 1);
+      visual.visible = true;
       root.visible = true;
     },
     hide() { root.visible = false; },
     requestJump() { this.jumpBuf = JUMP_BUFFER; },
+    landOn(l, speed) {
+      const airborne = !this.grounded;
+      const impact = Math.max(0, l.block.vy - this.vy);
+      this.y = l.top; this.vy = 0; this.grounded = true;
+      this.platform = { row: l.row, block: l.block, part: l.part };
+      this.carry = speed;
+      if (airborne) game.onLand(impact);
+    },
+    leavePlatform() { this.platform = null; this.grounded = false; },   // keeps the block's momentum (carry)
 
     step(h, control) {
       const ix = control ? input.moveX : 0, iz = control ? input.moveZ : 0;
@@ -1856,19 +1999,22 @@ const player = (() => {
       this.jumpBuf = Math.max(0, this.jumpBuf - h);
       this.coyote = this.grounded ? COYOTE_TIME : Math.max(0, this.coyote - h);
       if (control && this.jumpBuf > 0 && this.coyote > 0 && this.y > -0.05) {
-        this.vy = JUMP_V; this.grounded = false; this.coyote = 0; this.jumpBuf = 0;
+        this.vy = JUMP_V; this.grounded = false; this.platform = null; this.coyote = 0; this.jumpBuf = 0;
         game.onJump();
       }
+      if (this.platform) this.carry = world.speed;
       if (!this.grounded) this.vy -= (this.vy > 0 ? G_UP : G_DOWN) * h;
       const prevY = this.y;
-      this.x += this.vx * h; this.z += this.vz * h; this.y += this.vy * h;
+      this.x += this.vx * h; this.z += (this.vz + this.carry) * h; this.y += this.vy * h;
+      if (this.platform) return;                        // world.support() keeps us on the block
       const onArena = Math.abs(this.x) <= HALF_W + RIM && this.z >= Z_FAR && this.z <= Z_NEAR;
       if (this.grounded) {
         if (onArena) { this.y = 0; this.vy = 0; }
-        else this.grounded = false;                         // walked off the edge
+        else this.grounded = false;                     // walked off the edge
       } else if (this.y <= 0 && prevY >= -0.001 && this.vy <= 0 && onArena) {
         const impact = -this.vy;
         this.y = 0; this.vy = 0; this.grounded = true;
+        this.vz += this.carry * 0.45; this.carry = 0;   // momentum from a ridden block becomes a short slide
         game.onLand(impact);
       } else if (this.y < -0.02 && this.y > -1.4) {
         // Below the surface the platform's sides behave like walls.
@@ -1883,34 +2029,70 @@ const player = (() => {
     },
     fell() { return !this.grounded && this.y < -0.9; },
 
+    // Knock-out reactions: tumble away (hit / laser) or get flattened (crusher).
+    knockOut(kind, side = 0) {
+      if (kind === 'crush') { this.flat = true; return; }
+      if (kind === 'zap') {
+        this.flicker = 0.45;
+        this.ko = { vx: side * 5.5, vy: 6.5, vz: 0, sx: rand(-4, 4), sz: -side * 9 };
+        return;
+      }
+      const s = Math.random() < 0.5 ? -1 : 1;
+      this.ko = { vx: s * rand(2, 4), vy: 10, vz: 3 + world.speed * 0.25, sx: rand(7, 11), sz: s * rand(2, 5) };
+    },
+    koStep(h) {
+      if (!this.ko) return;
+      this.ko.vy -= 24 * h;
+      this.x += this.ko.vx * h; this.y += this.ko.vy * h; this.z += this.ko.vz * h;
+    },
+
     updateVisual(dt) {
       root.position.set(this.x, this.y, this.z);
       if (!root.visible || dt <= 0) return;
-      const sdt = Math.min(dt, 0.05);
+      this.t += dt;
+      if (this.flat) {
+        const sx = damp(visual.scale.x, 1.55, 18, dt);
+        visual.scale.set(sx, damp(visual.scale.y, 0.13, 18, dt), sx);
+        return;
+      }
+      if (this.ko) {
+        visual.rotation.x += this.ko.sx * dt;
+        visual.rotation.z += this.ko.sz * dt;
+        const f = this.t * 22;
+        pose(arms, [Math.sin(f) * 0.6, -Math.sin(f) * 0.6], [1.7 + Math.sin(f) * 0.4, 1.7 + Math.cos(f) * 0.4]);
+        pose(legs, [Math.sin(f * 0.8) * 0.9, -Math.sin(f * 0.8) * 0.9]);
+        if (this.flicker > 0) { this.flicker -= dt; visual.visible = Math.floor(this.flicker * 30) % 2 === 0; }
+        else visual.visible = true;
+        return;
+      }
       this.squash *= Math.exp(-9 * dt);
       const s = this.squash;
-      visual.scale.set(1 + 0.2 * s, 1 - 0.3 * s, 1 + 0.2 * s);
-      this.tiltZ = damp(this.tiltZ, (-this.vx / MOVE_SPEED) * 0.26, 12, dt);
-      this.tiltX = damp(this.tiltX, (this.vz / MOVE_SPEED) * 0.2, 12, dt);
-      this.yaw = damp(this.yaw, (-this.vx / MOVE_SPEED) * 0.28, 10, dt);
-      visual.rotation.set(this.tiltX, this.yaw, this.tiltZ);
+      visual.scale.set(1 + 0.18 * s, 1 - 0.28 * s, 1 + 0.18 * s);
+      // Turn toward the direction of travel; settle back to facing the blocks when idle.
       const sp = Math.hypot(this.vx, this.vz), k = Math.min(1, sp / MOVE_SPEED);
-      if (this.grounded && sp > 0.4) this.runPhase += dt * (9 + sp * 1.1);
+      const targetYaw = sp > 1.2 ? Math.atan2(-this.vx, -this.vz) : 0;
+      let dyaw = targetYaw - this.yaw;
+      dyaw = ((((dyaw + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) - Math.PI;
+      this.yaw += dyaw * (1 - Math.exp(-(sp > 1.2 ? 14 : 5) * dt));
+      this.lean = damp(this.lean, this.grounded ? -0.2 * k : 0.05, 10, dt);
+      visual.rotation.set(this.lean, this.yaw, 0);
       if (this.grounded) {
+        if (sp > 0.4) this.runPhase += dt * (8 + sp);
         const sw = Math.sin(this.runPhase) * k;
-        body.position.y = BODY_Y + Math.abs(sw) * 0.07;
-        feet[0].position.set(-0.22, 0.07 + Math.max(0, sw) * 0.07, sw * 0.16);
-        feet[1].position.set(0.22, 0.07 + Math.max(0, -sw) * 0.07, -sw * 0.16);
-      } else {
-        body.position.y = BODY_Y + 0.03;
-        feet[0].position.set(-0.22, 0.1, 0.06);
-        feet[1].position.set(0.22, 0.1, -0.06);
+        pose(legs, [sw * 0.95, -sw * 0.95]);
+        pose(arms, [-sw * 0.9, sw * 0.9], [0.12, 0.12]);
+        hips.position.y = 0.42 + Math.abs(Math.cos(this.runPhase)) * 0.05 * k;
+        torso.scale.y = 1 + (1 - k) * Math.sin(this.t * 3) * 0.02;
+      } else if (this.vy > 0) {                          // rising: arms up, knees tucked
+        pose(arms, [2.7, 2.7], [0.25, 0.25]);
+        pose(legs, [0.6, -0.35]);
+        hips.position.y = 0.42;
+      } else {                                           // falling: flail
+        const f = this.t * 16;
+        pose(arms, [-0.6 + Math.sin(f) * 0.5, -0.6 - Math.sin(f) * 0.5], [1.1 + Math.sin(f) * 0.25, 1.1 - Math.sin(f) * 0.25]);
+        pose(legs, [Math.sin(f) * 0.5, -Math.sin(f) * 0.5]);
+        hips.position.y = 0.42;
       }
-      // antenna: damped spring that lags behind movement
-      this.antVX += ((-this.vx * 0.045 - this.antX) * 120 - this.antVX * 9) * sdt;
-      this.antVZ += ((this.vz * 0.04 - this.vy * 0.025 - this.antZ) * 120 - this.antVZ * 9) * sdt;
-      this.antX += this.antVX * sdt; this.antZ += this.antVZ * sdt;
-      antenna.rotation.set(clamp(this.antZ, -0.8, 0.8), 0, clamp(this.antX, -0.8, 0.8));
       this.blinkT -= dt;
       if (this.blinkT < 0) { this.blinkT = rand(2, 5); this.blink = 0.13; }
       if (this.blink > 0) this.blink -= dt;
@@ -2035,7 +2217,7 @@ const blobShadow = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.4).rotateX(-Mat
 blobShadow.visible = false;
 scene.add(blobShadow);
 function updatePlayerExtras() {
-  const showGuide = (state === 'playing' || state === 'countdown' || state === 'paused') && player.visible && player.y > -0.3;
+  const showGuide = (state === 'playing' || state === 'countdown' || state === 'paused') && player.visible && player.y > -0.3 && !player.platform;
   aimLine.visible = showGuide;
   if (showGuide) {
     aimLine.position.set(player.x, 0.022, player.z - P_HALF_D - 6.5);
@@ -2043,10 +2225,11 @@ function updatePlayerExtras() {
   }
   const q = QUALITY[settings.quality];
   const overArena = Math.abs(player.x) <= HALF_W + RIM && player.z > Z_FAR && player.z < Z_NEAR;
-  blobShadow.visible = !q.shadows && player.visible && player.y > -0.05 && overArena;
+  blobShadow.visible = !q.shadows && player.visible && !player.ko && player.y > -0.05 && overArena;
   if (blobShadow.visible) {
-    const k = clamp(1 - player.y / 4, 0.3, 1);
-    blobShadow.position.set(player.x, 0.021, player.z);
+    const base = player.platform ? player.y : 0;
+    const k = clamp(1 - (player.y - base) / 4, 0.3, 1);
+    blobShadow.position.set(player.x, base + 0.021, player.z);
     blobShadow.scale.setScalar(0.6 + 0.4 * k);
     blobShadow.material.opacity = 0.55 * k;
   }
@@ -2417,10 +2600,7 @@ function renderPatternLibrary() {
     grid.className = 'pgrid';
     grid.setAttribute('role', 'img');
     grid.setAttribute('aria-label', `${p.name} pattern`);
-    grid.appendChild(document.createElement('span'));
-    for (const L of LETTERS) { const h = document.createElement('span'); h.textContent = L; grid.appendChild(h); }
     for (const row of p.rows) {
-      const lab = document.createElement('span'); lab.textContent = row.rowNumber; grid.appendChild(lab);
       for (const c of row.cells) { const cell = document.createElement('span'); cell.className = cls[c]; grid.appendChild(cell); }
     }
     card.append(name, meta, grid);
@@ -2574,32 +2754,42 @@ const game = {
     showScreen('menu');
     audio.music('menu');
   },
-  die(cause, hit) {
+  die(cause, info) {
     if (state !== 'playing') return;
     setState('dying');
     run.cause = cause;
     deathTimer = 0;
     releaseJoystick();
     camCtl.focus.set(player.x, Math.max(0, player.y), clamp(player.z, Z_FAR, Z_NEAR));
-    if (cause === 'hit') {
-      const b = hit.block;
-      run.causeText = `Hit a ${OBSTACLE_NAME[b.type]} in lane ${LETTERS[b.lane]}, row ${hit.row.rowNumber}`;
-      player.hide();
-      const col = OBSTACLE_COLOR[b.type] || '#' + b.color.getHexString();
-      particles.burst(player.x, player.y + 0.6, player.z, 26, ['#45e3ff', '#ffffff', '#1b1640', '#fff27a'],
-        { speed: 7, up: 7, size: [0.12, 0.3], life: [0.9, 1.6], carry: world.speed * 0.25 });
-      particles.burst(player.x, player.y + 0.6, player.z - 0.6, 12, [col], { speed: 5, up: 5, size: [0.15, 0.32], life: [0.7, 1.2] });
+    const px = player.x, py = player.y + 0.8, pz = player.z;
+    if (cause === 'hit' || cause === 'crush') {
+      const t = info.block.type;
+      run.causeText = cause === 'crush' ? 'Flattened by a crusher'
+        : t === 'J' ? 'Tripped over a low barrier' : t === 'M' ? 'Smacked by a crusher' : 'Ran into a block';
+      player.knockOut(cause);
+      particles.burst(px, py, pz, 22, ['#ffd23f', '#ffffff', '#fff27a'], { speed: 6, up: 6, size: [0.1, 0.22], life: [0.7, 1.3] });
+      particles.burst(px, py, pz - 0.5, 10, ['#' + info.block.parts[0].color.getHexString(), '#23c3ff'], { speed: 5, up: 5, size: [0.14, 0.28], life: [0.7, 1.2] });
       camCtl.shake = 1;
-      timeScale = 0.22;
-      hud.flash('hit');
+      timeScale = 0.3;
       audio.play('hit');
       vibrate([90, 50, 160]);
+    } else if (cause === 'zap') {
+      run.causeText = 'Zapped by a laser fence';
+      player.knockOut('zap', info.side);
+      particles.burst(px, py, pz, 26, ['#ff3048', '#ffffff', '#ff9aa8'], { speed: 7, up: 5, size: [0.06, 0.16], life: [0.4, 0.9], grav: 0.4 });
+      camCtl.shake = 0.8;
+      timeScale = 0.35;
+      audio.play('zap');
+      vibrate([40, 30, 40, 30, 120]);
     } else {
       run.causeText = 'Fell off the arena';
       camCtl.shake = 0.3;
       audio.play('fall');
       vibrate([60, 40, 220]);
+      return;
     }
+    hud.flash('hit');
+    camCtl.mode = 'over';
   },
   gameOver() {
     setState('gameover');
@@ -2666,6 +2856,7 @@ const game = {
   onWaveComplete(wave) {
     run.waves = wave.index + 1;
     world.targetSpeed = speedForWave(run.waves);
+    world.laserOnFrac = laserOnFracForWave(run.waves);
     hud.setCounter(run.waves, true);
     hud.pipsDone();
     run.pipResetAt = run.time + 0.5;
@@ -2773,17 +2964,22 @@ function simulate(dt, active) {
   if (dt <= 0) return;
   const n = Math.min(24, Math.max(1, Math.ceil(dt / MAX_STEP))), h = dt / n;
   for (let i = 0; i < n; i++) {
+    lasers.tick(world.time, world.laserOnFrac);
     if (active && state === 'playing') {
       player.step(h, true);
       world.step(h);
-      if (player.fell()) game.die('fall');
-      else {
-        const hit = world.collide(player);
-        if (hit) game.die('hit', hit);
-        else world.checkPassed(player);
-      }
+      world.support(player);
+      const hit = world.resolve(player);
+      if (hit) { game.die(hit.kind, hit); continue; }
+      const zap = lasers.check(player);
+      if (zap) { game.die('zap', { side: zap }); continue; }
+      if (player.fell()) { game.die('fall'); continue; }
+      world.checkPassed(player);
     } else {
-      if (state === 'dying' && run.cause === 'fall') player.step(h, false);
+      if (state === 'dying') {
+        if (run.cause === 'fall') { player.step(h, false); world.support(player); }
+        else player.koStep(h);
+      }
       world.step(h);
     }
   }
@@ -2830,6 +3026,7 @@ function update(rawDt) {
   particles.update(vdt);
   rings.update(vdt);
   world.render(vdt);
+  lasers.render(world.time);
   bgTime += dt;
   decor.update(bgTime);
   dust.update(dt, (frozen ? 0 : world.speed) * 0.2);
@@ -2899,11 +3096,11 @@ function init() {
   requestAnimationFrame(frame);
   if (new URLSearchParams(location.search).has('debug')) {
     window.BlockDash = {
-      get state() { return state; }, world, player, run, input, debugOverride, debug, game, settings: () => settings, cam: camCtl,
+      get state() { return state; }, world, player, run, input, debugOverride, debug, game, settings: () => settings, cam: camCtl, lasers,
       rowSafety, planWave, SAMPLES, LIBRARY, speedForWave, laneX,
       tick(dt) { update(dt); }, draw() { renderer.render(scene, camera); },
       info() { return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, pixelRatio: renderer.getPixelRatio() }; },
-      consts: { P_HALF_W, P_HALF_D, P_HEIGHT, ROW_HALF_D, HIT_LOW_H, HIT_LOW_HALF_D, HIT_HALF_D, JUMP_V, G_UP, G_DOWN, AIR_TIME, MOVE_SPEED, CRUSH_UP, LANES, Z_SPAWN },
+      consts: { P_HALF_W, P_HALF_D, P_HEIGHT, ROW_HALF_D, HIT_LOW_H: LOW_H, HIT_LOW_HALF_D, HIT_HALF_D, JUMP_V, G_UP, G_DOWN, AIR_TIME, MOVE_SPEED, CRUSH_UP, LANES, Z_SPAWN },
     };
   }
 }
