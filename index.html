@@ -408,13 +408,13 @@ body.touch .kbd-hint{display:none}
     </div>
     <h3>OBSTACLES</h3>
     <div class="legend">
-      <div class="leg"><span class="sw solid"></span><div><b>Stacked blocks</b><small>Two or three blocks high, too tall to jump. If a wall catches you it pushes you back, so slide sideways into a hole before you run out of floor.</small></div></div>
-      <div class="leg"><span class="sw low"></span><div><b>Single block</b><small>As tall as you. One jump gets you on top. Ride it, hop off, or climb from it onto a stack.</small></div></div>
+      <div class="leg"><span class="sw solid"></span><div><b>Stacked blocks</b><small>Two or three cubes high, too tall to jump. If a wall catches you it pushes you back, so slide sideways into a hole before you run out of floor.</small></div></div>
+      <div class="leg"><span class="sw low"></span><div><b>Single block</b><small>One cube. A jump gets you on top, and a running jump or a dive clears it. Ride it, hop off, or climb from it onto a stack.</small></div></div>
       <div class="leg"><span class="sw move"></span><div><b>Crusher</b><small>Rises and slams down. Get caught underneath and you're bonked away.</small></div></div>
-      <div class="leg"><span class="sw laser"></span><div><b>Laser fence</b><small>Lines both edges and switches on and off. Only the skilled get around the blocks that way.</small></div></div>
+      <div class="leg"><span class="sw laser"></span><div><b>Laser fence</b><small>Always on along both edges. Touch it and you're out. Only a jump from the top of a block clears it.</small></div></div>
     </div>
     <h3>DIFFICULTY</h3>
-    <p>The blocks start slow and get 5% faster every 20 waves. Each wave has its own colour. Harder patterns unlock as you go, the lasers stay on a bit longer, and from wave 6 a pattern can arrive mirrored. Every wave is checked by the pattern engine, so there is always a way through on the ground.</p>
+    <p>The blocks start slow and get 5% faster every 20 waves. Each wave has its own colour, and the next wave only starts once the last one has left the map. Harder patterns unlock as you go, and from wave 6 a pattern can arrive mirrored. Every wave is checked by the pattern engine, so there is always a way through on the ground.</p>
     <h3>PATTERN LIBRARY</h3>
     <div class="plib" id="pattern-lib"></div>
     <div class="actions"><button class="btn primary" id="btn-howto-back">BACK</button></div>
@@ -569,32 +569,33 @@ const fmtTime = (s) => { s = Math.max(0, Math.floor(s)); return String(Math.floo
 // ---------------------------------------------------------------------
 // 2. World constants (units are metres-ish; 1 lane = 2 units)
 // ---------------------------------------------------------------------
-const LANES = 8, LANE_W = 2, HALF_W = (LANES * LANE_W) / 2, RIM = 0.3;
+const LANES = 10, LANE_W = 2, HALF_W = (LANES * LANE_W) / 2, RIM = 0.3;
+const PATTERN_COLS = 8;                                  // patterns are authored 8 wide (A–H)
 const Z_NEAR = 14, Z_FAR = -44, Z_SPAWN = -38;           // obstacles travel toward +z
 const ARENA_LEN = Z_NEAR - Z_FAR, ARENA_MID = (Z_NEAR + Z_FAR) / 2;
 const laneX = (i) => -HALF_W + LANE_W * (i + 0.5);
 
 // Obstacles are built from identical blocks about as tall as the runner.
 // 'J' = one block (jump onto it), '#' = a stack of 2–3 blocks (too tall to jump).
-const BLOCK_W = 1.86, BLOCK_D = 1.86, BLOCK_H = 1.45;
-const CRUSH_H = BLOCK_H, CRUSH_UP = 2.0;                  // 'M' crusher (bottom height when raised)
+const BLOCK_W = 1.86, BLOCK_D = 1.86, BLOCK_H = 1.86;   // cubes
+const CRUSH_H = BLOCK_H, CRUSH_UP = 2.1;                  // 'M' crusher (bottom height when raised)
 // Collision: front faces are a little forgiving; tops match the visuals so you can stand on them.
 const HIT_HALF_W = 0.9, HIT_HALF_D = 0.86;
 const ROW_HALF_D = 0.86;
 const STEP_UP = 0.3;                                      // land on any top this close above your feet
 
 // Laser fences along both long edges of the arena
-const LASER_X = HALF_W + RIM + 0.06, LASER_SEG = 8.2, LASER_PERIOD = 3.2, LASER_WARN = 0.4;
-const LASER_BEAMS = [0.4, 1.05, 1.7, 2.35];
+const LASER_X = HALF_W + RIM + 0.06, LASER_SEG = 8.2;
+const LASER_BEAMS = [0.45, 1.2, 1.95, 2.7];
 
 // Player
 const P_HALF_W = 0.36, P_HALF_D = 0.36, P_HEIGHT = 1.3;
 const P_START_X = 0, P_START_Z = -4;
 const GATE_STOP = Z_SPAWN + 2.5;                         // the spawn gate is a solid barrier
 // Dive: press jump again in the air
-const DIVE_SPEED = 13, DIVE_UP = 4.2, DIVE_SLIDE = 0.3, P_HEIGHT_FLAT = 0.75;
+const DIVE_SPEED = 16, DIVE_UP = 5.2, DIVE_SLIDE = 0.3, P_HEIGHT_FLAT = 0.75;
 const MOVE_SPEED = 9.5, ACCEL = 80, DECEL = 100, AIR_ACCEL = 34;
-const G_UP = 30, G_DOWN = 46, JUMP_V = 10.6;
+const G_UP = 34, G_DOWN = 50, JUMP_V = 12.6;           // apex ≈ 2.33: lands on a single cube
 const JUMP_APEX = JUMP_V ** 2 / (2 * G_UP);
 const AIR_TIME = JUMP_V / G_UP + Math.sqrt((2 * JUMP_APEX) / G_DOWN);
 const COYOTE_TIME = 0.09, JUMP_BUFFER = 0.13;
@@ -611,7 +612,6 @@ const speedForWave = (w) => 7 * Math.pow(1.05, Math.floor(w / 20));    // slow s
 const comfortForWave = (w) => 0.22 + 0.34 * Math.exp(-w / 16);          // spare reaction time per row (s)
 const breatherForWave = (w) => 1.25 + 0.85 * Math.exp(-w / 10);         // pause between waves (s)
 const crusherPeriodForWave = (w) => Math.max(1.3, 2.1 - w * 0.03);      // crusher cycle (s)
-const laserOnFracForWave = (w) => 0.7 + 0.12 * (1 - Math.exp(-w / 12));   // share of each cycle a laser is live
 const DIFFICULTY = [
   { min: 0, name: 'EASY', color: '#4ade80' },
   { min: 3, name: 'NORMAL', color: '#38bdf8' },
@@ -821,7 +821,7 @@ function parsePattern(def) {
     const m = line.match(/^\s*([1-8])\s*\|(.*)\|\s*$/);
     if (!m) continue;
     const cells = m[2].trim().split(/\s+/);
-    if (cells.length !== LANES) throw new Error(`row ${m[1]} has ${cells.length} cells (needs ${LANES})`);
+    if (cells.length !== PATTERN_COLS) throw new Error(`row ${m[1]} has ${cells.length} cells (needs ${PATTERN_COLS})`);
     for (const c of cells) if (!SYMBOLS.has(c)) throw new Error(`row ${m[1]} has an unknown symbol "${c}"`);
     if (byRow[m[1]]) throw new Error(`row ${m[1]} is defined twice`);
     byRow[m[1]] = cells;
@@ -932,8 +932,10 @@ function planWave(cellRows, comfort, breather, prev) {
   }
   return { types, solid, gaps, interTime, final: { reach, types: types[solid[solid.length - 1]] } };
 }
+// The arena is two lanes wider than a pattern: the outer columns extend to the new edges.
+const padRow = (cells) => [cells[0], ...cells, cells[cells.length - 1]];
 function validatePattern(p) {
-  const rows = p.rows.map((r) => r.cells);
+  const rows = p.rows.map((r) => padRow(r.cells));
   if (rows.every((c) => c.every((x) => x === '.'))) throw new Error('the pattern has no obstacles');
   rows.forEach((c, i) => {
     if (c.every((x) => x === '.')) return;
@@ -1243,9 +1245,18 @@ const rimLight = new THREE.DirectionalLight(0xff6ad5, 0.9);
 rimLight.position.set(-16, 10, -60);
 scene.add(hemi, sun, sun.target, rimLight);
 const SUN_OFFSET = new THREE.Vector3(7, 24, 12);
+const _sunRot = new THREE.Matrix4().lookAt(SUN_OFFSET, new THREE.Vector3(), new THREE.Vector3(0, 1, 0));
+const _sunInv = _sunRot.clone().transpose();
+const _sunV = new THREE.Vector3();
 function placeSun(focusZ) {
-  sun.target.position.set(0, 0, focusZ);
-  sun.position.copy(sun.target.position).add(SUN_OFFSET);
+  // Move the shadow camera in whole shadow-map texels so shadows don't crawl as it follows the player.
+  const texel = (sun.shadow.camera.right - sun.shadow.camera.left) / Math.max(1, sun.shadow.mapSize.x);
+  _sunV.set(0, 0, focusZ).applyMatrix4(_sunInv);
+  _sunV.x = Math.round(_sunV.x / texel) * texel;
+  _sunV.y = Math.round(_sunV.y / texel) * texel;
+  _sunV.applyMatrix4(_sunRot);
+  sun.target.position.copy(_sunV);
+  sun.position.copy(_sunV).add(SUN_OFFSET);
 }
 placeSun(-10);
 
@@ -1313,33 +1324,17 @@ TEX.marker = canvasTex(128, 128, (g, w) => {
 });
 TEX.floor = canvasTex(1024, 512, (g, w, h) => {
   const ux = w / FLOOR_W, uz = h / 8;
-  g.fillStyle = '#1c1940'; g.fillRect(0, 0, w, h);
-  for (let i = 0; i < LANES; i++) for (let j = 0; j < 4; j++) {
-    g.fillStyle = (i + j) % 2 ? '#25224f' : '#1d1a44';
+  g.fillStyle = '#2e2968'; g.fillRect(0, 0, w, h);                        // rims
+  for (let i = 0; i < LANES; i++) for (let j = 0; j < 4; j++) {            // checkerboard: one tile per block
+    g.fillStyle = (i + j) % 2 ? '#2c2862' : '#1b1842';
     g.fillRect((RIM + i * LANE_W) * ux, j * 2 * uz, LANE_W * ux, 2 * uz);
   }
-  g.fillStyle = '#2e2968'; g.fillRect(0, 0, RIM * ux, h); g.fillRect(w - RIM * ux, 0, RIM * ux, h);
-  g.fillStyle = 'rgba(255,255,255,.035)';
-  for (let j = 0; j < 4; j++) g.fillRect(RIM * ux, j * 2 * uz, LANES * LANE_W * ux, 2);
-  for (let k = 0; k <= LANES; k++) {
-    const x = (RIM + k * LANE_W) * ux, edge = k === 0 || k === LANES;
-    g.fillStyle = edge ? 'rgba(170,150,255,.3)' : 'rgba(150,130,255,.12)'; g.fillRect(x - 6, 0, 12, h);
-    g.fillStyle = edge ? 'rgba(215,205,255,.85)' : 'rgba(185,175,255,.5)'; g.fillRect(x - 1.5, 0, 3, h);
-  }
+  g.fillStyle = 'rgba(190,180,255,.42)';                                   // grid lines, front-to-back and side-to-side
+  for (let k = 0; k <= LANES; k++) g.fillRect((RIM + k * LANE_W) * ux - 1.5, 0, 3, h);
+  for (let j = 0; j <= 4; j++) g.fillRect(RIM * ux, j * 2 * uz - 1.5, LANES * LANE_W * ux, 3);
 });
 TEX.floor.wrapT = THREE.RepeatWrapping;
 TEX.floor.repeat.set(1, ARENA_LEN / 8);
-TEX.pulse = canvasTex(512, 256, (g, w, h) => {
-  const ux = w / FLOOR_W;
-  for (let k = 1; k < LANES; k++) {
-    const x = (RIM + k * LANE_W) * ux, y0 = ((k % 2) * h) / 2, len = h * 0.38;
-    const gr = g.createLinearGradient(0, y0, 0, y0 + len);
-    gr.addColorStop(0, 'rgba(160,140,255,0)'); gr.addColorStop(0.75, 'rgba(195,180,255,.9)'); gr.addColorStop(1, 'rgba(255,255,255,1)');
-    g.fillStyle = gr; g.fillRect(x - 2.5, y0, 5, len);
-  }
-});
-TEX.pulse.wrapT = THREE.RepeatWrapping;
-TEX.pulse.repeat.set(1, ARENA_LEN / 16);
 TEX.radial = canvasTex(128, 128, (g, w) => {
   const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
   gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.4, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
@@ -1393,7 +1388,6 @@ scene.add(sunSprite);
 
 const arena = new THREE.Group();
 scene.add(arena);
-let pulseMat = null;
 (function buildArena() {
   const W = FLOOR_W;
   const topMat = new THREE.MeshStandardMaterial({ map: TEX.floor, roughness: 0.85, metalness: 0.04 });
@@ -1425,11 +1419,6 @@ let pulseMat = null;
     new THREE.MeshBasicMaterial({ map: TEX.radial, color: 0x7a3cff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
   under.position.set(0, -7, ARENA_MID);
   arena.add(under);
-  pulseMat = new THREE.MeshBasicMaterial({ map: TEX.pulse, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false,
-    toneMapped: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
-  const pulse = new THREE.Mesh(new THREE.PlaneGeometry(W, ARENA_LEN).rotateX(-Math.PI / 2), pulseMat);
-  pulse.position.set(0, 0.015, ARENA_MID);
-  arena.add(pulse);
 })();
 
 let gateVeil = null;
@@ -1579,7 +1568,7 @@ const _p = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1), _c = new THRE
 const world = {
   mode: 'demo', rows: [], waves: [], nextIndex: 0,
   lastRowZ: null, lastSolidZ: null, prev: null, lastPatternId: null,
-  speed: DEMO_SPEED, targetSpeed: DEMO_SPEED, time: 0, firstZ: -14, emergeDelay: 0, flash: 0, laserOnFrac: 0.7, demoColor: 0,
+  speed: DEMO_SPEED, targetSpeed: DEMO_SPEED, time: 0, firstZ: -14, emergeDelay: 0, flash: 0, demoColor: 0, lastWave: null,
 
   reset(mode) {
     for (const r of this.rows) if (r.emerged && !r.falling && !r.sinking) { r.sinking = true; r.sinkT = 0; }
@@ -1589,16 +1578,15 @@ const world = {
     this.lastRowZ = this.lastSolidZ = null;
     this.prev = null;
     this.lastPatternId = null;
+    this.lastWave = null;
     this.mode = mode;
     if (mode === 'game') {
       const v = speedForWave(0);
       this.speed = this.targetSpeed = v;
       this.firstZ = P_START_Z - P_HALF_D - ROW_HALF_D - v * 3.4;   // ~3.4 s before the first row arrives
-      this.laserOnFrac = laserOnFracForWave(0);
     } else {
       this.speed = this.targetSpeed = DEMO_SPEED;
       this.firstZ = -14;
-      this.laserOnFrac = 0.7;
     }
     this.emergeDelay = 0.35;
     this.ensureQueue();
@@ -1607,7 +1595,7 @@ const world = {
   setMode(mode) {
     this.mode = mode;
     this.waves = [];
-    if (mode === 'demo') { this.targetSpeed = DEMO_SPEED; this.laserOnFrac = 0.7; }
+    if (mode === 'demo') this.targetSpeed = DEMO_SPEED;
   },
 
   queueWave() {
@@ -1620,7 +1608,7 @@ const world = {
     const vDesign = speed * 1.06;
     const comfort = demo ? 0.45 : comfortForWave(index);
     const breather = demo ? 1.5 : breatherForWave(index);
-    const cellRows = pattern.rows.map((r) => (mirrored ? r.cells.slice().reverse() : r.cells.slice()));
+    const cellRows = pattern.rows.map((r) => padRow(mirrored ? r.cells.slice().reverse() : r.cells));
     const plan = planWave(cellRows, comfort, breather, this.prev);
     this.prev = plan.final;
 
@@ -1666,11 +1654,18 @@ const world = {
       this.rows.push(row);
     }
     if (!demo) this.waves.push(wave);
+    this.lastWave = wave;
     return wave;
   },
+  // One wave on the map at a time: the next wave only starts once every row of the
+  // previous one has left the map over the near edge.
   ensureQueue() {
-    let guard = 0;
-    while ((this.lastRowZ === null || this.lastRowZ > Z_SPAWN - 30) && guard++ < 6) this.queueWave();
+    if (!this.lastWave) { this.queueWave(); return; }
+    if (!this.lastWave.rows.every((r) => r.falling || r.sinking || r.remove)) return;
+    this.lastRowZ = this.lastSolidZ = null;
+    this.prev = null;
+    this.firstZ = Z_SPAWN - 0.5;                          // the new wave starts at the gate
+    this.queueWave();
   },
 
   step(h) {
@@ -1679,7 +1674,6 @@ const world = {
     const dz = this.speed * h;
     if (this.lastRowZ !== null) { this.lastRowZ += dz; this.lastSolidZ += dz; }
     if (this.emergeDelay > 0) this.emergeDelay -= h;
-    TEX.pulse.offset.y = (TEX.pulse.offset.y + dz / 16) % 1;
     let removeAny = false;
     for (const row of this.rows) {
       if (row.sinking) {
@@ -1739,60 +1733,71 @@ const world = {
   },
 
   // Player vs obstacle boxes. Tops: land on them. Sides: solid. The front of an incoming wall
-  // pushes you along with it; a crusher coming down bonks you away. Returns a contact event.
-  resolve(p) {
-    const pz0 = p.z - P_HALF_D, pz1 = p.z + P_HALF_D, ph = p.height;
-    const sweeping = this.speed - p.carry > 1;            // blocks move toward a player who isn't riding along
-    let land = null, event = null;
+  // pushes you along (you can still slide sideways along it). A crusher coming down bonks you.
+  resolve(p, h) {
+    const ph = p.height, sweeping = this.speed - p.carry > 1;   // blocks move toward a player who isn't riding along
+    const relZ = this.speed - (p.vz + p.carry);                 // > 0: blocks are gaining on the player
+    const boxes = [];
     for (const row of this.rows) {
       if (!row.emerged || row.falling || row.sinking || !row.blocks.length) continue;
-      if (row.z + BLOCK_D / 2 + 0.1 < pz0 || row.z - BLOCK_D / 2 - 0.1 > pz1) continue;
+      if (row.z + BLOCK_D / 2 + 0.6 < p.z - P_HALF_D || row.z - BLOCK_D / 2 - 0.6 > p.z + P_HALF_D) continue;
       for (const b of row.blocks) {
         for (const part of b.parts) {
-          const hx = part.w / 2 - 0.03, hz = part.d / 2, cx = b.x + part.ox, cz = row.z + part.oz;
-          const x0 = cx - hx, x1 = cx + hx, z0 = cz - hz, z1 = cz + hz;
-          if (x1 <= p.x - P_HALF_W || x0 >= p.x + P_HALF_W || z1 <= p.z - P_HALF_D || z0 >= p.z + P_HALF_D) continue;
-          const y0 = b.y + part.y0, y1 = y0 + part.h;
-          if (y1 <= p.y + 1e-4 || y0 >= p.y + ph) continue;
-          if (y1 - p.y <= STEP_UP) {                        // feet are just below the top: land on it
-            if (!land || y1 > land.top) land = { row, block: b, part, top: y1 };
-            continue;
-          }
-          // How long ago did the overlap start on each axis? Only the face that is moving into
-          // the other box counts (otherwise a block that is just leaving looks like a new hit).
-          const relZ = this.speed - (p.vz + p.carry);       // > 0: the block is gaining on the player
-          const tX = p.vx < 0 ? (x1 - (p.x - P_HALF_W)) / -p.vx : p.vx > 0 ? (p.x + P_HALF_W - x0) / p.vx : Infinity;
-          const tZ = (relZ >= 0 ? z1 - pz0 : pz1 - z0) / Math.max(Math.abs(relZ), 1e-3);
-          const closeY = p.vy - b.vy;                       // > 0: closing from below
-          const tY = (p.y + ph - y0) / Math.max(closeY, 1e-3);
-          if (closeY > 0.5 && tY < tX && tY < tZ) {         // underside: a crusher coming down, or a head bump
-            if (b.vy < -0.5) {
-              p.z = z1 + P_HALF_D + 0.02;                   // squeezed out in front of it
-              p.stun(0.7, rand(-1.5, 1.5), 5, this.speed + 4);
-              event = { kind: 'bonk', row, block: b };
-            } else {
-              p.y = y0 - ph - 1e-3;
-              p.vy = Math.min(p.vy, -2);
-              event = event || { kind: 'bump', row, block: b };
-            }
-            continue;
-          }
-          if (tX <= tZ) {                                   // brushed a side: blocks are solid
-            p.x = p.x < cx ? x0 - P_HALF_W - 1e-3 : x1 + P_HALF_W + 1e-3;
-            p.vx = 0;
-            continue;
-          }
-          if (sweeping) {                                   // the wall shoves the player along
-            p.z = z1 + P_HALF_D + 1e-3;
-            if (p.vz < 0) p.vz = 0;
-            if (!event) event = { kind: 'push', row, block: b, fresh: p.pushT > 0.25 };
-            p.pushT = 0;
-            continue;
-          }
-          p.z = p.z < cz ? z0 - P_HALF_D - 1e-3 : z1 + P_HALF_D + 1e-3;   // riding along: just a wall
-          p.vz = 0;
+          const hx = part.w / 2 - 0.03, hz = part.d / 2, cx = b.x + part.ox, cz = row.z + part.oz, y0 = b.y + part.y0;
+          boxes.push({ row, b, part, cx, cz, x0: cx - hx, x1: cx + hx, z0: cz - hz, z1: cz + hz, y0, y1: y0 + part.h });
         }
       }
+    }
+    const overlaps = (c) => c.x1 > p.x - P_HALF_W && c.x0 < p.x + P_HALF_W && c.z1 > p.z - P_HALF_D && c.z0 < p.z + P_HALF_D
+      && c.y1 > p.y + 1e-4 && c.y0 < p.y + ph;
+    let event = null;
+    // 1) Leading faces of an incoming row move the player out in front of them first, so sliding
+    //    sideways along a wall never snags on the next block of that same wall.
+    if (sweeping) {
+      const reach = Math.max(relZ, 0) * h * 2 + 0.03;
+      let by = null;
+      for (const c of boxes) {
+        if (!overlaps(c) || c.y1 - p.y <= STEP_UP) continue;
+        if (c.z1 - (p.z - P_HALF_D) <= reach && (!by || c.z1 > by.z1)) by = c;
+      }
+      if (by) {
+        p.z = by.z1 + P_HALF_D + 1e-3;
+        if (p.vz < 0) p.vz = 0;
+        event = { kind: 'push', row: by.row, block: by.b, fresh: p.pushT > 0.25 };
+        p.pushT = 0;
+      }
+    }
+    // 2) Whatever still overlaps: land on tops, get bonked under crushers, stop at sides.
+    let land = null;
+    for (const c of boxes) {
+      if (!overlaps(c)) continue;
+      if (c.y1 - p.y <= STEP_UP) {                          // feet are just below the top: land on it
+        if (!land || c.y1 > land.top) land = { row: c.row, block: c.b, part: c.part, top: c.y1 };
+        continue;
+      }
+      const closeY = p.vy - c.b.vy;                         // > 0: closing from below
+      const tX = p.vx < 0 ? (c.x1 - (p.x - P_HALF_W)) / -p.vx : p.vx > 0 ? (p.x + P_HALF_W - c.x0) / p.vx : Infinity;
+      const tZ = (relZ >= 0 ? c.z1 - (p.z - P_HALF_D) : p.z + P_HALF_D - c.z0) / Math.max(Math.abs(relZ), 1e-3);
+      const tY = (p.y + ph - c.y0) / Math.max(closeY, 1e-3);
+      if (closeY > 0.5 && tY < tX && tY < tZ) {             // underside: a crusher coming down, or a head bump
+        if (c.b.vy < -0.5) {
+          p.z = c.z1 + P_HALF_D + 0.02;                     // squeezed out in front of it
+          p.stun(0.7, rand(-1.5, 1.5), 5, this.speed + 4);
+          event = { kind: 'bonk', row: c.row, block: c.b };
+        } else {
+          p.y = c.y0 - ph - 1e-3;
+          p.vy = Math.min(p.vy, -2);
+          event = event || { kind: 'bump', row: c.row, block: c.b };
+        }
+        continue;
+      }
+      if (sweeping || tX <= tZ) {                           // a side: blocks are solid
+        p.x = p.x < c.cx ? c.x0 - P_HALF_W - 1e-3 : c.x1 + P_HALF_W + 1e-3;
+        p.vx = 0;
+        continue;
+      }
+      p.z = p.z < c.cz ? c.z0 - P_HALF_D - 1e-3 : c.z1 + P_HALF_D + 1e-3;   // riding along: just a wall
+      p.vz = 0;
     }
     if (land) p.landOn(land, this.speed);
     return event;
@@ -1866,86 +1871,49 @@ const world = {
     }
     crushMat.emissiveIntensity = 0.55 + 0.35 * Math.sin(this.time * 6);
     this.flash = Math.max(0, this.flash - dt * 1.6);
-    pulseMat.opacity = 0.3 + 0.7 * this.flash;
     if (gateVeil) gateVeil.material.opacity = 0.45 + 0.15 * Math.sin(this.time * 2.2) + 0.4 * this.flash;
   },
 };
 
 // ---------------------------------------------------------------------
-// 11b. Laser fences along both long edges. Segments pulse on and off, so
-//      going around the blocks over the edge takes good timing.
+// 11b. Laser fences along both long edges. Always on and perfectly steady:
+//      getting around the walls over the edge means jumping over the fence
+//      from the top of a block.
 // ---------------------------------------------------------------------
 const lasers = (() => {
   const nSeg = Math.round(ARENA_LEN / LASER_SEG), segLen = ARENA_LEN / nSeg, nb = LASER_BEAMS.length;
-  const top = LASER_BEAMS[nb - 1];
-  const segs = [];
-  for (const side of [-1, 1]) {
-    for (let i = 0; i < nSeg; i++) {
-      segs.push({ side, z0: Z_FAR + i * segLen, z1: Z_FAR + (i + 1) * segLen, phase: (i * 0.137 + (side > 0 ? 0.5 : 0)) % 1, state: 'on' });
-    }
-  }
-  const postH = top + 0.4;
+  const top = LASER_BEAMS[nb - 1], postH = top + 0.4;
   const posts = new THREE.InstancedMesh(new THREE.BoxGeometry(0.24, postH, 0.24).translate(0, postH / 2, 0),
     new THREE.MeshStandardMaterial({ color: 0x2a2452, roughness: 0.35, metalness: 0.6, emissive: 0x0d0820 }), (nSeg + 1) * 2);
-  const lights = new THREE.InstancedMesh(new THREE.BoxGeometry(0.3, 0.09, 0.3), new THREE.MeshBasicMaterial({ toneMapped: false }), (nSeg + 1) * 2 * nb);
-  const beamMat = () => new THREE.MeshBasicMaterial({ transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
-  const cores = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), beamMat(), segs.length * nb);
-  const glows = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), beamMat(), segs.length * nb);
-  const m4 = new THREE.Matrix4(), col = new THREE.Color();
-  const ON = new THREE.Color(0xff3048), GLOW = new THREE.Color(0xff1f3d), DIM = new THREE.Color(0x3a0a12);
-  let k = 0, l = 0;
+  const lights = new THREE.InstancedMesh(new THREE.BoxGeometry(0.3, 0.09, 0.3), new THREE.MeshBasicMaterial({ color: 0xff3048, toneMapped: false }), (nSeg + 1) * 2 * nb);
+  const beam = (color, opacity) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  const cores = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), beam(0xff3048, 1), nSeg * 2 * nb);
+  const glows = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), beam(0xff1f3d, 0.4), nSeg * 2 * nb);
+  const m4 = new THREE.Matrix4();
+  let k = 0, l = 0, c = 0;
   for (const side of [-1, 1]) {
     for (let i = 0; i <= nSeg; i++) {
-      posts.setMatrixAt(k++, m4.makeTranslation(side * LASER_X, 0, Z_FAR + i * segLen));
-      for (const y of LASER_BEAMS) { lights.setMatrixAt(l, m4.makeTranslation(side * LASER_X, y, Z_FAR + i * segLen)); lights.setColorAt(l++, DIM); }
+      const z = Z_FAR + i * segLen;
+      posts.setMatrixAt(k++, m4.makeTranslation(side * LASER_X, 0, z));
+      for (const y of LASER_BEAMS) lights.setMatrixAt(l++, m4.makeTranslation(side * LASER_X, y, z));
+      if (i === nSeg) continue;
+      for (const y of LASER_BEAMS) {
+        const cz = z + segLen / 2, len = segLen - 0.3;
+        cores.setMatrixAt(c, m4.makeScale(0.09, 0.09, len).setPosition(side * LASER_X, y, cz));
+        glows.setMatrixAt(c++, m4.makeScale(0.26, 0.26, len).setPosition(side * LASER_X, y, cz));
+      }
     }
   }
-  segs.forEach((s, i) => LASER_BEAMS.forEach((y, j) => {
-    const idx = i * nb + j, len = segLen - 0.3, cz = (s.z0 + s.z1) / 2;
-    cores.setMatrixAt(idx, m4.makeScale(0.065, 0.065, len).setPosition(s.side * LASER_X, y, cz));
-    glows.setMatrixAt(idx, m4.makeScale(0.2, 0.2, len).setPosition(s.side * LASER_X, y, cz));
-    cores.setColorAt(idx, col.setScalar(0));
-    glows.setColorAt(idx, col.setScalar(0));
-  }));
   for (const m of [posts, lights, cores, glows]) { m.frustumCulled = false; scene.add(m); }
   posts.castShadow = true;
-  const warnFrac = LASER_WARN / LASER_PERIOD;
   return {
-    tick(t, onFrac) {
-      for (const s of segs) {
-        const p = ((((t / LASER_PERIOD) + s.phase) % 1) + 1) % 1;
-        s.state = p < onFrac ? 'on' : p > 1 - warnFrac ? 'warn' : 'off';
-        s.warnK = s.state === 'warn' ? (p - (1 - warnFrac)) / warnFrac : 0;
-      }
-    },
-    render() {
-      segs.forEach((s, i) => {
-        const lv = s.state === 'on' ? 1 : s.state === 'warn' ? 0.06 + 0.3 * s.warnK : 0;   // steady, no flicker
-        for (let j = 0; j < nb; j++) {
-          cores.setColorAt(i * nb + j, col.copy(ON).multiplyScalar(lv));
-          glows.setColorAt(i * nb + j, col.copy(GLOW).multiplyScalar(lv * 0.4));
-        }
-      });
-      let li = 0;
-      for (let side = 0; side < 2; side++) {
-        for (let i = 0; i <= nSeg; i++) {
-          const before = i > 0 && segs[side * nSeg + i - 1].state === 'on';
-          const after = i < nSeg && segs[side * nSeg + i].state === 'on';
-          for (let j = 0; j < nb; j++) lights.setColorAt(li++, before || after ? ON : DIM);
-        }
-      }
-      cores.instanceColor.needsUpdate = true;
-      glows.instanceColor.needsUpdate = true;
-      lights.instanceColor.needsUpdate = true;
-    },
-    // Side (-1 / 1) of a live laser the player's body is touching, or 0.
+    // Side (-1 / 1) of the fence the player's body is touching, or 0.
     check(p) {
       const ax = Math.abs(p.x);
       if (ax + P_HALF_W < LASER_X || ax - P_HALF_W > LASER_X) return 0;
       if (p.y > top + 0.05 || p.y + p.height < LASER_BEAMS[0] - 0.05) return 0;
-      const side = p.x < 0 ? -1 : 1;
-      for (const s of segs) if (s.side === side && s.state === 'on' && p.z + P_HALF_D > s.z0 && p.z - P_HALF_D < s.z1) return side;
-      return 0;
+      if (p.z < Z_FAR || p.z > Z_NEAR) return 0;
+      return p.x < 0 ? -1 : 1;
     },
   };
 })();
@@ -2068,7 +2036,7 @@ const player = (() => {
       const stunned = this.stunT > 0;
       if (stunned) this.stunT -= h;
       if (this.diving || stunned) {
-        const drag = Math.max(0, 1 - (stunned && this.grounded ? 8 : 1.2) * h);   // keep the momentum
+        const drag = Math.max(0, 1 - (stunned && this.grounded ? 8 : this.diving ? 0.8 : 1.2) * h);   // keep the momentum
         this.vx *= drag; this.vz *= drag;
       } else if (this.slideT > 0) {
         this.slideT -= h;
@@ -2163,8 +2131,7 @@ const player = (() => {
       this.yaw += dyaw * (1 - Math.exp(-(sp > 1.2 ? 14 : 5) * dt));
       const flat = this.diving || this.slideT > 0;
       this.diveBlend = damp(this.diveBlend, flat ? 1 : 0, flat ? 18 : 9, dt);
-      const pushed = this.pushT < 0.12;
-      this.lean = damp(this.lean, pushed ? 0.35 : this.grounded ? -0.2 * k : 0.05, 10, dt);
+      this.lean = damp(this.lean, this.grounded ? -0.2 * k : 0.05, 10, dt);
       // Tumble while stunned in the air, then roll back upright.
       if (this.stunT > 0 && !this.grounded) this.spinX += 11 * dt;
       else this.spinX = damp(this.spinX, Math.round(this.spinX / (Math.PI * 2)) * Math.PI * 2, 10, dt);
@@ -2178,11 +2145,6 @@ const player = (() => {
         const f = this.t * 20;
         pose(arms, [Math.sin(f) * 0.7, -Math.sin(f) * 0.7], [1.2, 1.2]);
         pose(legs, [Math.sin(f) * 0.6, -Math.sin(f) * 0.6]);
-        hips.position.y = 0.42;
-      } else if (pushed) {                               // shoved by a wall: brace against it, feet scrambling
-        const f = this.t * 24;
-        pose(arms, [1.45, 1.45], [0.18, 0.18]);
-        pose(legs, [Math.sin(f) * 0.7, -Math.sin(f) * 0.7]);
         hips.position.y = 0.42;
       } else if (this.grounded) {
         if (sp > 0.4) this.runPhase += dt * (8 + sp);
@@ -2348,8 +2310,8 @@ function updatePlayerExtras() {
 // ---------------------------------------------------------------------
 function cameraParams(aspect) {
   const t = clamp((1.3 - aspect) / 0.75, 0, 1);      // 0 = landscape, 1 = tall portrait
-  return { t, dist: lerp(9.6, 16.8, t), height: lerp(6.1, 10.4, t), fov: lerp(58, 75, t), look: lerp(9, 12, t),
-    followX: lerp(0.6, 0.88, t), lookX: lerp(0.75, 0.94, t) };
+  return { t, dist: lerp(10.6, 17.5, t), height: lerp(8.4, 12.5, t), fov: lerp(60, 75, t), look: lerp(10, 12.5, t),
+    followX: lerp(0.55, 0.88, t), lookX: lerp(0.7, 0.94, t) };
 }
 const camCtl = {
   mode: 'menu', params: cameraParams(innerWidth / Math.max(1, innerHeight)),
@@ -2892,7 +2854,6 @@ const game = {
       if (!c.fresh) return;
       audio.play('push');
       vibrate(14);
-      camCtl.shake = Math.max(camCtl.shake, 0.25);
       particles.burst(player.x, 0.1, player.z - P_HALF_D, 6, ['#cfc6ff', '#ffffff'], { speed: 2.4, up: 1.6, size: [0.07, 0.15], life: [0.3, 0.5], grav: 0.6, bounce: 0, carry: world.speed });
     } else if (c.kind === 'bonk') {
       audio.play('bonk');
@@ -2973,7 +2934,6 @@ const game = {
   onWaveComplete(wave) {
     run.waves = wave.index + 1;
     world.targetSpeed = speedForWave(run.waves);
-    world.laserOnFrac = laserOnFracForWave(run.waves);
     hud.setCounter(run.waves, true);
     hud.pipsDone();
     run.pipResetAt = run.time + 0.5;
@@ -3081,12 +3041,11 @@ function simulate(dt, active) {
   if (dt <= 0) return;
   const n = Math.min(24, Math.max(1, Math.ceil(dt / MAX_STEP))), h = dt / n;
   for (let i = 0; i < n; i++) {
-    lasers.tick(world.time, world.laserOnFrac);
     if (active && state === 'playing') {
       player.step(h, true);
       world.step(h);
       world.support(player);
-      const contact = world.resolve(player);
+      const contact = world.resolve(player, h);
       if (contact) game.onContact(contact);
       const zap = lasers.check(player);
       if (zap) { game.die('zap', { side: zap }); continue; }
@@ -3143,7 +3102,6 @@ function update(rawDt) {
   particles.update(vdt);
   rings.update(vdt);
   world.render(vdt);
-  lasers.render();
   bgTime += dt;
   decor.update(bgTime);
   dust.update(dt, (frozen ? 0 : world.speed) * 0.2);
