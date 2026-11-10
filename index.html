@@ -192,6 +192,14 @@ body.touch[data-state=playing] #touch,body.touch[data-state=countdown] #touch{di
   font-weight:800;letter-spacing:.12em;font-size:13px;color:var(--muted);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 0 24px rgba(255,210,63,.12)}
 .best-card b{font-family:var(--display);font-weight:400;font-size:24px;color:var(--gold);letter-spacing:.02em;line-height:1}
 .best-card .star{color:var(--gold);font-size:18px}
+.diff-pick{width:min(420px,90vw);padding:10px 18px 9px;border-radius:18px;background:rgba(14,10,38,.6);border:1px solid var(--line);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);text-align:left}
+.diff-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.diff-head label{font-weight:800;font-size:12px;letter-spacing:.16em;color:var(--muted)}
+.diff-head b{font-family:var(--display);font-weight:400;font-size:19px;letter-spacing:.05em;color:var(--diff,#38bdf8);transition:color .25s}
+.diff-pick input[type=range]{width:100%;margin:10px 0 3px;background:linear-gradient(90deg,var(--diff,#8b6cff) var(--p,50%),rgba(255,255,255,.16) var(--p,50%))}
+.diff-ends{display:flex;justify-content:space-between;font-size:10px;font-weight:800;letter-spacing:.14em;color:var(--muted);opacity:.75}
+.diff-about{margin:5px 0 0;font-size:12.5px;line-height:1.35;color:#e4dfff;min-height:2.7em}
 .menu-row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
 .menu-hint{margin:0;color:var(--muted);font-size:13px;letter-spacing:.04em;text-shadow:0 2px 8px rgba(0,0,0,.7)}
 .menu-hint kbd{font-family:var(--ui);font-weight:800;color:#fff;background:rgba(255,255,255,.12);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
@@ -239,6 +247,7 @@ input[type=range]:focus-visible{outline:2px solid var(--cyan);outline-offset:6px
 .sw{width:40px;height:40px;border-radius:9px;flex:none;display:grid;place-items:center;font-family:var(--display);font-size:16px;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.35)}
 .sw.solid{height:44px;background:linear-gradient(180deg,#ff6b78 0 47%,#9b2335 47% 53%,#ff4d5e 53%);box-shadow:inset 0 2px 0 rgba(255,255,255,.35),0 3px 0 rgba(0,0,0,.35)}
 .sw.low{height:22px;background:linear-gradient(180deg,#ff6b78,#ff4d5e);box-shadow:inset 0 2px 0 rgba(255,255,255,.35),0 3px 0 rgba(0,0,0,.35)}
+.sw.climb{background:linear-gradient(180deg,#ffd0d5,#ff8f9b);clip-path:polygon(0 100%,0 67%,33% 67%,33% 34%,66% 34%,66% 0,100% 0,100% 100%);border-radius:3px}
 .sw.move{background:linear-gradient(160deg,#d08bff,#8a2be2);box-shadow:0 0 14px rgba(196,107,255,.65),0 3px 0 #4b1585}
 .sw.laser{background:repeating-linear-gradient(180deg,transparent 0 6px,#ff3b4f 6px 8px),linear-gradient(90deg,#2a2450 0 4px,transparent 4px calc(100% - 4px),#2a2450 calc(100% - 4px));
   box-shadow:0 0 12px rgba(255,59,79,.55)}
@@ -248,7 +257,7 @@ input[type=range]:focus-visible{outline:2px solid var(--cyan);outline-offset:6px
 .pmeta{font-size:11px;color:var(--muted);margin-bottom:8px}
 .pgrid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px}
 .pgrid .c{aspect-ratio:1;border-radius:2px;background:rgba(255,255,255,.07)}
-.pgrid .c.s{background:#ff4d5e}.pgrid .c.j{background:#ffa3ab}.pgrid .c.m{background:#b44dff;box-shadow:0 0 5px rgba(180,77,255,.7)}
+.pgrid .c.s{background:#ff4d5e}.pgrid .c.s3{background:#c22a3d}.pgrid .c.st{background:#ffc2c8}.pgrid .c.j{background:#ffa3ab}.pgrid .c.m{background:#b44dff;box-shadow:0 0 5px rgba(180,77,255,.7)}
 
 /* Pause / Game over */
 .pause-panel,.go-panel{width:min(440px,100%);text-align:center}
@@ -316,6 +325,9 @@ body.touch .kbd-hint{display:none}
   .btn.big{min-height:52px;padding:11px 40px}
   .best-card{padding:7px 16px}
   .best-card b{font-size:19px}
+  .diff-pick{padding:6px 14px 5px}
+  .diff-pick input[type=range]{margin:6px 0 2px}
+  .diff-about,.diff-ends{display:none}
   .go-num{font-size:clamp(52px,16vh,80px)}
   .panel{padding:16px 18px}
   .panel h2{margin-bottom:8px}
@@ -385,6 +397,12 @@ body.touch .kbd-hint{display:none}
     </h1>
     <p class="tagline">Dodge the walls. Jump, dive, don't get pushed off.</p>
     <div class="best-card"><span class="star">★</span>PERSONAL BEST <b id="menu-best">0</b><span id="menu-best-unit">WAVES</span></div>
+    <div class="diff-pick" id="diff-pick">
+      <div class="diff-head"><label for="set-diff">DIFFICULTY</label><b id="diff-name">NORMAL</b></div>
+      <input type="range" id="set-diff" min="1" max="5" step="1" value="3">
+      <div class="diff-ends" aria-hidden="true"><span>EASY</span><span>HARD</span></div>
+      <p class="diff-about" id="diff-about"></p>
+    </div>
     <button class="btn primary big" id="btn-play">▶&nbsp; PLAY</button>
     <div class="menu-row">
       <button class="btn" id="btn-howto">HOW TO PLAY</button>
@@ -418,11 +436,13 @@ body.touch .kbd-hint{display:none}
     <div class="legend">
       <div class="leg"><span class="sw solid"></span><div><b>Stacked blocks</b><small>Two or three cubes high, too tall to jump. If a wall catches you it pushes you back, so slide sideways into a hole before you run out of floor.</small></div></div>
       <div class="leg"><span class="sw low"></span><div><b>Single block</b><small>One cube. A jump gets you on top, and a running jump or a dive clears it. Ride it, hop off, or climb from it onto a stack.</small></div></div>
+      <div class="leg"><span class="sw climb"></span><div><b>Climb wall</b><small>Three blocks high with no hole (Normal and harder). Its lighter lane has steps in front: jump onto the low step, then the middle one, then over the top, and drop down behind it.</small></div></div>
       <div class="leg"><span class="sw move"></span><div><b>Crusher</b><small>Rises and slams down. Get caught underneath and you're bonked away.</small></div></div>
       <div class="leg"><span class="sw laser"></span><div><b>Edge gap &amp; lasers</b><small>Beside the walls there's a narrow gap with only a quarter of a tile to spare before the always-on laser fence. Squeeze through, but don't touch the laser.</small></div></div>
     </div>
     <h3>DIFFICULTY</h3>
-    <p>The blocks start slow and get 5% faster every 20 waves. Each wave has its own colour, a new wall comes at most every 7 seconds, and the next wave only starts once the last one has left the map. Harder patterns unlock as you go, and from wave 6 a pattern can arrive mirrored. Every wave is checked by the pattern engine, so there is always a way through on the ground.</p>
+    <p>Pick a difficulty on the main menu, from <b>Very easy</b> to <b>Very hard</b>. The easy levels have slower walls, more time to react and no climbing. <b>Normal</b> mixes in the odd climb wall, and <b>Hard</b> and <b>Very hard</b> are faster, with lots of parkour. Your personal best is kept separately for each difficulty.</p>
+    <p>Within a run the blocks get 5% faster every few waves and harder patterns unlock. Each wave has its own colour, a new wall comes at most every 7 seconds, and the next wave only starts once the last one has left the map. Every wave is checked by the pattern engine, so there is always a way through: a hole on the ground, or the steps of a climb wall.</p>
     <h3>PATTERN LIBRARY</h3>
     <div class="plib" id="pattern-lib"></div>
     <div class="actions"><button class="btn primary" id="btn-howto-back">BACK</button></div>
@@ -524,7 +544,7 @@ body.touch .kbd-hint{display:none}
     <div class="go-num" id="go-num">0</div>
     <div class="go-newbest" id="go-newbest">★ NEW PERSONAL BEST! ★</div>
     <div class="go-stats">
-      <div>PERSONAL BEST:<b id="go-best">0</b></div>
+      <div><span id="go-best-lbl">PERSONAL BEST</span>:<b id="go-best">0</b></div>
       <div>TIME:<b id="go-time">00:00</b></div>
     </div>
     <button class="btn primary" id="btn-again">PLAY AGAIN</button>
@@ -636,29 +656,37 @@ const COYOTE_TIME = 0.09, JUMP_BUFFER = 0.13;
 const EMERGE_DUR = 0.45, MIN_ROW_SPACING = 5.0, EMPTY_SPACING = 5.5;
 const WALL_GAP = 7;                                       // seconds between two walls, at least
 const FALL_HANG = 0.5;                                    // seconds a wall teeters on the near edge before dropping
-const DEMO_SPEED = 6, MIRROR_FROM = 5, SAFETY = 0.1, EDGE_MARGIN = 0.55;
+const DEMO_SPEED = 6, SAFETY = 0.1, EDGE_MARGIN = 0.55;
 const MAX_STEP = 1 / 120;
 
 // ---------------------------------------------------------------------
-// 3. Difficulty curve
+// 3. Difficulty: five levels picked on the menu, and the curve within a run
+//    speed: wall speed multiplier · ramp: waves per 5% speed-up · margin: reaction time
+//    maxRating / shift: which patterns and how hard they get · climb: how often a
+//    3-block wall with steps (parkour) is picked, from wave climbFrom on.
 // ---------------------------------------------------------------------
-const speedForWave = (w) => 7 * Math.pow(1.05, Math.floor(w / 20));    // slow start, 5% faster every 20 waves
-const comfortForWave = (w) => 0.22 + 0.34 * Math.exp(-w / 16);          // spare reaction time per row (s)
-const breatherForWave = (w) => 1.25 + 0.85 * Math.exp(-w / 10);         // pause between waves (s)
-const crusherPeriodForWave = (w) => Math.max(1.3, 2.1 - w * 0.03);      // crusher cycle (s)
-const DIFFICULTY = [
-  { min: 0, name: 'EASY', color: '#4ade80' },
-  { min: 3, name: 'NORMAL', color: '#38bdf8' },
-  { min: 6, name: 'HARD', color: '#fbbf24' },
-  { min: 10, name: 'EXPERT', color: '#fb7185' },
-  { min: 15, name: 'MASTER', color: '#c084fc' },
-  { min: 20, name: 'INSANE', color: '#ff3b5c' },
+const LEVELS = [
+  { n: 1, name: 'VERY EASY', color: '#4ade80', speed: 0.8, ramp: 25, margin: 1.6, maxRating: 2, shift: -1, mirrorFrom: Infinity, opening: true, climb: 0, climbFrom: Infinity,
+    about: 'Slow walls with big holes. No climbing.' },
+  { n: 2, name: 'EASY', color: '#a3e635', speed: 0.9, ramp: 20, margin: 1.3, maxRating: 3, shift: -0.5, mirrorFrom: 10, opening: true, climb: 0, climbFrom: Infinity,
+    about: 'Every wall has a hole somewhere. No climbing.' },
+  { n: 3, name: 'NORMAL', color: '#38bdf8', speed: 1, ramp: 20, margin: 1, maxRating: 5, shift: 0, mirrorFrom: 5, opening: true, climb: 0.6, climbFrom: 4,
+    about: 'Now and then a 3-block wall has no hole: climb its steps to get over.' },
+  { n: 4, name: 'HARD', color: '#fbbf24', speed: 1.1, ramp: 15, margin: 0.8, maxRating: 5, shift: 0.7, mirrorFrom: 2, opening: false, climb: 1.8, climbFrom: 1,
+    about: 'Faster walls and lots of parkour over 3-block walls.' },
+  { n: 5, name: 'VERY HARD', color: '#fb7185', speed: 1.2, ramp: 10, margin: 0.65, maxRating: 5, shift: 1.4, mirrorFrom: 0, opening: false, climb: 3.5, climbFrom: 0,
+    about: 'Fast walls, and parkour in almost every wave.' },
 ];
-const difficultyFor = (w) => { let d = DIFFICULTY[0]; for (const x of DIFFICULTY) if (w >= x.min) d = x; return d; };
+let level = LEVELS[2];                                    // the level of the run in progress
+const speedForWave = (w) => 7 * level.speed * Math.pow(1.05, Math.floor(w / level.ramp));
+const comfortForWave = (w) => (0.22 + 0.34 * Math.exp(-w / 16)) * level.margin;   // spare reaction time per row (s)
+const breatherForWave = (w) => (1.25 + 0.85 * Math.exp(-w / 10)) * level.margin;  // pause between waves (s)
+const crusherPeriodForWave = (w) => Math.max(1.3, 2.1 - w * 0.03) / level.speed;  // crusher cycle (s)
 
 // ---------------------------------------------------------------------
 // 4. ASCII pattern library
 //    '#' solid block · '.' gap · 'J' low obstacle (jump) · 'M' moving crusher
+//    '3' three blocks high · 'S' climb: a 3-block wall with a 2-block and a 1-block step in front
 //    Row 8 arrives first, row 1 arrives last. Columns A–H are the lanes.
 // ---------------------------------------------------------------------
 const PATTERN_DEFS = [
@@ -844,11 +872,52 @@ const PATTERN_DEFS = [
   3 | . . # . . # . . |
   2 | . # # M M # # . |
   1 | J J # # # # J J |` },
+  // Climb walls (Normal and harder): a full 3-block wall whose only way over is a lane of steps.
+  { id: 'stepup', name: 'Step Up', minWave: 0, rating: 2, wall: true, climb: true, ascii: `
+      A B C D E F G H
+  8 | # # # . . # # # |
+  7 | . . . . . . . . |
+  6 | 3 3 3 S S 3 3 3 |
+  5 | . . . . . . . . |
+  4 | # . . # # # # # |
+  3 | . . . . . . . . |
+  2 | J J J J J J J J |
+  1 | . . . . . . . . |` },
+  { id: 'climbwall', name: 'Climb Wall', minWave: 0, rating: 3, wall: true, climb: true, ascii: `
+      A B C D E F G H
+  8 | 3 3 3 3 3 S 3 3 |
+  7 | . . . . . . . . |
+  6 | # # . . # # # # |
+  5 | . . . . . . . . |
+  4 | 3 3 S 3 3 3 3 3 |
+  3 | . . . . . . . . |
+  2 | # # # # . . # # |
+  1 | . . . . . . . . |` },
+  { id: 'summit', name: 'Summit', minWave: 0, rating: 4, wall: true, climb: true, ascii: `
+      A B C D E F G H
+  8 | 3 3 S 3 3 3 3 3 |
+  7 | . . . . . . . . |
+  6 | # M M # # # . # |
+  5 | . . . . . . . . |
+  4 | 3 3 3 3 3 3 S 3 |
+  3 | . . . . . . . . |
+  2 | J J # # # # J J |
+  1 | . . . . . . . . |` },
+  { id: 'skyladder', name: 'Sky Ladder', minWave: 0, rating: 5, wall: true, climb: true, ascii: `
+      A B C D E F G H
+  8 | 3 S 3 3 3 3 3 3 |
+  7 | . . . . . . . . |
+  6 | 3 3 3 3 S 3 3 3 |
+  5 | . . . . . . . . |
+  4 | 3 3 3 3 3 3 S 3 |
+  3 | . . . . . . . . |
+  2 | 3 3 3 S 3 3 3 3 |
+  1 | . . . . . . . . |` },
 ];
 const FIXED_OPENING = ['wallrush', 'corridor', 'hopwall'];   // gentle introduction for waves 1-3
 
 // --- Parser: ASCII grid → { rows: [{ rowNumber, cells[8] }] } in arrival order (8 → 1)
-const SYMBOLS = new Set(['#', '.', 'J', 'M']);
+const SYMBOLS = new Set(['#', '.', 'J', 'M', '3', 'S']);
 function parsePattern(def) {
   const byRow = {};
   for (const line of def.ascii.split('\n')) {
@@ -888,7 +957,7 @@ const SAMPLES = (() => {
 const NS = SAMPLES.length;
 const CLEARANCE = HIT_HALF_W + P_HALF_W + SAFETY;
 
-function rowSafety(cells) {            // 0 = blocked, 1 = free, 2 = needs a jump
+function rowSafety(cells) {            // 0 = blocked, 1 = free, 2 = needs a jump, 3 = climb the steps
   const out = new Uint8Array(NS);
   for (let s = 0; s < NS; s++) {
     const x = SAMPLES[s];
@@ -896,7 +965,9 @@ function rowSafety(cells) {            // 0 = blocked, 1 = free, 2 = needs a jum
     for (let i = 0; i < LANES; i++) {
       const c = cells[i];
       if (c === '.' || Math.abs(x - laneX(i)) >= CLEARANCE) continue;
-      if (c === 'J') t = 2; else { t = 0; break; }
+      if (c === 'S') t = 3;
+      else if (c === 'J') { if (t === 1) t = 2; }
+      else { t = 0; break; }
     }
     out[s] = t;
   }
@@ -911,6 +982,8 @@ function stepTime(d, ta, tb) {
   let t = moveTime(d);
   if (ta === 2) t += 0.22;                                  // still landing after clearing a barrier
   if (tb === 2) t += 0.12;                                  // set up the jump for the next barrier
+  if (ta === 3) t += 0.65;                                  // dropping off the back of a climbed wall
+  if (tb === 3) t += 0.3;                                   // line up with the steps and hop on
   if (ta === 2 && tb === 2) t = Math.max(t, AIR_TIME + 0.18); // land, then jump again
   return t;
 }
@@ -990,12 +1063,14 @@ const LIB_BY_ID = Object.fromEntries(LIBRARY.map((p) => [p.id, p]));
 
 function choosePattern(index, demo, lastId) {
   if (debug.forcePattern && LIB_BY_ID[debug.forcePattern]) return LIB_BY_ID[debug.forcePattern];
-  if (!demo && index < FIXED_OPENING.length && LIB_BY_ID[FIXED_OPENING[index]]) return LIB_BY_ID[FIXED_OPENING[index]];
-  const pool = LIBRARY.filter((p) => demo || p.minWave <= index);
-  const target = demo ? 2.6 : clamp(1.2 + index / 3.2, 1, 5);
+  if (!demo && level.opening && index < FIXED_OPENING.length && LIB_BY_ID[FIXED_OPENING[index]]) return LIB_BY_ID[FIXED_OPENING[index]];
+  const climbOk = level.climb > 0 && index >= level.climbFrom;
+  const pool = LIBRARY.filter((p) => demo || (p.minWave <= index && p.rating <= level.maxRating && (!p.climb || climbOk)));
+  const target = demo ? 2.6 : clamp(1.2 + index / 3.2 + level.shift, 1, 5);
   let total = 0;
   const weights = pool.map((p) => {
-    const w = (p.id === lastId ? 0.03 : 1) * (p.wall ? 2.2 : 1) * (Math.exp(-((p.rating - target) ** 2) / 1.8) + 0.12);
+    const w = (p.id === lastId ? 0.03 : 1) * (p.wall ? 2.2 : 1) * (p.climb && !demo ? level.climb : 1)
+      * (Math.exp(-((p.rating - target) ** 2) / 1.8) + 0.12);
     total += w; return w;
   });
   let r = Math.random() * total;
@@ -1019,11 +1094,12 @@ function defaultQuality() {
   if (COARSE) return mem <= 3 || cores <= 4 ? 'low' : 'medium';
   return 'high';
 }
-const DEFAULTS = Object.freeze({ quality: defaultQuality(), fov: 70, camX: 0, camY: 0, mouseSens: 1, cameraSens: 1, touchSens: 1, joySize: 1, volume: 0.7, sfx: true, music: true, vibration: true });
+const DEFAULTS = Object.freeze({ quality: defaultQuality(), difficulty: 3, fov: 70, camX: 0, camY: 0, mouseSens: 1, cameraSens: 1, touchSens: 1, joySize: 1, volume: 0.7, sfx: true, music: true, vibration: true });
 function sanitizeSettings(s) {
   const num = (v, lo, hi, d) => (Number.isFinite(+v) ? clamp(+v, lo, hi) : d);
   return {
     quality: ['low', 'medium', 'high'].includes(s.quality) ? s.quality : DEFAULTS.quality,
+    difficulty: Math.round(num(s.difficulty, 1, LEVELS.length, 3)),
     fov: num(s.fov, 45, 100, DEFAULTS.fov), camX: num(s.camX, -6, 6, 0), camY: num(s.camY, -4, 8, 0),
     mouseSens: num(s.mouseSens, 0.2, 4, 1), cameraSens: num(s.cameraSens, 0.3, 2, 1),
     touchSens: num(s.touchSens, 0.5, 3, 1), joySize: num(s.joySize, 0.7, 1.4, 1),
@@ -1039,8 +1115,11 @@ function loadSettings() {
 }
 let settings = loadSettings();
 const saveSettings = () => store.set(SETTINGS_KEY, JSON.stringify(settings));
-let bestWave = Math.max(0, parseInt(store.get(BEST_KEY) || '0', 10) || 0);
-const saveBest = () => store.set(BEST_KEY, String(bestWave));
+// Personal best per difficulty level (Normal keeps the original key).
+const bestKey = (n) => (n === 3 ? BEST_KEY : `${BEST_KEY}.${n}`);
+const loadBest = (n) => Math.max(0, parseInt(store.get(bestKey(n)) || '0', 10) || 0);
+let bestWave = loadBest(settings.difficulty);
+const saveBest = () => store.set(bestKey(level.n), String(bestWave));
 function vibrate(pattern) {
   if (!settings.vibration || !CAN_VIBRATE) return;
   try { navigator.vibrate(pattern); } catch { /* ignored */ }
@@ -1649,7 +1728,7 @@ const world = {
     const index = demo ? -1 : this.nextIndex++;
     const pattern = choosePattern(Math.max(0, index), demo, this.lastPatternId);
     this.lastPatternId = pattern.id;
-    const mirrored = demo ? Math.random() < 0.5 : index >= MIRROR_FROM && Math.random() < 0.5;
+    const mirrored = demo ? Math.random() < 0.5 : index >= level.mirrorFrom && Math.random() < 0.5;
     const speed = demo ? DEMO_SPEED : speedForWave(index);
     const vDesign = speed * 1.06;
     const wallGap = WALL_GAP * speed;                      // distance that keeps walls WALL_GAP seconds apart
@@ -1662,15 +1741,16 @@ const world = {
     // Lay the 8 rows out along z. Spacing comes from the solver's time budget.
     const dist = (t) => Math.max(MIN_ROW_SPACING, 2 * ROW_HALF_D + 2 * P_HALF_D + vDesign * t);
     const solid = plan.solid, zs = new Array(8).fill(0), lead = solid[0];
+    const stepsOut = (i) => (cellRows[i].includes('S') ? 2 * BLOCK_D : 0);   // a climb wall's steps stick out in front
     let zFirst;
     if (this.lastSolidZ === null) zFirst = this.firstZ - lead * EMPTY_SPACING;
-    else zFirst = Math.min(this.firstZ - lead * EMPTY_SPACING, this.lastSolidZ - Math.max(dist(plan.interTime), wallGap));
+    else zFirst = Math.min(this.firstZ - lead * EMPTY_SPACING, this.lastSolidZ - Math.max(dist(plan.interTime) + stepsOut(lead), wallGap));
     const startRef = this.lastRowZ === null ? zFirst + (lead + 1) * EMPTY_SPACING : this.lastRowZ;
     for (let i = 0; i < lead; i++) zs[i] = lerp(startRef, zFirst, (i + 1) / (lead + 1));
     zs[lead] = zFirst;
     for (let k = 1; k < solid.length; k++) {
       const a = solid[k - 1], b = solid[k];
-      zs[b] = zs[a] - Math.max(dist(plan.gaps[k - 1]), (b - a) * EMPTY_SPACING, wallGap);
+      zs[b] = zs[a] - Math.max(dist(plan.gaps[k - 1]) + stepsOut(b), (b - a) * EMPTY_SPACING, wallGap);
       for (let i = a + 1; i < b; i++) zs[i] = lerp(zs[a], zs[b], (i - a) / (b - a));
     }
     const last = solid[solid.length - 1];
@@ -1679,6 +1759,7 @@ const world = {
     this.lastRowZ = zs[7];
 
     const color = WAVE_COLORS[(demo ? this.demoColor++ : index) % WAVE_COLORS.length];
+    const stepColor = color.clone().lerp(WHITE, 0.5);      // climb lanes are lighter, so the way up stands out
     const period = demo ? 2.0 : crusherPeriodForWave(index);
     const wave = { index, pattern, mirrored, demo, rows: [], speed, announced: false };
     for (let i = 0; i < 8; i++) {
@@ -1691,12 +1772,23 @@ const world = {
       for (let lane = 0; lane < LANES; lane++) {
         const c = cells[lane];
         if (c === '.') continue;
-        const units = c === '#' ? (Math.random() < 0.25 ? 3 : 2) : 1;     // stacks of whole blocks
-        const h = units * BLOCK_H;
-        const parts = [{ ox: 0, oz: 0, w: BLOCK_W, d: BLOCK_D, y0: 0, h, color: c === 'M' ? WHITE : color }];
-        row.blocks.push({ type: c, lane, x: laneX(lane), y: -(h + 0.3), vy: 0, units, riseH: h + 0.3, parts,
+        const units = c === '3' || c === 'S' ? 3 : c === '#' ? (Math.random() < 0.25 ? 3 : 2) : 1;     // stacks of whole blocks
+        const h = units * BLOCK_H, tint = c === 'M' ? WHITE : c === 'S' ? stepColor : color;
+        const part = (oz, n) => ({ ox: 0, oz, w: BLOCK_W, d: BLOCK_D, y0: 0, h: n * BLOCK_H, units: n, color: tint });
+        // 'S': steps in front of the wall, two blocks high and then one, to climb over it
+        const parts = c === 'S' ? [part(0, 3), part(BLOCK_D, 2), part(2 * BLOCK_D, 1)] : [part(0, units)];
+        const ext = { x0: -BLOCK_W / 2, x1: BLOCK_W / 2, z0: -BLOCK_D / 2, z1: (c === 'S' ? 2.5 : 0.5) * BLOCK_D, h };
+        row.blocks.push({ type: c, lane, x: laneX(lane), y: -(h + 0.3), vy: 0, units, riseH: h + 0.3, parts, ext,
           phase: (i * 0.23 + lane * 0.11) % 1, period, down: false, fy: 0, fvy: 0, rot: 0, rotV: 0, rotZ: 0 });
       }
+      // How far the row reaches in z, and where its centre of mass is (it tips once that is past the edge).
+      let mass = 0, mz = 0;
+      row.ext0 = -BLOCK_D / 2; row.ext1 = BLOCK_D / 2;
+      for (const b of row.blocks) {
+        row.ext1 = Math.max(row.ext1, b.ext.z1);
+        for (const pt of b.parts) { mass += pt.units; mz += pt.units * pt.oz; }
+      }
+      row.tip = mass ? mz / mass : 0;
       wave.rows.push(row);
       this.rows.push(row);
     }
@@ -1756,7 +1848,7 @@ const world = {
         } else b.y = (k - 1) * b.riseH;
         b.vy = (b.y - prevY) / h;
       }
-      if (row.z - 0.3 > Z_NEAR) {        // tipped over the near edge
+      if (row.z + row.tip - 0.3 > Z_NEAR) {   // tipped over the near edge
         row.falling = true;
         row.fallT = 0;
         row.fallSpeed = this.speed;
@@ -1791,7 +1883,7 @@ const world = {
     for (const row of this.rows) {
       if (!row.emerged || row.sinking || !row.blocks.length) continue;
       if (row.falling && row.fallT > FALL_HANG * 0.7) continue;   // tumbling into the void by now
-      if (row.z + BLOCK_D / 2 + 0.6 < p.z - P_HALF_D || row.z - BLOCK_D / 2 - 0.6 > p.z + P_HALF_D) continue;
+      if (row.z + row.ext1 + 0.6 < p.z - P_HALF_D || row.z + row.ext0 - 0.6 > p.z + P_HALF_D) continue;
       for (const b of row.blocks) {
         const by = row.falling ? b.fy : b.y, vy = row.falling ? b.fvy : b.vy;
         for (const part of b.parts) {
@@ -1907,34 +1999,36 @@ const world = {
       if (!row.emerged) continue;
       const sinkOff = row.sinking ? -2.8 * easeInOutQuad(clamp(row.sinkT / 0.4, 0, 1)) : 0;
       for (const b of row.blocks) {
-        const y0 = (row.falling ? b.fy : b.y) + sinkOff, y1 = y0 + b.units * BLOCK_H, m = 0.25;
-        const x0 = b.x - BLOCK_W / 2, x1 = b.x + BLOCK_W / 2, z0 = row.z - BLOCK_D / 2, z1 = row.z + BLOCK_D / 2;
-        let ghost = false;
-        if (see) {
-          const cp = camera.position;                      // right in front of the camera: clear the view
-          const dx = Math.max(x0 - cp.x, 0, cp.x - x1), dy = Math.max(y0 - cp.y, 0, cp.y - y1), dz = Math.max(z0 - cp.z, 0, cp.z - z1);
-          ghost = dx * dx + dy * dy + dz * dz < CAM_CLEAR * CAM_CLEAR
-            || SIGHT.some((sg) => sg.hits(x0 - m, y0, z0 - m, x1 + m, y1, z1 + m));
-        }
-        const key = ghost ? 'ghost' : b.type === 'M' ? 'M' : '#', mesh = MESH[key], color = b.parts[0].color;
+        const base = (row.falling ? b.fy : b.y) + sinkOff, m = 0.25;
         if (row.falling) {
           _e.set(b.rot, 0, b.rotZ * row.fallT);
           _q.setFromEuler(_e);
           _mb.compose(_p.set(b.x, b.fy, row.z), _q, _one);
         }
-        for (let u = 0; u < b.units; u++) {                 // a stack is drawn as whole blocks
-          const i = n[key];
-          if (i >= mesh.instanceMatrix.count) break;
-          n[key]++;
-          _mp.makeScale(BLOCK_W, BLOCK_H, BLOCK_D);
-          if (row.falling) {
-            _mp.setPosition(0, u * BLOCK_H, 0);
-            _m4.multiplyMatrices(_mb, _mp);
-          } else {
-            _m4.copy(_mp).setPosition(b.x, b.y + u * BLOCK_H + sinkOff, row.z);
+        for (const part of b.parts) {
+          let ghost = false;
+          if (see) {
+            const x0 = b.x + part.ox - part.w / 2, x1 = x0 + part.w, z0 = row.z + part.oz - part.d / 2, z1 = z0 + part.d;
+            const y0 = base + part.y0, y1 = y0 + part.h, cp = camera.position;   // right in front of the camera: clear the view
+            const dx = Math.max(x0 - cp.x, 0, cp.x - x1), dy = Math.max(y0 - cp.y, 0, cp.y - y1), dz = Math.max(z0 - cp.z, 0, cp.z - z1);
+            ghost = dx * dx + dy * dy + dz * dz < CAM_CLEAR * CAM_CLEAR
+              || SIGHT.some((sg) => sg.hits(x0 - m, y0, z0 - m, x1 + m, y1, z1 + m));
           }
-          mesh.setMatrixAt(i, _m4);
-          mesh.setColorAt(i, color);
+          const key = ghost ? 'ghost' : b.type === 'M' ? 'M' : '#', mesh = MESH[key];
+          for (let u = 0; u < part.units; u++) {             // a stack is drawn as whole blocks
+            const i = n[key];
+            if (i >= mesh.instanceMatrix.count) break;
+            n[key]++;
+            _mp.makeScale(BLOCK_W, BLOCK_H, BLOCK_D);
+            if (row.falling) {
+              _mp.setPosition(part.ox, part.y0 + u * BLOCK_H, part.oz);
+              _m4.multiplyMatrices(_mb, _mp);
+            } else {
+              _m4.copy(_mp).setPosition(b.x + part.ox, b.y + part.y0 + u * BLOCK_H + sinkOff, row.z + part.oz);
+            }
+            mesh.setMatrixAt(i, _m4);
+            mesh.setColorAt(i, part.color);
+          }
         }
         if (b.type === 'M' && !row.falling && !row.sinking && row.emergeT > 0 && n.mk < MESH.mk.instanceMatrix.count) {
           const near = 1 - clamp(b.y / CRUSH_UP, 0, 1);       // marker glows as the crusher descends
@@ -2722,11 +2816,10 @@ const hud = {
   },
   setBest(n, live) { this.best.textContent = n; this.chipBest.classList.toggle('live', !!live); },
   setDifficulty(waves, speed) {
-    const d = difficultyFor(waves);
-    if (d.name !== this.lastDiff) {
-      this.lastDiff = d.name;
-      this.diff.textContent = d.name;
-      this.chipDiff.style.setProperty('--diff', d.color);
+    if (level.name !== this.lastDiff) {
+      this.lastDiff = level.name;
+      this.diff.textContent = level.name;
+      this.chipDiff.style.setProperty('--diff', level.color);
     }
     const sp = `SPD ${(speed / 10).toFixed(1)}×`;
     if (sp !== this.lastSpeed) { this.lastSpeed = sp; this.speed.textContent = sp; }
@@ -2773,6 +2866,16 @@ function showScreen(name) {
     document.activeElement.blur();
   }
 }
+function syncDifficultyUI() {
+  const L = LEVELS[settings.difficulty - 1], el = $('set-diff');
+  el.value = settings.difficulty;
+  el.style.setProperty('--p', `${((settings.difficulty - 1) / (LEVELS.length - 1)) * 100}%`);
+  el.setAttribute('aria-valuetext', L.name.toLowerCase());
+  $('diff-pick').style.setProperty('--diff', L.color);
+  $('diff-name').textContent = L.name;
+  $('diff-about').textContent = L.about;
+  if (state === 'menu' || state === 'loading' || state === 'gameover') { bestWave = loadBest(L.n); updateMenuBest(); }
+}
 function updateMenuBest() {
   $('menu-best').textContent = bestWave;
   $('menu-best-unit').textContent = bestWave === 1 ? 'WAVE' : 'WAVES';
@@ -2780,7 +2883,7 @@ function updateMenuBest() {
 function renderPatternLibrary() {
   const wrap = $('pattern-lib');
   wrap.replaceChildren();
-  const cls = { '#': 'c s', J: 'c j', M: 'c m', '.': 'c' };
+  const cls = { '#': 'c s', J: 'c j', M: 'c m', '.': 'c', 3: 'c s3', S: 'c st' };
   for (const p of LIBRARY) {
     const card = document.createElement('div');
     card.className = 'pcard';
@@ -2789,7 +2892,7 @@ function renderPatternLibrary() {
     const meta = document.createElement('div');
     const fixedAt = FIXED_OPENING.indexOf(p.id);
     const firstWave = fixedAt >= 0 ? fixedAt + 1 : Math.max(p.minWave, FIXED_OPENING.length) + 1;
-    meta.className = 'pmeta'; meta.textContent = `From wave ${firstWave}`;
+    meta.className = 'pmeta'; meta.textContent = p.climb ? 'Climb wall · Normal and harder' : `From wave ${firstWave}`;
     const grid = document.createElement('div');
     grid.className = 'pgrid';
     grid.setAttribute('role', 'img');
@@ -2860,6 +2963,12 @@ function bindSettingsUI() {
   bindRange('set-touch', 'touchSens');
   bindRange('set-joy', 'joySize');
   bindRange('set-volume', 'volume');
+  $('set-diff').addEventListener('input', (e) => {
+    const d = clamp(Math.round(+e.target.value), 1, LEVELS.length);
+    if (d === settings.difficulty) return;
+    settings.difficulty = d;
+    saveSettings(); syncDifficultyUI(); audio.play('click');
+  });
   const bindToggle = (id, key, after) => {
     $(id).addEventListener('click', () => {
       settings[key] = !settings[key];
@@ -2873,7 +2982,7 @@ function bindSettingsUI() {
   bindToggle('set-vibration', 'vibration', () => vibrate(40));
   $('btn-settings-reset').addEventListener('click', () => {
     const qualityChanged = settings.quality !== DEFAULTS.quality;
-    settings = { ...DEFAULTS };
+    settings = { ...DEFAULTS, difficulty: settings.difficulty };   // difficulty lives on the menu
     if (qualityChanged) createRenderer();
     applySettings(); syncSettingsUI(); saveSettings(); audio.play('click');
   });
@@ -2910,6 +3019,8 @@ const game = {
   start() {
     audio.unlock();
     showScreen(null);
+    level = LEVELS[settings.difficulty - 1];                // the run keeps this level until it ends
+    bestWave = loadBest(level.n);
     world.reset('game');
     particles.clear();
     player.reset();
@@ -3016,6 +3127,7 @@ const game = {
     if (n > bestWave) { bestWave = n; saveBest(); }
     $('go-cause').textContent = run.causeText;
     $('go-best').textContent = bestWave;
+    $('go-best-lbl').textContent = `BEST ON ${level.name}`;
     $('go-time').textContent = fmtTime(run.time);
     $('go-newbest').classList.toggle('show', isBest);
     showScreen('gameover');
@@ -3299,7 +3411,7 @@ function init() {
   createRenderer();
   applySettings();
   syncSettingsUI();
-  updateMenuBest();
+  syncDifficultyUI();
   world.reset('demo');
   for (let i = 0; i < 90; i++) world.step(1 / 30);     // pre-warm the menu background
   camCtl.mode = 'menu';
@@ -3312,7 +3424,7 @@ function init() {
   if (new URLSearchParams(location.search).has('debug')) {
     window.BlockDash = {
       get state() { return state; }, world, player, run, input, debugOverride, debug, game, settings: () => settings, cam: camCtl, lasers,
-      rowSafety, planWave, SAMPLES, LIBRARY, speedForWave, laneX,
+      rowSafety, planWave, SAMPLES, LIBRARY, speedForWave, laneX, levelName: () => level.name,
       tick(dt) { update(dt); }, draw() { renderer.render(scene, camera); },
       info() { return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, pixelRatio: renderer.getPixelRatio() }; },
       consts: { P_START_Z, P_HALF_W, P_HALF_D, P_HEIGHT, ROW_HALF_D, BLOCK_H, BLOCK_W, BLOCK_D, HIT_HALF_D, JUMP_V, G_UP, G_DOWN, AIR_TIME, MOVE_SPEED, CRUSH_UP, LANES, Z_SPAWN, Z_NEAR, Z_FAR, FALL_HANG, HALF_W, ARENA_HALF, LASER_X },

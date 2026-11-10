@@ -4,6 +4,8 @@ A single-player 3D obstacle survival game in one file: `index.html` (HTML, CSS a
 
 Walls of cube blocks sweep across a small floating 10-lane arena with a slightly slippery checkered floor, one wave at a time and at most one new wall every 7 seconds. Slip through the holes, jump or dive over single cubes, or climb on top and ride. A wall that catches you pushes you toward the edge, so slide into a hole before you run out of floor. Between the outer lanes and the always-on laser fences runs a narrow flat gap: the runner fits beside a wall with only a quarter of a tile (0.5 units) to spare, so squeezing past takes precision. Every wave you fully survive adds one to the **WAVE SURVIVED** counter.
 
+Pick a **difficulty** on the main menu with the slider, from Very easy to Very hard. On Normal and harder, some walls are three blocks high with no hole at all: you get over them with a little parkour, up a lane of steps in front of the wall.
+
 You play as a chunky little party-game runner (an original character), as tall as one block, who runs, jumps, flails and tumbles. The camera follows close behind and a little above, with a 70° field of view by default, so the runner and the walls look big on screen. Any block between the camera and the runner, or right in front of the camera, turns see-through so it never hides you.
 
 ## Running it
@@ -43,26 +45,38 @@ Each wave is an 8×8 ASCII grid. Every wave has its own block colour, different 
 | `.` | Hole |
 | `J` | Single cube: a jump gets you on top, and a running jump or a dive clears it |
 | `M` | Moving crusher: rises and slams down; if it lands on you, you're bonked forward and dazed for a moment |
+| `3` | Stack of exactly 3 cubes: a wall you can't jump |
+| `S` | Climb lane: a 3-cube stack with steps in front of it (2 cubes high, then 1). Jump onto the low step, then the middle one, then onto the top, and drop down behind the wall. Climb lanes are drawn in a lighter colour |
 
 How contact works:
 
 - **Front of an incoming wall:** it pushes you along with it. You can slide sideways along it freely into a hole, or run away from it.
 - **Side of a block:** solid. You stop against it.
 - **Back of a wall:** solid too. If you catch up with a wall that has already passed you, you stop against it and move along with it.
-- **Top of a block:** safe to stand on. A ridden block carries you toward the near edge, and you keep that momentum when you jump off. Every block is the same cube, and taller obstacles are whole cubes stacked on top of each other. Stacks can't be reached from the floor; climb onto them from a single block.
+- **Top of a block:** safe to stand on. A ridden block carries you toward the near edge, and you keep that momentum when you jump off. Every block is the same cube, and taller obstacles are whole cubes stacked on top of each other. Stacks can't be reached from the floor; climb onto them from a single block, or up the steps of a climb lane. While you climb you ride along with the wall, so climbing doesn't eat into the time before the next wall.
 - **Dive:** press jump again in the air. You lunge forward in your steering direction (or the way you face) with a small hop and a low profile, covering about 6.4 units from the top of a jump, then do a short belly slide.
 
 The run only ends if you **fall off the arena** (off the front or back edge: pushed off, ridden off or walked off) or **touch a laser fence** on the sides. Falling off means a long drop before the run is over, and walls teeter on the near edge for a moment before they fall, giving a rider time to jump off. A teetering wall stays solid until it tips into the void. The floor is a little slippery: you reach full speed in about 0.13 s and turn quickly, but glide a short way (under two units) when you let go. A wall hands you its momentum when it shoves you, and you bounce lightly off block sides. There's no gate: walls rise out of the platform right at the far edge.
 
-The six patterns from the brief (Basic Corridor, Alternating Gaps, Double Corridors, Jump Challenge, Narrow Zigzag, Moving Obstacles) are included verbatim. Six wall waves (Wall Rush, Hop or Hole, Slider, Twin Walls, Crusher Wall, Last Gap) are picked more often than the rest. Six more grid patterns also unlock as the wave count grows: Hurdle Run, Staircase, Hop Scotch, Split Decision, Crusher Alley and The Gauntlet.
+The six patterns from the brief (Basic Corridor, Alternating Gaps, Double Corridors, Jump Challenge, Narrow Zigzag, Moving Obstacles) are included verbatim. Six wall waves (Wall Rush, Hop or Hole, Slider, Twin Walls, Crusher Wall, Last Gap) are picked more often than the rest. Six more grid patterns also unlock as the wave count grows: Hurdle Run, Staircase, Hop Scotch, Split Decision, Crusher Alley and The Gauntlet. Four climb-wall patterns (Step Up, Climb Wall, Summit and Sky Ladder) appear only on Normal and harder.
 
 The pattern engine parses each grid and rejects malformed or impossible patterns when the page loads. It then lays out every wave with a survivability solver:
 
-- The arena width is sampled every 0.1 units, and each row is classified as free, needs a jump, or blocked for the player's hitbox. Wall sections and crushers count as blocked, so a wave never depends on climbing, riding, diving or crusher timing.
-- For each pair of consecutive rows, the solver works out how long the player needs to get from any position they could be in to the nearest safe spot in the next row. This accounts for acceleration, landing after a jump and setting up the next jump. Rows are then spaced so that much time always exists at the current speed, plus a reaction margin.
+- The arena width is sampled every 0.1 units, and each row is classified as free, needs a jump, climb the steps, or blocked for the player's hitbox. Wall sections and crushers count as blocked, so a wave never depends on riding, diving or crusher timing, and only a climb wall's steps ever ask you to climb.
+- For each pair of consecutive rows, the solver works out how long the player needs to get from any position they could be in to the nearest safe spot in the next row. This accounts for acceleration, landing after a jump or a climb, and setting up the next jump or climb. Rows are then spaced so that much time always exists at the current speed, plus a reaction margin, and a climb wall is moved back by the length of its steps.
 - Waves are spaced the same way, so the first row of the next wave is always reachable from wherever the last one could leave you.
 
-The blocks start slow (7 units/s) and get 5% faster every 20 waves. A new wall appears at most once every 7 seconds, and only one wave is on the map at a time: the next one starts at the far edge once every row of the previous wave has left over the near edge. Meanwhile the reaction margin shrinks, harder patterns become more likely, and from wave 6 a pattern may arrive mirrored. The arena is 10 lanes wide and 36 units long; the 8-column patterns are centred on it and their outer columns extend to the edges. The patterns are authored with the chessboard-style `A`–`H` / `8`–`1` grid below, but no lane letters or row numbers are drawn in the game.
+A new wall appears at most once every 7 seconds on every level, and only one wave is on the map at a time: the next one starts at the far edge once every row of the previous wave has left over the near edge. Within a run the blocks get 5% faster every few waves, the reaction margin shrinks, harder patterns become more likely, and a pattern may arrive mirrored. The difficulty slider sets how all of that goes:
+
+| Level | Start speed | 5% faster every | Reaction margin | Patterns | Mirrored from wave | Climb walls |
+|---|---|---|---|---|---|---|
+| Very easy | 5.6 units/s | 25 waves | ×1.6 | easiest only (rating 1–2) | never | none |
+| Easy | 6.3 units/s | 20 waves | ×1.3 | rating 1–3 | 11 | none |
+| Normal | 7 units/s | 20 waves | ×1 | all | 6 | now and then, from wave 5 |
+| Hard | 7.7 units/s | 15 waves | ×0.8 | all, harder sooner | 3 | about every other wave, from wave 2 |
+| Very hard | 8.4 units/s | 10 waves | ×0.65 | all, hardest sooner | 1 | most waves, from wave 1 |
+
+Very easy, Easy and Normal open with the same three gentle waves. The arena is 10 lanes wide and 36 units long; the 8-column patterns are centred on it and their outer columns extend to the edges. The patterns are authored with the chessboard-style `A`–`H` / `8`–`1` grid below, but no lane letters or row numbers are drawn in the game.
 
 ### Adding a pattern
 
@@ -76,11 +90,11 @@ Append an entry to `PATTERN_DEFS` in `index.html`:
   1 | # # # . . # # # |` },
 ```
 
-`minWave` is the earliest wave index (0-based) it can appear at. `rating` (1–5) steers how often it is picked at a given difficulty. Invalid patterns are logged to the console and skipped.
+`minWave` is the earliest wave index (0-based) it can appear at. `rating` (1–5) steers how often it is picked at a given difficulty. Add `climb: true` to a pattern that uses `S` lanes so it only appears on Normal and harder. Invalid patterns are logged to the console and skipped.
 
 ## Settings and saved data
 
-The Settings screen covers graphics quality (Low, Medium, High), field of view (70° by default), camera X and Y offset, mouse and camera sensitivity, joystick sensitivity and size, volume, sound effects, music and vibration. Settings and the personal best are stored in `localStorage` under `blockdash.settings.v1` and `blockdash.bestWave`.
+The Settings screen covers graphics quality (Low, Medium, High), field of view (70° by default), camera X and Y offset, mouse and camera sensitivity, joystick sensitivity and size, volume, sound effects, music and vibration. Settings (including the difficulty) are stored in `localStorage` under `blockdash.settings.v1`. The personal best is kept per difficulty: `blockdash.bestWave` for Normal and `blockdash.bestWave.1`, `.2`, `.4` and `.5` for the other levels.
 
 ## Debugging
 
