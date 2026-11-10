@@ -592,18 +592,20 @@ const fmtTime = (s) => { s = Math.max(0, Math.floor(s)); return String(Math.floo
 // ---------------------------------------------------------------------
 // 2. World constants (units are metres-ish; 1 lane = 2 units)
 // ---------------------------------------------------------------------
-const LANES = 12, LANE_W = 2, HALF_W = (LANES * LANE_W) / 2, RIM = 0;
+const LANES = 10, LANE_W = 2, HALF_W = (LANES * LANE_W) / 2, RIM = 0;
+// Runner hitbox: the runner stands about as tall as one block.
+const P_HALF_W = 0.46, P_HALF_D = 0.46, P_HEIGHT = 1.55;
 // A narrow flat strip runs between the outer lanes and the laser fences. The outermost wall
-// face sits at HALF_W - 0.1, so the gap to the laser is 1.22: the runner's width (0.72) plus
-// a quarter of a 2-unit tile (0.5). Just enough to squeeze past a wall.
-const SHOULDER = 1.12, ARENA_HALF = HALF_W + SHOULDER;
+// face sits at HALF_W - 0.1, so the gap to the laser is the runner's width (0.92) plus a
+// quarter of a 2-unit tile (0.5). Just enough to squeeze past a wall.
+const SHOULDER = 2 * P_HALF_W + 0.5 - 0.1, ARENA_HALF = HALF_W + SHOULDER;
 // Height of the platform under (x, z), or null over the void.
 function floorAt(x, z) {
   if (z < Z_FAR || z > Z_NEAR || Math.abs(x) > ARENA_HALF) return null;
   return 0;
 }
 const PATTERN_COLS = 8;                                  // patterns are authored 8 wide (A–H)
-const Z_NEAR = 10, Z_FAR = -32, Z_SPAWN = Z_FAR + 1.2;   // obstacles rise at the far edge and travel toward +z
+const Z_NEAR = 10, Z_FAR = -26, Z_SPAWN = Z_FAR + 1.2;   // obstacles rise at the far edge and travel toward +z
 const ARENA_LEN = Z_NEAR - Z_FAR, ARENA_MID = (Z_NEAR + Z_FAR) / 2;
 const laneX = (i) => -HALF_W + LANE_W * (i + 0.5);
 
@@ -620,11 +622,10 @@ const STEP_UP = 0.3;                                      // land on any top thi
 const LASER_X = ARENA_HALF, LASER_SEG = 8.2;
 const LASER_BEAMS = [0.25, 0.95, 1.65, 2.35, 3.05];
 
-// Player
-const P_HALF_W = 0.36, P_HALF_D = 0.36, P_HEIGHT = 1.3;
+// Player (hitbox size is with the arena constants above)
 const P_START_X = 0, P_START_Z = -3;
 // Dive: press jump again in the air
-const DIVE_SPEED = 16, DIVE_UP = 5.2, DIVE_SLIDE = 0.3, P_HEIGHT_FLAT = 0.75;
+const DIVE_SPEED = 16, DIVE_UP = 5.2, DIVE_SLIDE = 0.3, P_HEIGHT_FLAT = 0.9;
 const MOVE_SPEED = 9.5, ACCEL = 72, BRAKE = 85, FRICTION = 24, AIR_ACCEL = 36;   // responsive, with a short glide
 const G_UP = 34, G_DOWN = 50, JUMP_V = 12.6;           // apex ≈ 2.33: lands on a single cube
 const JUMP_APEX = JUMP_V ** 2 / (2 * G_UP);
@@ -633,8 +634,8 @@ const COYOTE_TIME = 0.09, JUMP_BUFFER = 0.13;
 
 // Pattern engine tuning
 const EMERGE_DUR = 0.45, MIN_ROW_SPACING = 5.0, EMPTY_SPACING = 5.5;
-const WALL_GAP = 7;
-const FALL_HANG = 0.5;                                    // seconds a wall teeters on the near edge before dropping                                       // seconds between two walls, at least
+const WALL_GAP = 7;                                       // seconds between two walls, at least
+const FALL_HANG = 0.5;                                    // seconds a wall teeters on the near edge before dropping
 const DEMO_SPEED = 6, MIRROR_FROM = 5, SAFETY = 0.1, EDGE_MARGIN = 0.55;
 const MAX_STEP = 1 / 120;
 
@@ -1018,20 +1019,22 @@ function defaultQuality() {
   if (COARSE) return mem <= 3 || cores <= 4 ? 'low' : 'medium';
   return 'high';
 }
-const DEFAULTS = Object.freeze({ quality: defaultQuality(), fov: 60, camX: 0, camY: 0, mouseSens: 1, cameraSens: 1, touchSens: 1, joySize: 1, volume: 0.7, sfx: true, music: true, vibration: true });
+const DEFAULTS = Object.freeze({ quality: defaultQuality(), fov: 70, camX: 0, camY: 0, mouseSens: 1, cameraSens: 1, touchSens: 1, joySize: 1, volume: 0.7, sfx: true, music: true, vibration: true });
 function sanitizeSettings(s) {
   const num = (v, lo, hi, d) => (Number.isFinite(+v) ? clamp(+v, lo, hi) : d);
   return {
     quality: ['low', 'medium', 'high'].includes(s.quality) ? s.quality : DEFAULTS.quality,
-    fov: num(s.fov, 45, 100, 60), camX: num(s.camX, -6, 6, 0), camY: num(s.camY, -4, 8, 0),
+    fov: num(s.fov, 45, 100, DEFAULTS.fov), camX: num(s.camX, -6, 6, 0), camY: num(s.camY, -4, 8, 0),
     mouseSens: num(s.mouseSens, 0.2, 4, 1), cameraSens: num(s.cameraSens, 0.3, 2, 1),
     touchSens: num(s.touchSens, 0.5, 3, 1), joySize: num(s.joySize, 0.7, 1.4, 1),
     volume: num(s.volume, 0, 1, 0.7), sfx: s.sfx !== false, music: s.music !== false, vibration: s.vibration !== false,
+    view2: true,
   };
 }
 function loadSettings() {
   let s = {};
   try { s = JSON.parse(store.get(SETTINGS_KEY) || '{}') || {}; } catch { s = {}; }
+  if (!s.view2 && s.fov === 60) s.fov = DEFAULTS.fov;   // the default view got wider: move the old default along
   return sanitizeSettings({ ...DEFAULTS, ...s });
 }
 let settings = loadSettings();
@@ -1564,10 +1567,34 @@ const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);      // sc
 const MESH = {
   '#': makeInstanced(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.block, roughness: 0.45, metalness: 0.05 }), 720),
   M: makeInstanced(UNIT_BOX, crushMat, 160),
+  // Blocks between the camera and the runner are drawn see-through so they never hide you.
+  ghost: makeInstanced(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.block, roughness: 0.45, metalness: 0.05,
+    transparent: true, opacity: 0.28, depthWrite: false }), 240),
   mk: makeInstanced(new THREE.PlaneGeometry(BLOCK_W, BLOCK_D).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({ map: TEX.marker, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
       polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }), 160, false),
 };
+// A sight line (segment) and a slab test against an axis-aligned box.
+function sightLine() {
+  const o = { ax: 0, ay: 0, az: 0, dx: 0, dy: 0, dz: 0 };
+  o.set = (ax, ay, az, bx, by, bz) => { o.ax = ax; o.ay = ay; o.az = az; o.dx = bx - ax; o.dy = by - ay; o.dz = bz - az; };
+  o.hits = (x0, y0, z0, x1, y1, z1) => {
+    let t0 = 0, t1 = 1;
+    for (const [a, d, lo, hi] of [[o.ax, o.dx, x0, x1], [o.ay, o.dy, y0, y1], [o.az, o.dz, z0, z1]]) {
+      if (Math.abs(d) < 1e-9) { if (a < lo || a > hi) return false; continue; }
+      let ta = (lo - a) / d, tb = (hi - a) / d;
+      if (ta > tb) { const t = ta; ta = tb; tb = t; }
+      if (ta > t0) t0 = ta;
+      if (tb < t1) t1 = tb;
+      if (t0 > t1) return false;
+    }
+    return true;
+  };
+  return o;
+}
+const SIGHT = [sightLine(), sightLine()];
+const CAM_CLEAR = 4.2;                                    // blocks this close to the camera turn see-through
+
 // One colour per wave, and the next wave always gets a different one.
 // (Purple stays reserved for crushers, cyan for the runner.)
 const WAVE_COLORS = ['#ff4d5e', '#3d7bff', '#3ccf6d', '#ff8a2a', '#ff5fa2', '#ffd23f', '#a6e22e', '#f4f1ff'].map((c) => new THREE.Color(c));
@@ -1866,12 +1893,30 @@ const world = {
   },
 
   render(dt) {
-    const n = { '#': 0, M: 0, mk: 0 };
+    const n = { '#': 0, M: 0, mk: 0, ghost: 0 };
+    // Sight lines from the camera to the runner's head and feet (stopping just short of the runner).
+    const see = camCtl.mode === 'follow' && player.visible && player.y > -3;
+    if (see) {
+      const cp = camera.position;
+      for (const [i, hy] of [[0, 1.45], [1, 0.2]]) {
+        const ex = player.x, ey = player.y + hy, ez = player.z, l = Math.hypot(cp.x - ex, cp.y - ey, cp.z - ez) || 1, k = Math.min(0.6, l) / l;
+        SIGHT[i].set(cp.x, cp.y, cp.z, ex + (cp.x - ex) * k, ey + (cp.y - ey) * k, ez + (cp.z - ez) * k);
+      }
+    }
     for (const row of this.rows) {
       if (!row.emerged) continue;
       const sinkOff = row.sinking ? -2.8 * easeInOutQuad(clamp(row.sinkT / 0.4, 0, 1)) : 0;
       for (const b of row.blocks) {
-        const key = b.type === 'M' ? 'M' : '#', mesh = MESH[key], color = b.parts[0].color;
+        const y0 = (row.falling ? b.fy : b.y) + sinkOff, y1 = y0 + b.units * BLOCK_H, m = 0.25;
+        const x0 = b.x - BLOCK_W / 2, x1 = b.x + BLOCK_W / 2, z0 = row.z - BLOCK_D / 2, z1 = row.z + BLOCK_D / 2;
+        let ghost = false;
+        if (see) {
+          const cp = camera.position;                      // right in front of the camera: clear the view
+          const dx = Math.max(x0 - cp.x, 0, cp.x - x1), dy = Math.max(y0 - cp.y, 0, cp.y - y1), dz = Math.max(z0 - cp.z, 0, cp.z - z1);
+          ghost = dx * dx + dy * dy + dz * dz < CAM_CLEAR * CAM_CLEAR
+            || SIGHT.some((sg) => sg.hits(x0 - m, y0, z0 - m, x1 + m, y1, z1 + m));
+        }
+        const key = ghost ? 'ghost' : b.type === 'M' ? 'M' : '#', mesh = MESH[key], color = b.parts[0].color;
         if (row.falling) {
           _e.set(b.rot, 0, b.rotZ * row.fallT);
           _q.setFromEuler(_e);
@@ -1975,8 +2020,8 @@ const player = (() => {
     parent.add(m);
     return m;
   };
-  const figure = new THREE.Group();                     // 12% larger than the hitbox for readability
-  figure.scale.setScalar(1.12);
+  const figure = new THREE.Group();                     // stands as tall as one block, a little chunky
+  figure.scale.set(1.39, BLOCK_H / 1.42, 1.39);
   visual.add(figure);
   const hips = new THREE.Group();
   hips.position.y = 0.42;
@@ -2170,7 +2215,7 @@ const player = (() => {
       if (this.stunT > 0 && !this.grounded) this.spinX += 11 * dt;
       else this.spinX = damp(this.spinX, Math.round(this.spinX / (Math.PI * 2)) * Math.PI * 2, 10, dt);
       visual.rotation.set(lerp(this.lean, -1.42, this.diveBlend) + this.spinX, this.yaw, 0);
-      visual.position.y = 0.32 * this.diveBlend;
+      visual.position.y = 0.4 * this.diveBlend;
       if (this.diveBlend > 0.5) {                        // superhero dive: arms forward, legs straight back
         pose(arms, [2.95, 2.95], [0.2, 0.2]);
         pose(legs, [-0.2, -0.05]);
@@ -2316,7 +2361,7 @@ const aimLine = new THREE.Mesh(new THREE.PlaneGeometry(P_HALF_W * 2 + 0.06, 13).
 aimLine.visible = false;
 scene.add(aimLine);
 // Soft contact shadow, used when real shadows are switched off (Low quality).
-const blobShadow = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.4).rotateX(-Math.PI / 2),
+const blobShadow = new THREE.Mesh(new THREE.PlaneGeometry(1.75, 1.75).rotateX(-Math.PI / 2),
   new THREE.MeshBasicMaterial({ map: TEX.radial, color: 0x000000, transparent: true, opacity: 0.55, depthWrite: false,
     polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -3 }));
 blobShadow.visible = false;
@@ -2345,7 +2390,7 @@ function updatePlayerExtras() {
 // ---------------------------------------------------------------------
 function cameraParams(aspect) {
   const t = clamp((1.3 - aspect) / 0.75, 0, 1);      // 0 = landscape, 1 = tall portrait
-  return { t, dist: lerp(10.6, 17.5, t), height: lerp(8.4, 12.5, t), fov: lerp(60, 75, t), look: lerp(10, 12.5, t) };
+  return { t, dist: lerp(7, 12.5, t), height: lerp(4.5, 8, t), look: lerp(8, 10, t) };
 }
 const camCtl = {
   mode: 'menu', params: cameraParams(innerWidth / Math.max(1, innerHeight)),
@@ -2951,7 +2996,7 @@ const game = {
       audio.play('bonk');
       vibrate([30, 20, 50]);
       camCtl.shake = Math.max(camCtl.shake, 0.55);
-      particles.burst(player.x, player.y + 1.3, player.z, 12, ['#ffd23f', '#ffffff', '#c46bff'], { speed: 3.5, up: 4, size: [0.08, 0.16], life: [0.5, 0.9], grav: 0.5 });
+      particles.burst(player.x, player.y + 1.75, player.z, 12, ['#ffd23f', '#ffffff', '#c46bff'], { speed: 3.5, up: 4, size: [0.08, 0.16], life: [0.5, 0.9], grav: 0.5 });
     } else if (c.kind === 'bump') {
       audio.play('push');
     }
@@ -3036,7 +3081,7 @@ const game = {
     world.flash = 1;
     rings.spawn(player.x, player.z, 0xffd23f, 10, 0.85);
     rings.spawn(player.x, player.z, 0xff4fa3, 6, 0.6);
-    particles.burst(player.x, player.y + 1.3, player.z, 34, ['#ffd23f', '#ff4fa3', '#41e2ff', '#7ddc1f', '#ffffff'],
+    particles.burst(player.x, player.y + 1.75, player.z, 34, ['#ffd23f', '#ff4fa3', '#41e2ff', '#7ddc1f', '#ffffff'],
       { speed: 6, up: 9, size: [0.1, 0.22], life: [0.8, 1.4], grav: 0.8, carry: 2 });
     audio.play('wave');
     vibrate(30);
@@ -3074,6 +3119,7 @@ function applyQualityScene() {
   dust.setCount(q.dust);
   stars.setCount(q.stars);
   for (const key of ['#', 'M']) { MESH[key].castShadow = q.shadows; MESH[key].receiveShadow = q.shadows; }
+  MESH.ghost.castShadow = q.shadows; MESH.ghost.receiveShadow = false;
 }
 function createRenderer() {
   const q = QUALITY[settings.quality];
@@ -3269,7 +3315,7 @@ function init() {
       rowSafety, planWave, SAMPLES, LIBRARY, speedForWave, laneX,
       tick(dt) { update(dt); }, draw() { renderer.render(scene, camera); },
       info() { return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, pixelRatio: renderer.getPixelRatio() }; },
-      consts: { P_START_Z, P_HALF_W, P_HALF_D, P_HEIGHT, ROW_HALF_D, BLOCK_H, BLOCK_W, BLOCK_D, HIT_HALF_D, JUMP_V, G_UP, G_DOWN, AIR_TIME, MOVE_SPEED, CRUSH_UP, LANES, Z_SPAWN, Z_NEAR, FALL_HANG },
+      consts: { P_START_Z, P_HALF_W, P_HALF_D, P_HEIGHT, ROW_HALF_D, BLOCK_H, BLOCK_W, BLOCK_D, HIT_HALF_D, JUMP_V, G_UP, G_DOWN, AIR_TIME, MOVE_SPEED, CRUSH_UP, LANES, Z_SPAWN, Z_NEAR, Z_FAR, FALL_HANG, HALF_W, ARENA_HALF, LASER_X },
     };
   }
 }
