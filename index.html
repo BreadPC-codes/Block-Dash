@@ -113,6 +113,13 @@ body:not([data-state=playing]) #btn-pause{pointer-events:none;opacity:.35}
   text-shadow:0 6px 0 rgba(40,10,70,.8),0 0 30px rgba(124,92,255,.9);opacity:0;pointer-events:none}
 .countdown.tick{animation:cd .5s ease-out forwards}
 @keyframes cd{0%{opacity:0;transform:translate(-50%,-50%) scale(1.8)}25%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(.85)}}
+.lock-hint{position:absolute;left:50%;bottom:calc(var(--sab) + 10vh);transform:translate(-50%,10px);display:flex;align-items:center;gap:10px;padding:10px 18px;
+  border-radius:999px;background:rgba(14,10,38,.74);border:1px solid var(--line);font-weight:700;font-size:14px;letter-spacing:.03em;white-space:nowrap;
+  box-shadow:0 8px 24px rgba(0,0,0,.35);opacity:0;visibility:hidden;transition:opacity .3s,transform .3s,visibility 0s linear .3s;pointer-events:none}
+body:is([data-state=playing],[data-state=countdown]):not(.touch):not(.locked) .lock-hint{opacity:1;visibility:visible;transform:translate(-50%,0);transition:opacity .3s .3s,transform .3s .3s}
+.mouse-ico{position:relative;flex:none;width:14px;height:21px;border:2px solid #fff;border-radius:8px}
+.mouse-ico::after{content:"";position:absolute;left:50%;top:3px;width:2px;height:5px;margin-left:-1px;border-radius:1px;background:#fff;animation:wheel 1.2s ease-in-out infinite}
+@keyframes wheel{0%,100%{transform:translateY(0);opacity:1}50%{transform:translateY(4px);opacity:.4}}
 
 /* ---------- Touch controls ---------- */
 #touch{position:fixed;inset:0;z-index:12;pointer-events:none;display:none;touch-action:none}
@@ -347,6 +354,7 @@ body.touch .kbd-hint{display:none}
   </div>
   <div class="banner" id="banner"><div class="b1" id="banner-1"></div><div class="b2" id="banner-2"></div></div>
   <div class="countdown" id="countdown"></div>
+  <div class="lock-hint" id="lock-hint"><span class="mouse-ico" aria-hidden="true"></span><span id="lock-hint-txt">Click to control the camera with your mouse</span></div>
 </div>
 
 <!-- ================= TOUCH CONTROLS ================= -->
@@ -402,8 +410,8 @@ body.touch .kbd-hint{display:none}
         <div class="ctrl"><span class="k">W A S D</span><span class="k">← ↑ → ↓</span> Move</div>
         <div class="ctrl"><span class="k">SPACE</span> Jump · press again in the air to <b>&nbsp;dive</b></div>
         <div class="ctrl"><span class="k">ESC</span><span class="k">P</span> Pause</div>
-        <div class="ctrl"><span class="k">MOUSE DRAG</span> Look around (springs back)</div>
-        <div class="ctrl"><span class="k">TOUCH</span> Joystick (bottom-left) moves · <span class="k">JUMP</span> (bottom-right), tap again in the air to dive</div>
+        <div class="ctrl"><span class="k">MOUSE</span> Turn the camera 360° around you. The cursor hides while you play, and <span class="k">ESC</span> frees it. You always run the way the camera faces.</div>
+        <div class="ctrl"><span class="k">TOUCH</span> Joystick (bottom-left) moves · <span class="k">JUMP</span> (bottom-right), tap again in the air to dive · drag anywhere else to turn the camera</div>
       </div>
     </div>
     <h3>OBSTACLES</h3>
@@ -452,7 +460,7 @@ body.touch .kbd-hint{display:none}
     <section>
       <h3>CONTROLS</h3>
       <div class="setting">
-        <div class="lbl"><label for="set-mouse">Mouse sensitivity</label><small>How fast a mouse drag turns the camera.</small></div>
+        <div class="lbl"><label for="set-mouse">Mouse sensitivity</label><small>How fast the mouse turns the camera.</small></div>
         <div class="ctl"><input type="range" id="set-mouse" min="0.2" max="2" step="0.1"><span class="val" id="val-mouse"></span></div>
       </div>
       <div class="setting">
@@ -460,7 +468,7 @@ body.touch .kbd-hint{display:none}
         <div class="ctl"><input type="range" id="set-camera" min="0.3" max="2" step="0.1"><span class="val" id="val-camera"></span></div>
       </div>
       <div class="setting">
-        <div class="lbl"><label for="set-touch">Mobile control sensitivity</label><small>Higher means less thumb travel for full speed.</small></div>
+        <div class="lbl"><label for="set-touch">Mobile control sensitivity</label><small>Higher means less thumb travel for full speed and a faster camera drag.</small></div>
         <div class="ctl"><input type="range" id="set-touch" min="0.5" max="2" step="0.1"><span class="val" id="val-touch"></span></div>
       </div>
       <div class="setting">
@@ -1747,18 +1755,21 @@ const world = {
   },
 
   // Player vs obstacle boxes. Tops: land on them. Sides: solid. The front of an incoming wall
-  // pushes you along (you can still slide sideways along it). A crusher coming down bonks you.
+  // pushes you along (you can still slide sideways along it), and the back of a wall stops you.
+  // A crusher coming down bonks you. A wall teetering on the near edge is still solid.
   resolve(p, h) {
     const ph = p.height, sweeping = this.speed - p.carry > 1;   // blocks move toward a player who isn't riding along
     const relZ = this.speed - (p.vz + p.carry);                 // > 0: blocks are gaining on the player
     const boxes = [];
     for (const row of this.rows) {
-      if (!row.emerged || row.falling || row.sinking || !row.blocks.length) continue;
+      if (!row.emerged || row.sinking || !row.blocks.length) continue;
+      if (row.falling && row.fallT > FALL_HANG * 0.7) continue;   // tumbling into the void by now
       if (row.z + BLOCK_D / 2 + 0.6 < p.z - P_HALF_D || row.z - BLOCK_D / 2 - 0.6 > p.z + P_HALF_D) continue;
       for (const b of row.blocks) {
+        const by = row.falling ? b.fy : b.y, vy = row.falling ? b.fvy : b.vy;
         for (const part of b.parts) {
-          const hx = part.w / 2 - 0.03, hz = part.d / 2, cx = b.x + part.ox, cz = row.z + part.oz, y0 = b.y + part.y0;
-          boxes.push({ row, b, part, cx, cz, x0: cx - hx, x1: cx + hx, z0: cz - hz, z1: cz + hz, y0, y1: y0 + part.h });
+          const hx = part.w / 2 - 0.03, hz = part.d / 2, cx = b.x + part.ox, cz = row.z + part.oz, y0 = by + part.y0;
+          boxes.push({ row, b, part, cx, cz, vy, x0: cx - hx, x1: cx + hx, z0: cz - hz, z1: cz + hz, y0, y1: y0 + part.h });
         }
       }
     }
@@ -1781,7 +1792,8 @@ const world = {
         p.pushT = 0;
       }
     }
-    // 2) Whatever still overlaps: land on tops, get bonked under crushers, stop at sides.
+    // 2) Whatever still overlaps: land on tops, get bonked under crushers, stop at sides and backs.
+    //    The face the player came through is the one whose overlap started most recently.
     let land = null;
     for (const c of boxes) {
       if (!overlaps(c)) continue;
@@ -1789,12 +1801,16 @@ const world = {
         if (!land || c.y1 > land.top) land = { row: c.row, block: c.b, part: c.part, top: c.y1 };
         continue;
       }
-      const closeY = p.vy - c.b.vy;                         // > 0: closing from below
-      const tX = p.vx < 0 ? (c.x1 - (p.x - P_HALF_W)) / -p.vx : p.vx > 0 ? (p.x + P_HALF_W - c.x0) / p.vx : Infinity;
-      const tZ = (relZ >= 0 ? c.z1 - (p.z - P_HALF_D) : p.z + P_HALF_D - c.z0) / Math.max(Math.abs(relZ), 1e-3);
+      const left = p.x < c.cx, behind = p.z < c.cz;
+      const ox = left ? p.x + P_HALF_W - c.x0 : c.x1 - (p.x - P_HALF_W);   // how far in, from the near side
+      const oz = behind ? p.z + P_HALF_D - c.z0 : c.z1 - (p.z - P_HALF_D);
+      // A face can only have been entered if the runner and block were closing on that side.
+      const closeX = left ? p.vx : -p.vx, closeZ = behind ? -relZ : relZ, closeY = p.vy - c.vy;
+      const tX = closeX > 0.05 ? ox / closeX : Infinity;
+      const tZ = closeZ > 0.05 ? oz / closeZ : Infinity;
       const tY = (p.y + ph - c.y0) / Math.max(closeY, 1e-3);
       if (closeY > 0.5 && tY < tX && tY < tZ) {             // underside: a crusher coming down, or a head bump
-        if (c.b.vy < -0.5) {
+        if (c.vy < -0.5) {
           p.z = c.z1 + P_HALF_D + 0.02;                     // squeezed out in front of it
           p.stun(0.7, rand(-1.5, 1.5), 5, this.speed + 4);
           event = { kind: 'bonk', row: c.row, block: c.b };
@@ -1805,13 +1821,20 @@ const world = {
         }
         continue;
       }
-      if (sweeping || tX <= tZ) {                           // a side: blocks are solid, with a little bounce
-        p.x = p.x < c.cx ? c.x0 - P_HALF_W - 1e-3 : c.x1 + P_HALF_W + 1e-3;
-        p.vx = -p.vx * 0.25;
+      // Leave through the face that was entered last; if neither was being closed on (say you
+      // landed half beside a taller block), take the shallowest way out.
+      if (tX === Infinity && tZ === Infinity ? ox <= oz : tX <= tZ) {   // a side: solid, with a little bounce
+        p.x = left ? c.x0 - P_HALF_W - 1e-3 : c.x1 + P_HALF_W + 1e-3;
+        if (closeX > 0) p.vx = -p.vx * 0.25;
         continue;
       }
-      p.z = p.z < c.cz ? c.z0 - P_HALF_D - 1e-3 : c.z1 + P_HALF_D + 1e-3;   // riding along: just a wall
-      p.vz = 0;
+      if (behind) {                                         // the back of a block: stop against it and move with it
+        p.z = c.z0 - P_HALF_D - 1e-3;
+        p.vz = Math.min(p.vz, this.speed - p.carry);
+      } else {                                              // its front: out in front of it, carried along
+        p.z = c.z1 + P_HALF_D + 1e-3;
+        p.vz = Math.max(p.vz, this.speed - p.carry);
+      }
     }
     if (land) p.landOn(land, this.speed);
     return event;
@@ -2318,58 +2341,63 @@ function updatePlayerExtras() {
 }
 
 // ---------------------------------------------------------------------
-// 14. Camera: menu orbit, third-person follow, drag-to-look, shake
+// 14. Camera: menu orbit, 360° third-person orbit around the runner, shake
 // ---------------------------------------------------------------------
 function cameraParams(aspect) {
   const t = clamp((1.3 - aspect) / 0.75, 0, 1);      // 0 = landscape, 1 = tall portrait
-  return { t, dist: lerp(10.6, 17.5, t), height: lerp(8.4, 12.5, t), fov: lerp(60, 75, t), look: lerp(10, 12.5, t),
-    followX: lerp(0.55, 0.88, t), lookX: lerp(0.7, 0.94, t) };
+  return { t, dist: lerp(10.6, 17.5, t), height: lerp(8.4, 12.5, t), fov: lerp(60, 75, t), look: lerp(10, 12.5, t) };
 }
 const camCtl = {
   mode: 'menu', params: cameraParams(innerWidth / Math.max(1, innerHeight)),
   pos: new THREE.Vector3(34, 24, 30), look: new THREE.Vector3(0, 0, ARENA_MID),
-  target: new THREE.Vector3(), lookT: new THREE.Vector3(), pivot: new THREE.Vector3(),
-  angle: 0.75, shake: 0, yaw: 0, pitch: 0, dragging: false, releaseT: 0,
+  target: new THREE.Vector3(), lookT: new THREE.Vector3(), pivot: new THREE.Vector3(P_START_X, 0, P_START_Z),
+  posOff: new THREE.Vector3(), lookOff: new THREE.Vector3(),
+  angle: 0.75, shake: 0, yaw: 0, pitch: 0, rad: 0, ease: false,
 };
-function orbitAround(v, pivot, yaw) {
-  const x = v.x - pivot.x, z = v.z - pivot.z, c = Math.cos(yaw), s = Math.sin(yaw);
-  v.x = pivot.x + x * c + z * s;
-  v.z = pivot.z - x * s + z * c;
+// Pitch is an offset from the default elevation; keep the camera between skimming the floor and almost straight down.
+const CAM_ELEV_MIN = 0.1, CAM_ELEV_MAX = 1.38;
+function camBaseElev() { return Math.atan2(camCtl.params.height, camCtl.params.dist); }
+function turnCamera(dx, dy, sens) {
+  const c = camCtl, e0 = camBaseElev();
+  c.yaw = (c.yaw - dx * sens) % (Math.PI * 2);
+  c.pitch = clamp(c.pitch + dy * sens * 0.8, CAM_ELEV_MIN - e0, CAM_ELEV_MAX - e0);
 }
 function updateCamera(dt) {
   const c = camCtl, P = c.params;
-  let k, kl;
   if (c.mode === 'menu') {
     c.angle += dt * 0.06;
     const r = 38 * (1 + P.t * 0.45);
     c.target.set(Math.sin(c.angle) * r, 18 + Math.sin(c.angle * 0.7) * 3 + P.t * 8, ARENA_MID + 4 + Math.cos(c.angle) * r);
     c.lookT.set(0, -1, ARENA_MID - 2);
-    k = 1.1; kl = 1.4;
+    c.pos.set(damp(c.pos.x, c.target.x, 1.1, dt), damp(c.pos.y, c.target.y, 1.1, dt), damp(c.pos.z, c.target.z, 1.1, dt));
+    c.look.set(damp(c.look.x, c.lookT.x, 1.4, dt), damp(c.look.y, c.lookT.y, 1.4, dt), damp(c.look.z, c.lookT.z, 1.4, dt));
   } else {
-    const over = c.mode === 'over' && c.focus;           // game over: frame the spot where the run ended
+    // Third-person orbit: the mouse (or a drag) turns the camera all the way around the runner.
+    // Yaw and pitch apply straight away; only the point it circles follows the runner smoothly.
+    const over = c.mode === 'over' && c.focus;           // game over: circle the spot where the run ended
     const px = over ? c.focus.x : player.x, pz = over ? c.focus.z : player.z, py = over ? c.focus.y : player.y;
-    c.target.set(px * P.followX + settings.camX, P.height + settings.camY + Math.max(0, py) * 0.35, pz + P.dist);
-    c.lookT.set(px * P.lookX, 0.6 + Math.max(0, py) * 0.3, pz - P.look);
-    if (py < -0.2) {                                   // falling: hold height and watch the player drop
-      c.target.y = Math.max(P.height * 0.85, 4);
-      c.lookT.set(px, Math.max(py, -25) * 0.7, pz);
+    const kf = 2.2 + 4.8 * settings.cameraSens;
+    if (over && !locked()) c.yaw += dt * 0.12;           // slow showcase spin behind the game-over card
+    c.pivot.set(damp(c.pivot.x, px, kf, dt), damp(c.pivot.y, Math.max(0, py) * 0.35, kf, dt), damp(c.pivot.z, pz, kf, dt));
+    c.rad = damp(c.rad || Math.hypot(P.dist, P.height), Math.hypot(P.dist, P.height) + (c.mode === 'over' ? 4.5 : 0), 2.5, dt);
+    const pv = c.pivot, e0 = camBaseElev();
+    const elev = clamp(e0 + c.pitch + (c.mode === 'over' ? 0.08 : 0), CAM_ELEV_MIN, CAM_ELEV_MAX);
+    const sy = Math.sin(c.yaw), cy = Math.cos(c.yaw), back = c.rad * Math.cos(elev), ahead = P.look;
+    c.target.set(pv.x + sy * back + cy * settings.camX, pv.y + c.rad * Math.sin(elev) + settings.camY, pv.z + cy * back - sy * settings.camX);
+    c.lookT.set(pv.x - sy * ahead, pv.y + 0.6, pv.z - cy * ahead);
+    // Falling: blend the aim down onto the runner as they drop away.
+    const fall = over ? 0 : clamp((-0.2 - py) / 2.5, 0, 1);
+    if (fall > 0) {
+      const fy = Math.max(py, -25) * 0.7;
+      c.lookT.set(lerp(c.lookT.x, pv.x, fall), lerp(c.lookT.y, fy, fall), lerp(c.lookT.z, pv.z, fall));
     }
-    if (c.mode === 'over') { c.target.y += 2.5; c.target.z += 3.5; }
-    if (!c.dragging) {
-      c.releaseT += dt;
-      if (c.releaseT > 0.45) { c.yaw = damp(c.yaw, 0, 3.2, dt); c.pitch = damp(c.pitch, 0, 3.2, dt); }
-    }
-    if (Math.abs(c.yaw) > 1e-4 || Math.abs(c.pitch) > 1e-4) {
-      c.pivot.set(px, 0.8, pz);
-      orbitAround(c.target, c.pivot, c.yaw);
-      orbitAround(c.lookT, c.pivot, c.yaw);
-      c.target.y = Math.max(2.2, c.target.y + c.pitch * 9);
-    }
-    k = 2.2 + 4.8 * settings.cameraSens;
-    kl = k * 1.25;
+    // A jump between views (menu to game, a reset yaw) glides instead of snapping.
+    if (c.ease) { c.ease = false; c.posOff.subVectors(c.pos, c.target); c.lookOff.subVectors(c.look, c.lookT); }
+    const ek = Math.exp(-4 * dt);
+    c.posOff.multiplyScalar(ek); c.lookOff.multiplyScalar(ek);
+    c.pos.addVectors(c.target, c.posOff);
+    c.look.addVectors(c.lookT, c.lookOff);
   }
-  c.pos.set(damp(c.pos.x, c.target.x, k, dt), damp(c.pos.y, c.target.y, k, dt), damp(c.pos.z, c.target.z, k, dt));
-  c.look.set(damp(c.look.x, c.lookT.x, kl, dt), damp(c.look.y, c.lookT.y, kl, dt), damp(c.look.z, c.lookT.z, kl, dt));
   if (Math.abs(c.pos.x) < ARENA_HALF + 0.6 && c.pos.z > Z_FAR - 0.6 && c.pos.z < Z_NEAR + 0.6) c.pos.y = Math.max(c.pos.y, 1.6);
   c.shake = Math.max(0, c.shake - dt * 1.8);
   const sh = c.shake * c.shake * 0.6;
@@ -2383,7 +2411,7 @@ function updateCamera(dt) {
 }
 
 // ---------------------------------------------------------------------
-// 15. Input: keyboard, virtual joystick, jump button, mouse drag-look
+// 15. Input: keyboard, mouse look (pointer lock), virtual joystick, jump button, touch look
 // ---------------------------------------------------------------------
 const input = { moveX: 0, moveZ: 0 };
 const keys = new Set();
@@ -2400,6 +2428,9 @@ function readMove() {
   x += joy.x; z += joy.y;
   const l = Math.hypot(x, z);
   if (l > 1) { x /= l; z /= l; }
+  // Forward is wherever the camera faces, so W always runs away from the camera.
+  const sy = Math.sin(camCtl.yaw), cy = Math.cos(camCtl.yaw);
+  [x, z] = [x * cy + z * sy, -x * sy + z * cy];
   if (debugOverride.active) { x = debugOverride.x; z = debugOverride.z; }
   input.moveX = x; input.moveZ = z;
 }
@@ -2416,8 +2447,8 @@ function updateMenuHint() {
   const el = $('menu-hint');
   if (!el) return;
   el.innerHTML = touchMode
-    ? 'Left thumb: <kbd>JOYSTICK</kbd> to move · Right thumb: <kbd>JUMP</kbd>, tap again to dive'
-    : '<kbd>WASD</kbd> / <kbd>ARROWS</kbd> move · <kbd>SPACE</kbd> jump, again to dive · <kbd>ESC</kbd> pause';
+    ? 'Left thumb: <kbd>JOYSTICK</kbd> to move · Right thumb: <kbd>JUMP</kbd>, tap again to dive · drag to turn the camera'
+    : '<kbd>WASD</kbd> move · <kbd>MOUSE</kbd> camera · <kbd>SPACE</kbd> jump, again to dive · <kbd>ESC</kbd> pause';
 }
 
 window.addEventListener('keydown', (e) => {
@@ -2530,24 +2561,60 @@ jumpBtn.addEventListener('pointercancel', endJumpBtn);
 jumpBtn.addEventListener('lostpointercapture', endJumpBtn);
 for (const el of [jumpBtn, joyZone]) el.addEventListener('contextmenu', (e) => e.preventDefault());
 
-// Mouse drag on the 3D view: look around (springs back on release)
-const drag = { id: null, x: 0, y: 0 };
+// Mouse look: while you play the cursor is hidden (pointer lock) and moving the mouse turns the
+// camera all the way around the runner. Esc frees the cursor and pauses. Without pointer lock
+// (or on touch screens) dragging on the 3D view turns the camera instead.
+const CAN_LOCK = typeof stage.requestPointerLock === 'function';
+const look = { id: null, x: 0, y: 0, touch: false };
+let lockLostAt = -1e9, lockFresh = false;
+const locked = () => document.pointerLockElement === stage;
+if (!CAN_LOCK) $('lock-hint-txt').textContent = 'Drag with the mouse to turn the camera';
+const lookActive = () => camCtl.mode !== 'menu' && (state === 'playing' || state === 'countdown' || state === 'dying');
+function lockPointer() {
+  if (!CAN_LOCK || touchMode || locked()) return;
+  try {
+    const req = stage.requestPointerLock();
+    if (req && typeof req.catch === 'function') req.catch(() => { /* no lock: the click-to-look hint stays up */ });
+  } catch { /* ignored */ }
+}
+function unlockPointer() {
+  if (locked() && document.exitPointerLock) document.exitPointerLock();
+}
+document.addEventListener('pointerlockchange', () => {
+  const on = locked();
+  document.body.classList.toggle('locked', on);
+  lockFresh = on;
+  if (on) look.id = null;
+  if (!on && (state === 'playing' || state === 'countdown')) {
+    lockLostAt = performance.now();                     // the browser took the cursor back (Esc): pause
+    game.pause();
+  }
+});
+document.addEventListener('mousemove', (e) => {
+  if (!locked() || !lookActive()) return;
+  const dx = e.movementX || 0, dy = e.movementY || 0;
+  if (lockFresh) { lockFresh = false; return; }         // the first event after locking can carry a jump
+  if (Math.abs(dx) > 250 || Math.abs(dy) > 250) return; // some browsers report the odd bogus spike
+  turnCamera(dx, dy, 0.0024 * settings.mouseSens);
+});
 function attachCanvasInput(cv) {
   cv.addEventListener('pointerdown', (e) => {
-    if (e.pointerType !== 'mouse' && e.pointerType !== 'pen') return;
-    if (camCtl.mode !== 'follow') return;
-    drag.id = e.pointerId; drag.x = e.clientX; drag.y = e.clientY;
-    camCtl.dragging = true;
+    if (!lookActive()) return;
+    const isTouch = e.pointerType === 'touch';
+    if (!isTouch) {
+      if (e.button !== 0) return;
+      lockPointer();                                     // click to take the camera; a drag works if the lock is refused
+    } else if (look.id !== null) return;                 // one thumb turns the camera
+    look.id = e.pointerId; look.x = e.clientX; look.y = e.clientY; look.touch = isTouch;
     try { cv.setPointerCapture(e.pointerId); } catch { /* ignored */ }
   });
   cv.addEventListener('pointermove', (e) => {
-    if (!camCtl.dragging || e.pointerId !== drag.id) return;
-    const dx = e.clientX - drag.x, dy = e.clientY - drag.y, s = 0.0045 * settings.mouseSens;
-    drag.x = e.clientX; drag.y = e.clientY;
-    camCtl.yaw = clamp(camCtl.yaw - dx * s, -0.8, 0.8);
-    camCtl.pitch = clamp(camCtl.pitch + dy * s * 0.8, -0.35, 0.45);
+    if (e.pointerId !== look.id || locked()) return;
+    const dx = e.clientX - look.x, dy = e.clientY - look.y;
+    look.x = e.clientX; look.y = e.clientY;
+    if (lookActive()) turnCamera(dx, dy, look.touch ? 0.0065 * settings.touchSens : 0.0045 * settings.mouseSens);
   });
-  const end = (e) => { if (e.pointerId === drag.id) { drag.id = null; camCtl.dragging = false; camCtl.releaseT = 0; } };
+  const end = (e) => { if (e.pointerId === look.id) look.id = null; };
   cv.addEventListener('pointerup', end);
   cv.addEventListener('pointercancel', end);
   cv.addEventListener('lostpointercapture', end);
@@ -2803,7 +2870,10 @@ const game = {
     player.reset();
     Object.assign(run, { waves: 0, time: 0, bestAtStart: bestWave, newBest: false, cause: '', causeText: '', pipResetAt: 0 });
     timeScale = 1; deathTimer = 0;
-    Object.assign(camCtl, { mode: 'follow', yaw: 0, pitch: 0, shake: 0, dragging: false });
+    Object.assign(camCtl, { mode: 'follow', yaw: 0, pitch: 0, shake: 0, ease: true });
+    camCtl.pivot.set(player.x, 0, player.z);
+    look.id = null;
+    lockPointer();
     hud.setCounter(0, false);
     hud.resetPips();
     hud.lastSec = -1;
@@ -2819,6 +2889,7 @@ const game = {
   pause() {
     if (state !== 'playing' && state !== 'countdown') return;
     setState('paused');
+    unlockPointer();
     $('pause-waves').textContent = run.waves;
     releaseJoystick();
     keys.clear();
@@ -2829,11 +2900,13 @@ const game = {
     if (state !== 'paused') return;
     showScreen(null);
     setState('countdown');
+    lockPointer();
     countdownT = 1.5;
     countdownLast = 0;
   },
   toMenu() {
     setState('menu');
+    unlockPointer();
     world.setMode('demo');
     player.hide();
     camCtl.mode = 'menu';
@@ -2857,6 +2930,7 @@ const game = {
       timeScale = 0.35;
       hud.flash('hit');
       camCtl.mode = 'over';
+      camCtl.ease = true;
       audio.play('zap');
       vibrate([40, 30, 40, 30, 120]);
       return;
@@ -2889,7 +2963,9 @@ const game = {
   },
   gameOver() {
     setState('gameover');
+    unlockPointer();
     world.setMode('demo');
+    if (camCtl.mode !== 'over') camCtl.ease = true;
     camCtl.mode = 'over';
     const n = run.waves, isBest = n > run.bestAtStart;
     if (n > bestWave) { bestWave = n; saveBest(); }
@@ -2910,7 +2986,7 @@ const game = {
       case 'Escape':
         if (state === 'playing' || state === 'countdown') this.pause();
         else if (currentScreen === 'settings') showScreen(settingsReturn);
-        else if (state === 'paused') this.resume();
+        else if (state === 'paused') { if (performance.now() - lockLostAt > 500) this.resume(); }   // that Esc only freed the cursor
         else if (currentScreen === 'howto') showScreen('menu');
         else if (state === 'gameover') this.toMenu();
         break;
@@ -3193,7 +3269,7 @@ function init() {
       rowSafety, planWave, SAMPLES, LIBRARY, speedForWave, laneX,
       tick(dt) { update(dt); }, draw() { renderer.render(scene, camera); },
       info() { return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, pixelRatio: renderer.getPixelRatio() }; },
-      consts: { P_START_Z, P_HALF_W, P_HALF_D, P_HEIGHT, ROW_HALF_D, BLOCK_H, BLOCK_D, HIT_HALF_D, JUMP_V, G_UP, G_DOWN, AIR_TIME, MOVE_SPEED, CRUSH_UP, LANES, Z_SPAWN },
+      consts: { P_START_Z, P_HALF_W, P_HALF_D, P_HEIGHT, ROW_HALF_D, BLOCK_H, BLOCK_W, BLOCK_D, HIT_HALF_D, JUMP_V, G_UP, G_DOWN, AIR_TIME, MOVE_SPEED, CRUSH_UP, LANES, Z_SPAWN, Z_NEAR, FALL_HANG },
     };
   }
 }
