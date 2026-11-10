@@ -402,7 +402,7 @@ body.touch .kbd-hint{display:none}
     <div class="howto-grid">
       <div class="card">
         <h3>GOAL</h3>
-        <p>The floor is slippery, so plan your stops. Walls of blocks sweep toward you in <b>waves</b> of eight rows. Get past all eight and <b>WAVE SURVIVED</b> goes up by one.</p>
+        <p>The floor is a little slippery: you get up to speed fast but glide a short way when you let go. Walls of blocks sweep toward you in <b>waves</b> of eight rows. Get past all eight and <b>WAVE SURVIVED</b> goes up by one.</p>
         <p>Slip through the holes, jump the low parts, dive, or <b>jump on top</b> and ride. A wall that catches you <b>pushes you</b> toward the edge. Fall off the front or back edge, or touch a laser fence on the sides, and the run is over.</p>
       </div>
       <div class="card">
@@ -461,7 +461,7 @@ body.touch .kbd-hint{display:none}
       <h3>CONTROLS</h3>
       <div class="setting">
         <div class="lbl"><label for="set-mouse">Mouse sensitivity</label><small>How fast the mouse turns the camera.</small></div>
-        <div class="ctl"><input type="range" id="set-mouse" min="0.2" max="2" step="0.1"><span class="val" id="val-mouse"></span></div>
+        <div class="ctl"><input type="range" id="set-mouse" min="0.2" max="4" step="0.1"><span class="val" id="val-mouse"></span></div>
       </div>
       <div class="setting">
         <div class="lbl"><label for="set-camera">Camera sensitivity</label><small>How tightly the camera follows your character.</small></div>
@@ -469,7 +469,7 @@ body.touch .kbd-hint{display:none}
       </div>
       <div class="setting">
         <div class="lbl"><label for="set-touch">Mobile control sensitivity</label><small>Higher means less thumb travel for full speed and a faster camera drag.</small></div>
-        <div class="ctl"><input type="range" id="set-touch" min="0.5" max="2" step="0.1"><span class="val" id="val-touch"></span></div>
+        <div class="ctl"><input type="range" id="set-touch" min="0.5" max="3" step="0.1"><span class="val" id="val-touch"></span></div>
       </div>
       <div class="setting">
         <div class="lbl"><label for="set-joy">Joystick size</label><small>Scales the joystick and JUMP button.</small></div>
@@ -625,7 +625,7 @@ const P_HALF_W = 0.36, P_HALF_D = 0.36, P_HEIGHT = 1.3;
 const P_START_X = 0, P_START_Z = -3;
 // Dive: press jump again in the air
 const DIVE_SPEED = 16, DIVE_UP = 5.2, DIVE_SLIDE = 0.3, P_HEIGHT_FLAT = 0.75;
-const MOVE_SPEED = 9.5, ACCEL = 36, BRAKE = 30, FRICTION = 13, AIR_ACCEL = 20;   // slippery floor
+const MOVE_SPEED = 9.5, ACCEL = 72, BRAKE = 85, FRICTION = 24, AIR_ACCEL = 36;   // responsive, with a short glide
 const G_UP = 34, G_DOWN = 50, JUMP_V = 12.6;           // apex ≈ 2.33: lands on a single cube
 const JUMP_APEX = JUMP_V ** 2 / (2 * G_UP);
 const AIR_TIME = JUMP_V / G_UP + Math.sqrt((2 * JUMP_APEX) / G_DOWN);
@@ -1024,8 +1024,8 @@ function sanitizeSettings(s) {
   return {
     quality: ['low', 'medium', 'high'].includes(s.quality) ? s.quality : DEFAULTS.quality,
     fov: num(s.fov, 45, 100, 60), camX: num(s.camX, -6, 6, 0), camY: num(s.camY, -4, 8, 0),
-    mouseSens: num(s.mouseSens, 0.2, 2, 1), cameraSens: num(s.cameraSens, 0.3, 2, 1),
-    touchSens: num(s.touchSens, 0.5, 2, 1), joySize: num(s.joySize, 0.7, 1.4, 1),
+    mouseSens: num(s.mouseSens, 0.2, 4, 1), cameraSens: num(s.cameraSens, 0.3, 2, 1),
+    touchSens: num(s.touchSens, 0.5, 3, 1), joySize: num(s.joySize, 0.7, 1.4, 1),
     volume: num(s.volume, 0, 1, 0.7), sfx: s.sfx !== false, music: s.music !== false, vibration: s.vibration !== false,
   };
 }
@@ -2079,7 +2079,7 @@ const player = (() => {
         const f = Math.max(0, 1 - 5 * h);                  // belly-slide friction
         this.vx *= f; this.vz *= f;
       } else {
-        // Slippery: gentle acceleration, softer braking, and you glide for a while when you let go.
+        // Responsive: full speed in about 0.13 s, quick turns, and a short glide when you let go.
         const ix = control ? input.moveX : 0, iz = control ? input.moveZ : 0;
         const tvx = ix * MOVE_SPEED, tvz = iz * MOVE_SPEED;
         const a = !this.grounded ? AIR_ACCEL : !(ix || iz) ? FRICTION : this.vx * tvx + this.vz * tvz < 0 ? BRAKE : ACCEL;
@@ -2162,7 +2162,7 @@ const player = (() => {
       const targetYaw = sp > 1.2 ? Math.atan2(-this.vx, -this.vz) : 0;
       let dyaw = targetYaw - this.yaw;
       dyaw = ((((dyaw + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) - Math.PI;
-      this.yaw += dyaw * (1 - Math.exp(-(sp > 1.2 ? 14 : 5) * dt));
+      this.yaw += dyaw * (1 - Math.exp(-(sp > 1.2 ? 30 : 8) * dt));
       const flat = this.diving || this.slideT > 0;
       this.diveBlend = damp(this.diveBlend, flat ? 1 : 0, flat ? 18 : 9, dt);
       this.lean = damp(this.lean, this.grounded ? -0.2 * k : 0.05, 10, dt);
@@ -2376,7 +2376,7 @@ function updateCamera(dt) {
     // Yaw and pitch apply straight away; only the point it circles follows the runner smoothly.
     const over = c.mode === 'over' && c.focus;           // game over: circle the spot where the run ended
     const px = over ? c.focus.x : player.x, pz = over ? c.focus.z : player.z, py = over ? c.focus.y : player.y;
-    const kf = 2.2 + 4.8 * settings.cameraSens;
+    const kf = 3 + 7 * settings.cameraSens;
     if (over && !locked()) c.yaw += dt * 0.12;           // slow showcase spin behind the game-over card
     c.pivot.set(damp(c.pivot.x, px, kf, dt), damp(c.pivot.y, Math.max(0, py) * 0.35, kf, dt), damp(c.pivot.z, pz, kf, dt));
     c.rad = damp(c.rad || Math.hypot(P.dist, P.height), Math.hypot(P.dist, P.height) + (c.mode === 'over' ? 4.5 : 0), 2.5, dt);
@@ -2595,7 +2595,7 @@ document.addEventListener('mousemove', (e) => {
   const dx = e.movementX || 0, dy = e.movementY || 0;
   if (lockFresh) { lockFresh = false; return; }         // the first event after locking can carry a jump
   if (Math.abs(dx) > 250 || Math.abs(dy) > 250) return; // some browsers report the odd bogus spike
-  turnCamera(dx, dy, 0.0024 * settings.mouseSens);
+  turnCamera(dx, dy, 0.006 * settings.mouseSens);
 });
 function attachCanvasInput(cv) {
   cv.addEventListener('pointerdown', (e) => {
@@ -2612,7 +2612,7 @@ function attachCanvasInput(cv) {
     if (e.pointerId !== look.id || locked()) return;
     const dx = e.clientX - look.x, dy = e.clientY - look.y;
     look.x = e.clientX; look.y = e.clientY;
-    if (lookActive()) turnCamera(dx, dy, look.touch ? 0.0065 * settings.touchSens : 0.0045 * settings.mouseSens);
+    if (lookActive()) turnCamera(dx, dy, look.touch ? 0.012 * settings.touchSens : 0.011 * settings.mouseSens);
   });
   const end = (e) => { if (e.pointerId === look.id) look.id = null; };
   cv.addEventListener('pointerup', end);

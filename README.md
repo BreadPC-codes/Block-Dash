@@ -2,7 +2,7 @@
 
 A single-player 3D obstacle survival game in one file: `index.html` (HTML, CSS and JavaScript, with [Three.js](https://threejs.org/) r170 loaded from a CDN).
 
-Walls of cube blocks sweep across a small floating 12-lane arena with a slippery checkered floor, one wave at a time and at most one new wall every 7 seconds. Slip through the holes, jump or dive over single cubes, or climb on top and ride. A wall that catches you pushes you toward the edge, so slide into a hole before you run out of floor. Between the outer lanes and the always-on laser fences runs a narrow flat gap: the runner fits beside a wall with only a quarter of a tile (0.5 units) to spare, so squeezing past takes precision. Every wave you fully survive adds one to the **WAVE SURVIVED** counter.
+Walls of cube blocks sweep across a small floating 12-lane arena with a slightly slippery checkered floor, one wave at a time and at most one new wall every 7 seconds. Slip through the holes, jump or dive over single cubes, or climb on top and ride. A wall that catches you pushes you toward the edge, so slide into a hole before you run out of floor. Between the outer lanes and the always-on laser fences runs a narrow flat gap: the runner fits beside a wall with only a quarter of a tile (0.5 units) to spare, so squeezing past takes precision. Every wave you fully survive adds one to the **WAVE SURVIVED** counter.
 
 You play as a chunky little party-game runner (an original character) who runs, jumps, flails and tumbles.
 
@@ -29,7 +29,7 @@ Then open <http://localhost:8000>.
 | Camera | Move the mouse: the camera turns 360° around the runner | Drag anywhere away from the joystick and **JUMP** |
 | Restart / menu | `R` / `Enter` / `Esc` on the pause and game-over screens | Buttons |
 
-While you play, the cursor is hidden (pointer lock) and the mouse turns the camera all the way around the runner. Moving the mouse up and down tilts it between skimming the floor and looking almost straight down. Movement follows the camera, so `W` always runs away from it. `Esc` frees the cursor and pauses. If the cursor is free while you play, click the 3D view to take the camera again. After a game over, the camera slowly circles the spot where the run ended.
+While you play, the cursor is hidden (pointer lock) and the mouse turns the camera all the way around the runner. Moving the mouse up and down tilts it between skimming the floor and looking almost straight down. If it turns too fast or too slow, change **Mouse sensitivity** in Settings (0.2× to 4×). Movement follows the camera, so `W` always runs away from it. `Esc` frees the cursor and pauses. If the cursor is free while you play, click the 3D view to take the camera again. After a game over, the camera slowly circles the spot where the run ended.
 
 Touch controls appear automatically on touch devices. You can steer and jump at the same time with two thumbs, and turn the camera by dragging anywhere else on the screen.
 
@@ -52,7 +52,7 @@ How contact works:
 - **Top of a block:** safe to stand on. A ridden block carries you toward the near edge, and you keep that momentum when you jump off. Every block is the same cube, and taller obstacles are whole cubes stacked on top of each other. Stacks can't be reached from the floor; climb onto them from a single block.
 - **Dive:** press jump again in the air. You lunge forward in your steering direction (or the way you face) with a small hop and a low profile, covering about 6.4 units from the top of a jump, then do a short belly slide.
 
-The run only ends if you **fall off the arena** (off the front or back edge: pushed off, ridden off or walked off) or **touch a laser fence** on the sides. Falling off means a long drop before the run is over, and walls teeter on the near edge for a moment before they fall, giving a rider time to jump off. A teetering wall stays solid until it tips into the void. The floor is slippery: you speed up and stop gradually, a wall hands you its momentum when it shoves you, and you bounce lightly off block sides. There's no gate: walls rise out of the platform right at the far edge.
+The run only ends if you **fall off the arena** (off the front or back edge: pushed off, ridden off or walked off) or **touch a laser fence** on the sides. Falling off means a long drop before the run is over, and walls teeter on the near edge for a moment before they fall, giving a rider time to jump off. A teetering wall stays solid until it tips into the void. The floor is a little slippery: you reach full speed in about 0.13 s and turn quickly, but glide a short way (under two units) when you let go. A wall hands you its momentum when it shoves you, and you bounce lightly off block sides. There's no gate: walls rise out of the platform right at the far edge.
 
 The six patterns from the brief (Basic Corridor, Alternating Gaps, Double Corridors, Jump Challenge, Narrow Zigzag, Moving Obstacles) are included verbatim. Six wall waves (Wall Rush, Hop or Hole, Slider, Twin Walls, Crusher Wall, Last Gap) are picked more often than the rest. Six more grid patterns also unlock as the wave count grows: Hurdle Run, Staircase, Hop Scotch, Split Decision, Crusher Alley and The Gauntlet.
 
