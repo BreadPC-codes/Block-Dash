@@ -587,8 +587,8 @@ const fmtTime = (s) => { s = Math.max(0, Math.floor(s)); return String(Math.floo
 const LANES = 12, LANE_W = 2, HALF_W = (LANES * LANE_W) / 2, RIM = 0;
 // Between the outer lanes and the laser fences runs a narrow slanted, slippery strip:
 // you can slip past a wall there, but you slide toward the laser if you try to stay.
-const SHOULDER = 1.3, SLOPE_DROP = 0.55, ARENA_HALF = HALF_W + SHOULDER;
-const SLOPE_ACCEL = 16, SLOPE_GRIP = 0.55;
+const SHOULDER = 2.0, SLOPE_DROP = 0.5, ARENA_HALF = HALF_W + SHOULDER;
+const SLOPE_ACCEL = 10, SLOPE_GRIP = 0.6;
 // Height of the platform under (x, z), or null over the void.
 function floorAt(x, z) {
   if (z < Z_FAR || z > Z_NEAR) return null;
@@ -628,7 +628,8 @@ const COYOTE_TIME = 0.09, JUMP_BUFFER = 0.13;
 
 // Pattern engine tuning
 const EMERGE_DUR = 0.45, MIN_ROW_SPACING = 5.0, EMPTY_SPACING = 5.5;
-const WALL_GAP = 7;                                       // seconds between two walls, at least
+const WALL_GAP = 7;
+const FALL_HANG = 0.5;                                    // seconds a wall teeters on the near edge before dropping                                       // seconds between two walls, at least
 const DEMO_SPEED = 6, MIRROR_FROM = 5, SAFETY = 0.1, EDGE_MARGIN = 0.55;
 const MAX_STEP = 1 / 120;
 
@@ -1708,8 +1709,9 @@ const world = {
       if (row.falling) {
         row.fallT += h;
         row.z += row.fallSpeed * h;
-        for (const b of row.blocks) { b.fvy -= 32 * h; b.fy += b.fvy * h; b.rot += b.rotV * h; }
-        if (row.fallT > 2.6) { row.remove = true; removeAny = true; }
+        const ease = Math.min(1, row.fallT / FALL_HANG);     // teeters on the edge first, then drops
+        for (const b of row.blocks) { b.fvy -= 20 * ease * h; b.fy += b.fvy * h; b.rot += b.rotV * ease * h; }
+        if (row.fallT > 3.4) { row.remove = true; removeAny = true; }
         continue;
       }
       row.z += dz;
@@ -1735,7 +1737,7 @@ const world = {
         row.falling = true;
         row.fallT = 0;
         row.fallSpeed = this.speed;
-        for (const b of row.blocks) { b.fy = b.y; b.fvy = rand(-0.5, 1.5); b.rot = 0; b.rotV = rand(2.2, 4.5); b.rotZ = rand(-0.6, 0.6); }
+        for (const b of row.blocks) { b.fy = b.y; b.fvy = 0; b.rot = 0; b.rotV = rand(1.4, 2.6); b.rotZ = rand(-0.4, 0.4); }
       }
     }
     if (removeAny) this.rows = this.rows.filter((r) => !r.remove);
@@ -1747,10 +1749,10 @@ const world = {
     const pf = p.platform;
     if (!pf) return;
     const { row, block: b, part } = pf;
-    if (row.falling || row.sinking || row.remove) { p.leavePlatform(); return; }
+    if (row.sinking || row.remove || (row.falling && row.fallT > FALL_HANG * 0.7)) { p.leavePlatform(); return; }
     const cx = b.x + part.ox, cz = row.z + part.oz;
     if (Math.abs(p.x - cx) <= part.w / 2 + 0.04 && Math.abs(p.z - cz) <= part.d / 2 + 0.04) {
-      p.y = b.y + part.y0 + part.h;
+      p.y = (row.falling ? b.fy : b.y) + part.y0 + part.h;
       p.vy = 0;
       p.carry = this.speed;
     } else p.leavePlatform();
@@ -2117,7 +2119,7 @@ const player = (() => {
         else { this.z = Z_FAR; this.vz = 0; }
       }
     },
-    fell() { return !this.grounded && this.y < -1.5; },
+    fell() { return !this.grounded && this.y < -14; },   // a long drop before the run ends
 
     // Laser hit: thrown away from the fence, flickering.
     knockOut(side = 0) {
@@ -3081,7 +3083,7 @@ function simulate(dt, active) {
       const zap = lasers.check(player);
       if (zap) { game.die('zap', { side: zap }); continue; }
       if (player.fell()) { game.die('fall'); continue; }
-      world.checkPassed(player);
+      if (player.y > -1) world.checkPassed(player);         // no wave credit while dropping off the edge
     } else {
       if (state === 'dying') {
         if (run.cause === 'fall') { player.step(h, false); world.support(player); }
