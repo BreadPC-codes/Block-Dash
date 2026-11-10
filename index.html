@@ -201,6 +201,38 @@ body.touch[data-state=playing] #touch,body.touch[data-state=countdown] #touch{di
 .diff-ends{display:flex;justify-content:space-between;font-size:10px;font-weight:800;letter-spacing:.14em;color:var(--muted);opacity:.75}
 .diff-about{margin:5px 0 0;font-size:12.5px;line-height:1.35;color:#e4dfff;min-height:2.7em}
 .menu-row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+/* ---------- Skins ---------- */
+.skins-layout{width:100%;height:100%;display:flex;align-items:stretch;gap:16px}
+.skins-panel{width:min(480px,50vw);display:flex;flex-direction:column;gap:10px;padding:16px 18px 14px}
+.skins-panel h2{margin:0}
+.skins-panel h3{margin:4px 0 0;font-size:12px;letter-spacing:.16em;color:var(--muted)}
+.skin-now{text-align:center;font-family:var(--display);font-size:18px;letter-spacing:.06em;color:var(--gold);margin-top:-6px}
+.skin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));grid-auto-rows:max-content;gap:8px;max-height:min(330px,40vh);overflow-y:auto;padding:4px;margin:0 -4px;overscroll-behavior:contain;touch-action:pan-y}
+.skin-card{display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 4px 6px;border-radius:14px;border:2px solid rgba(255,255,255,.08);background:rgba(255,255,255,.05);
+  color:#e4dfff;font-size:11px;font-weight:700;letter-spacing:.02em;transition:border-color .15s,transform .15s}
+.skin-card canvas{width:100%;aspect-ratio:1;border-radius:10px;background:#2c2266;display:block}
+.skin-card:hover{transform:translateY(-2px)}
+.skin-card[aria-selected=true]{border-color:var(--gold);background:rgba(255,210,63,.12);box-shadow:0 0 16px rgba(255,210,63,.3)}
+.slot-row{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.slot{display:flex;flex-direction:column;align-items:center;gap:4px;padding:7px 2px 6px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.04);
+  font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--muted);min-height:0;min-width:0}
+.slot i{width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.75);background:var(--c);box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.slot.on{border-color:#fff;color:#fff;background:rgba(255,255,255,.13)}
+.swatches{display:flex;flex-wrap:wrap;gap:7px;justify-content:center}
+.swatch{width:30px;height:30px;min-height:0;min-width:0;padding:0;border-radius:50%;border:2px solid rgba(255,255,255,.22);background:var(--c);transition:transform .12s}
+.swatch:hover{transform:scale(1.12)}
+.swatch.on{border-color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.3)}
+.skin-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:2px}
+.skin-actions .btn{min-width:0;flex:1}
+.skin-stage{flex:1;position:relative;cursor:grab;touch-action:none}
+.skin-stage:active{cursor:grabbing}
+.drag-hint{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);padding:6px 14px;border-radius:999px;background:rgba(14,10,38,.55);border:1px solid var(--line);
+  color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.14em;white-space:nowrap;pointer-events:none}
+@media (orientation:portrait){
+  .skins-layout{flex-direction:column-reverse;gap:8px}
+  .skins-panel{width:100%;max-height:64%}
+  .skin-grid{max-height:26vh}
+}
 .menu-hint{margin:0;color:var(--muted);font-size:13px;letter-spacing:.04em;text-shadow:0 2px 8px rgba(0,0,0,.7)}
 .menu-hint kbd{font-family:var(--ui);font-weight:800;color:#fff;background:rgba(255,255,255,.12);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
 .rotate-hint{display:none;margin:0;color:var(--gold);font-size:12px;font-weight:700;letter-spacing:.08em}
@@ -326,6 +358,15 @@ body.touch .kbd-hint{display:none}
   .best-card{padding:7px 16px}
   .best-card b{font-size:19px}
   .diff-pick{padding:6px 14px 5px}
+  .skins-panel{padding:10px 12px;gap:6px}
+  .skins-panel h2,.skins-panel h3{display:none}
+  .skin-now{margin:0;font-size:15px}
+  .skin-grid{flex:1 1 auto;min-height:96px;max-height:none;grid-template-columns:repeat(auto-fill,minmax(70px,1fr))}
+  .slot{padding:4px 2px;font-size:9px;gap:2px}
+  .slot i{width:20px;height:20px}
+  .swatches{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;padding:3px 2px;touch-action:pan-x;flex:none}
+  .swatch{width:26px;height:26px;flex:none}
+  .skin-actions .btn{min-height:38px;padding:6px 10px}
   .diff-pick input[type=range]{margin:6px 0 2px}
   .diff-about,.diff-ends{display:none}
   .go-num{font-size:clamp(52px,16vh,80px)}
@@ -405,6 +446,7 @@ body.touch .kbd-hint{display:none}
     </div>
     <button class="btn primary big" id="btn-play">▶&nbsp; PLAY</button>
     <div class="menu-row">
+      <button class="btn" id="btn-skins">SKINS</button>
       <button class="btn" id="btn-howto">HOW TO PLAY</button>
       <button class="btn" id="btn-settings">SETTINGS</button>
     </div>
@@ -421,6 +463,7 @@ body.touch .kbd-hint{display:none}
       <div class="card">
         <h3>GOAL</h3>
         <p>The floor is a little slippery: you get up to speed fast but glide a short way when you let go. Walls of blocks sweep toward you in <b>waves</b> of eight rows. Get past all eight and <b>WAVE SURVIVED</b> goes up by one.</p>
+        <p>Pick your outfit and its colours under <b>SKINS</b> on the main menu.</p>
         <p>Slip through the holes, jump the low parts, dive, or <b>jump on top</b> and ride. A wall that catches you <b>pushes you</b> toward the edge. Fall off the front or back edge, or touch a laser fence on the sides, and the run is over.</p>
       </div>
       <div class="card">
@@ -446,6 +489,26 @@ body.touch .kbd-hint{display:none}
     <h3>PATTERN LIBRARY</h3>
     <div class="plib" id="pattern-lib"></div>
     <div class="actions"><button class="btn primary" id="btn-howto-back">BACK</button></div>
+  </div>
+</section>
+
+<!-- ================= SKINS ================= -->
+<section class="screen" id="screen-skins" aria-label="Skins">
+  <div class="skins-layout">
+    <div class="panel skins-panel">
+      <h2>SKINS</h2>
+      <div class="skin-now" id="skin-name">Classic</div>
+      <div class="skin-grid" id="skin-grid" role="listbox" aria-label="Choose a skin"></div>
+      <h3>COLOURS</h3>
+      <div class="slot-row" id="slot-row" role="tablist" aria-label="Part to colour"></div>
+      <div class="swatches" id="swatches" role="radiogroup" aria-label="Colour"></div>
+      <div class="skin-actions">
+        <button class="btn" id="btn-skin-random">RANDOM</button>
+        <button class="btn" id="btn-skin-reset">RESET</button>
+        <button class="btn primary" id="btn-skin-done">DONE</button>
+      </div>
+    </div>
+    <div class="skin-stage" id="skin-stage"><span class="drag-hint">DRAG TO TURN</span></div>
   </div>
 </section>
 
@@ -2094,6 +2157,65 @@ const lasers = (() => {
 })();
 
 // ---------------------------------------------------------------------
+// 12a. Skins: original party-game outfits. Each one is a head, face and back item on the runner,
+//      plus six colours (skin, top, bottom, hat, shoes, detail) you can change.
+// ---------------------------------------------------------------------
+const SKIN_SLOTS = [
+  { key: 'skin', label: 'SKIN' }, { key: 'top', label: 'TOP' }, { key: 'bottom', label: 'BOTTOM' },
+  { key: 'hat', label: 'HAT' }, { key: 'shoes', label: 'SHOES' }, { key: 'accent', label: 'DETAIL' },
+];
+const SKIN_TONES = ['#ffe0c4', '#ffcfa1', '#f1c27d', '#e0a370', '#c68642', '#8d5524', '#5c3a21', '#9be564', '#6fd23a', '#7ad3ff', '#c9a7ff', '#ff9ec4', '#b8c2d6', '#ffffff'];
+const SKIN_PALETTE = ['#ffffff', '#e6ecff', '#b8c2d6', '#6b7a99', '#34364f', '#1b1530', '#ff3b4f', '#ff4d5e', '#ff8a2a', '#ffd23f',
+  '#a6e22e', '#3ccf6d', '#2e9e55', '#23c3ff', '#3d7bff', '#3d3fb8', '#7c5cff', '#b44dff', '#ff5fa2', '#ff9ec4', '#8b5a2b', '#5c3a21'];
+const SKINS = [
+  ['classic', 'Classic', 'cap', null, null, ['#ffcfa1', '#23c3ff', '#3a3fa8', '#ff4d5e', '#ffffff', '#ffffff']],
+  ['ninja', 'Ninja', 'headband', 'mask', null, ['#ffcfa1', '#24253a', '#24253a', '#ff3b4f', '#24253a', '#34364f']],
+  ['astro', 'Astronaut', 'astro', null, 'backpack', ['#ffe0c4', '#f2f4fa', '#f2f4fa', '#c9d3e6', '#c9d3e6', '#ff8a2a']],
+  ['robot', 'Robot', 'antenna', 'visor', null, ['#b8c2d6', '#6b7a99', '#4a556e', '#ff4d5e', '#4a556e', '#44f0ff']],
+  ['pirate', 'Pirate', 'pirate', 'eyepatch', null, ['#e8b48a', '#f4f1ff', '#3a2a1e', '#1b1530', '#3a2a1e', '#f4f1ff']],
+  ['chef', 'Chef', 'chef', 'mustache', null, ['#ffcfa1', '#ffffff', '#2b2d45', '#ffffff', '#2b2d45', '#5c3a21']],
+  ['royal', 'Royal', 'crown', null, 'cape', ['#ffcfa1', '#7c5cff', '#3d2b8a', '#ffd23f', '#3d2b8a', '#ff3b4f']],
+  ['wizard', 'Wizard', 'wizard', 'beard', null, ['#ffcfa1', '#3d3fb8', '#2d2f8f', '#5b3fd1', '#3a2a1e', '#f4f1ff']],
+  ['kitty', 'Kitty', 'catears', null, 'tail', ['#ffcfa1', '#ff9ec4', '#ffffff', '#ff9ec4', '#ffffff', '#ffffff']],
+  ['bunny', 'Bunny', 'bunny', null, 'puff', ['#ffcfa1', '#ffffff', '#ffb3d1', '#ffffff', '#ffb3d1', '#ffb3d1']],
+  ['teddy', 'Teddy', 'bear', null, null, ['#ffcfa1', '#8b5a2b', '#6b4421', '#8b5a2b', '#6b4421', '#e0b07a']],
+  ['dino', 'Dino', 'ridge', null, 'dinotail', ['#9be564', '#3ccf6d', '#2e9e55', '#3ccf6d', '#2e9e55', '#ffd23f']],
+  ['viking', 'Viking', 'viking', 'beard', null, ['#ffcfa1', '#8b5a2b', '#4a3a2a', '#9aa3b5', '#4a3a2a', '#ff8a2a']],
+  ['cowboy', 'Cowboy', 'cowboy', 'mask', null, ['#e8b48a', '#c0392b', '#3d5a99', '#8b5a2b', '#5c3a21', '#ffd23f']],
+  ['knight', 'Knight', 'knight', null, 'cape', ['#ffcfa1', '#9aa3b5', '#6b7489', '#d5dceb', '#6b7489', '#3d7bff']],
+  ['swimmer', 'Swimmer', 'swimcap', 'goggles', null, ['#ffcfa1', '#23c3ff', '#ffd23f', '#ffd23f', '#23c3ff', '#ff4d5e']],
+  ['propeller', 'Propeller', 'propeller', null, null, ['#ffcfa1', '#ffd23f', '#3d7bff', '#ff4d5e', '#3d7bff', '#3ccf6d']],
+  ['party', 'Party', 'party', 'shades', null, ['#ffcfa1', '#ff5fa2', '#7c5cff', '#ffd23f', '#ffffff', '#23c3ff']],
+  ['hero', 'Super', null, 'eyemask', 'cape', ['#ffcfa1', '#3d7bff', '#ff3b4f', '#ffd23f', '#ff3b4f', '#ff3b4f']],
+  ['alien', 'Alien', 'antenna', null, null, ['#9be564', '#b44dff', '#3d2b8a', '#ff5fa2', '#3d2b8a', '#9be564']],
+  ['angel', 'Angel', 'halo', null, 'wings', ['#ffe0c4', '#ffffff', '#e6ecff', '#ffd23f', '#ffffff', '#ffffff']],
+  ['devil', 'Devil', 'devil', null, 'devtail', ['#ffcfa1', '#ff3b4f', '#1b1530', '#b3122e', '#1b1530', '#1b1530']],
+  ['froggy', 'Froggy', 'frog', null, null, ['#6fd23a', '#3ccf6d', '#2e7d32', '#6fd23a', '#ffd23f', '#ffffff']],
+  ['unicorn', 'Unicorn', 'unicorn', null, null, ['#ffe0c4', '#ffffff', '#c9a7ff', '#ffffff', '#c9a7ff', '#ffd23f']],
+  ['shark', 'Shark', 'fin', null, null, ['#ffcfa1', '#7d93b2', '#ffffff', '#7d93b2', '#7d93b2', '#ffffff']],
+  ['snowy', 'Snowy', 'beanie', null, 'scarf', ['#ffcfa1', '#3d7bff', '#2b2d45', '#ff4d5e', '#ffffff', '#ffffff']],
+  ['firefighter', 'Firefighter', 'firehat', null, null, ['#ffcfa1', '#2b2d45', '#2b2d45', '#ff3b4f', '#1b1530', '#ffd23f']],
+  ['detective', 'Detective', 'fedora', 'mustache', null, ['#ffcfa1', '#b08a5a', '#5c4033', '#5c4033', '#1b1530', '#1b1530']],
+  ['jetpack', 'Jetpack', 'cap', 'goggles', 'jetpack', ['#ffcfa1', '#ff8a2a', '#2b2d45', '#ffffff', '#2b2d45', '#c9d3e6']],
+  ['sporty', 'Sporty', 'headband', null, null, ['#ffcfa1', '#3ccf6d', '#ffffff', '#ffffff', '#ff4d5e', '#ffffff']],
+].map(([id, name, head, face, back, c]) => ({ id, name, head, face, back, colors: Object.fromEntries(SKIN_SLOTS.map((sl, i) => [sl.key, c[i]])) }));
+const SKIN_BY_ID = Object.fromEntries(SKINS.map((sk) => [sk.id, sk]));
+const SKIN_KEY = 'blockdash.skin.v1';
+const HEX = /^#[0-9a-f]{6}$/i;
+const skinState = (() => {                               // { id, colors: { [skinId]: { slot: '#rrggbb' } } }
+  let st = {};
+  try { st = JSON.parse(store.get(SKIN_KEY) || '{}') || {}; } catch { st = {}; }
+  const colors = {};
+  for (const [id, c] of Object.entries(st.colors || {})) {
+    if (!SKIN_BY_ID[id] || !c) continue;
+    for (const sl of SKIN_SLOTS) if (HEX.test(c[sl.key] || '')) (colors[id] ||= {})[sl.key] = c[sl.key];
+  }
+  return { id: SKIN_BY_ID[st.id] ? st.id : 'classic', colors };
+})();
+const saveSkins = () => store.set(SKIN_KEY, JSON.stringify(skinState));
+const skinColors = (id) => ({ ...SKIN_BY_ID[id].colors, ...(skinState.colors[id] || {}) });
+
+// ---------------------------------------------------------------------
 // 12. Player: a chunky little party-game runner (original design)
 // ---------------------------------------------------------------------
 const player = (() => {
@@ -2106,6 +2228,11 @@ const player = (() => {
     skin: mat(0xffcfa1), shirt: mat(0x23c3ff, 0.5), stripe: mat(0xffffff, 0.5), shorts: mat(0x3a3fa8),
     shoe: mat(0xffffff, 0.45), sole: mat(0xff4d5e), cap: mat(0xff4d5e, 0.45), eye: mat(0xffffff, 0.25),
     pupil: mat(0x1b1530, 0.3), cheek: mat(0xff8f9a, 0.6),
+    dark: mat(0x1b1530, 0.4), ivory: mat(0xfff1d6, 0.5),
+    glass: new THREE.MeshStandardMaterial({ color: 0xbfe6ff, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.28, depthWrite: false }),
+    glow: new THREE.MeshStandardMaterial({ color: 0x44f0ff, emissive: 0x44f0ff, emissiveIntensity: 0.9, roughness: 0.3 }),
+    halo: new THREE.MeshStandardMaterial({ color: 0xffd23f, emissive: 0xffd23f, emissiveIntensity: 0.8, roughness: 0.3 }),
+    flame: new THREE.MeshBasicMaterial({ color: 0xffa23a, toneMapped: false, transparent: true, opacity: 0.9 }),
   };
   const add = (parent, geo, material, x = 0, y = 0, z = 0) => {
     const m = new THREE.Mesh(geo, material);
@@ -2135,9 +2262,6 @@ const player = (() => {
     add(head, new THREE.SphereGeometry(0.045, 8, 6), M.cheek, s * 0.16, -0.06, -0.19).scale.set(1, 0.6, 0.5);
   }
   add(head, new THREE.TorusGeometry(0.055, 0.016, 6, 14, Math.PI), M.pupil, 0, -0.07, -0.245).rotation.z = Math.PI;   // smile
-  add(head, new THREE.SphereGeometry(0.272, 22, 10, 0, Math.PI * 2, 0, Math.PI / 2), M.cap, 0, 0.03, 0);              // cap
-  add(head, new THREE.CylinderGeometry(0.2, 0.2, 0.035, 20, 1, false, Math.PI / 2, Math.PI), M.cap, 0, 0.05, -0.12);  // brim
-  add(head, new THREE.SphereGeometry(0.04, 8, 6), M.stripe, 0, 0.3, 0);
   const arms = [-1, 1].map((s) => {
     const shoulder = new THREE.Group();
     shoulder.position.set(s * 0.25, 0.43, 0);
@@ -2160,13 +2284,285 @@ const player = (() => {
   scene.add(root);
   root.visible = false;
 
+  // ---- Skin items, built from primitives on first use. Head items sit on the head (radius 0.26,
+  //      the face looks toward -z); back items sit on the hips (the back of the torso is at z ≈ 0.2).
+  //      M.cap follows the hat colour and M.stripe the detail colour, so every item can be recoloured.
+  const sph = (r, w = 14, h = 10) => new THREE.SphereGeometry(r, w, h);
+  const cyl = (rt, rb, h, seg = 18) => new THREE.CylinderGeometry(rt, rb, h, seg);
+  const cone = (r, h, seg = 16) => new THREE.ConeGeometry(r, h, seg);
+  const dome = (r) => new THREE.SphereGeometry(r, 22, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+  const ring = (g, r, tube, m, x, y, z) => { const t = add(g, new THREE.TorusGeometry(r, tube, 8, 28), m, x, y, z); t.rotation.x = Math.PI / 2; return t; };
+  const ACC = {
+    // headwear
+    cap: ['head', (g) => {
+      add(g, dome(0.272), M.cap, 0, 0.03, 0);
+      add(g, new THREE.CylinderGeometry(0.2, 0.2, 0.035, 20, 1, false, Math.PI / 2, Math.PI), M.cap, 0, 0.05, -0.12);
+      add(g, sph(0.04, 8, 6), M.stripe, 0, 0.3, 0);
+    }],
+    beanie: ['head', (g) => {
+      add(g, dome(0.277), M.cap, 0, 0.09, 0).scale.y = 1.15;
+      add(g, cyl(0.285, 0.285, 0.075, 22), M.stripe, 0, 0.13, 0);
+      add(g, sph(0.08), M.stripe, 0, 0.47, 0);
+    }],
+    swimcap: ['head', (g) => { add(g, dome(0.274), M.cap, 0, 0.1, 0).scale.y = 1.08; }],
+    propeller: ['head', (g) => {
+      add(g, dome(0.274), M.cap, 0, 0.08, 0);
+      add(g, cyl(0.02, 0.02, 0.1, 8), M.stripe, 0, 0.39, 0);
+      const prop = new THREE.Group(); prop.position.y = 0.44; g.add(prop);
+      add(prop, new THREE.BoxGeometry(0.36, 0.014, 0.07), M.stripe);
+      add(prop, new THREE.BoxGeometry(0.07, 0.014, 0.36), M.cap);
+      add(prop, sph(0.03, 8, 6), M.cap);
+      return (dt, st) => { prop.rotation.y += dt * (st.air ? 28 : 7); };
+    }],
+    crown: ['head', (g) => {
+      add(g, cyl(0.19, 0.19, 0.11, 20), M.cap, 0, 0.24, 0);
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        add(g, cone(0.045, 0.12, 8), M.cap, Math.sin(a) * 0.165, 0.35, Math.cos(a) * 0.165);
+        add(g, sph(0.026, 8, 6), M.stripe, Math.sin(a) * 0.192, 0.24, Math.cos(a) * 0.192);
+      }
+    }],
+    fedora: ['head', (g) => {
+      add(g, cyl(0.33, 0.33, 0.022, 26), M.cap, 0, 0.19, 0).scale.z = 1.12;
+      add(g, cyl(0.16, 0.2, 0.17, 18), M.cap, 0, 0.29, 0);
+      add(g, cyl(0.203, 0.203, 0.045, 18), M.stripe, 0, 0.225, 0);
+    }],
+    cowboy: ['head', (g) => {
+      add(g, cyl(0.44, 0.44, 0.024, 28), M.cap, 0, 0.19, 0).scale.z = 0.92;
+      for (const s of [-1, 1]) add(g, new THREE.BoxGeometry(0.1, 0.022, 0.5), M.cap, s * 0.42, 0.23, 0).rotation.z = s * 0.6;
+      add(g, cyl(0.15, 0.2, 0.2, 18), M.cap, 0, 0.3, 0);
+      add(g, cyl(0.203, 0.203, 0.045, 18), M.stripe, 0, 0.22, 0);
+    }],
+    chef: ['head', (g) => {
+      add(g, cyl(0.22, 0.21, 0.16, 20), M.cap, 0, 0.26, 0);
+      for (const [x, z] of [[0, 0.02], [0.11, 0.06], [-0.11, 0.06], [0.07, -0.09], [-0.07, -0.09]]) add(g, sph(0.15), M.cap, x, 0.44, z);
+    }],
+    wizard: ['head', (g) => {
+      add(g, cyl(0.36, 0.36, 0.024, 26), M.cap, 0, 0.18, 0);
+      add(g, cone(0.22, 0.6, 22), M.cap, 0, 0.48, 0.03).rotation.x = 0.2;
+      add(g, new THREE.OctahedronGeometry(0.06), M.stripe, 0.05, 0.38, -0.16);
+    }],
+    party: ['head', (g) => {
+      const hat = new THREE.Group(); hat.position.set(0.06, 0.42, 0); hat.rotation.z = -0.25; g.add(hat);
+      add(hat, cone(0.15, 0.36, 18), M.cap);
+      add(hat, sph(0.055), M.stripe, 0, 0.2, 0);
+      ring(hat, 0.13, 0.018, M.stripe, 0, -0.13, 0);
+    }],
+    pirate: ['head', (g) => {
+      add(g, cyl(0.2, 0.23, 0.15, 20), M.cap, 0, 0.29, 0);
+      add(g, cyl(0.4, 0.4, 0.028, 3), M.cap, 0, 0.22, 0).rotation.y = Math.PI;   // tricorn brim, point to the front
+      add(g, sph(0.045, 10, 8), M.stripe, 0, 0.3, -0.21);
+      for (const s of [-1, 1]) add(g, new THREE.BoxGeometry(0.12, 0.018, 0.018), M.stripe, 0, 0.26, -0.225).rotation.z = s * 0.6;
+    }],
+    viking: ['head', (g) => {
+      add(g, dome(0.282), M.cap, 0, 0.06, 0);
+      ring(g, 0.28, 0.028, M.cap, 0, 0.07, 0);
+      for (const s of [-1, 1]) add(g, cone(0.065, 0.3, 14), M.ivory, s * 0.32, 0.26, 0).rotation.z = -s * 0.9;
+    }],
+    knight: ['head', (g) => {
+      add(g, sph(0.325, 22, 16), M.cap, 0, 0.01, 0);
+      add(g, new THREE.BoxGeometry(0.36, 0.055, 0.07), M.dark, 0, 0.04, -0.305);
+      for (let i = 0; i < 4; i++) add(g, sph(0.075 - i * 0.01), M.stripe, 0, 0.35 + i * 0.025, 0.04 + i * 0.075);
+    }],
+    firehat: ['head', (g) => {
+      add(g, dome(0.29), M.cap, 0, 0.1, 0).scale.y = 1.05;
+      add(g, cyl(0.38, 0.38, 0.03, 26), M.cap, 0, 0.11, 0.05).scale.z = 1.15;
+      add(g, new THREE.BoxGeometry(0.13, 0.15, 0.03), M.stripe, 0, 0.27, -0.25).rotation.x = -0.35;
+    }],
+    astro: ['head', (g) => {
+      const bubble = add(g, sph(0.38, 24, 18), M.glass, 0, 0.02, 0);
+      bubble.castShadow = false; bubble.renderOrder = 2;
+      ring(g, 0.25, 0.05, M.cap, 0, -0.27, 0);
+    }],
+    headband: ['head', (g) => {
+      ring(g, 0.235, 0.035, M.cap, 0, 0.13, 0);
+      for (const s of [-1, 1]) add(g, new THREE.BoxGeometry(0.05, 0.025, 0.2), M.cap, s * 0.05, 0.08, 0.31).rotation.set(0.5, s * 0.35, 0);
+    }],
+    // animals & fantasy
+    catears: ['head', (g) => {
+      for (const s of [-1, 1]) {
+        add(g, cone(0.085, 0.17, 4), M.cap, s * 0.15, 0.27, 0.02).rotation.set(0, Math.PI / 4, -s * 0.38);
+        add(g, cone(0.045, 0.1, 4), M.stripe, s * 0.152, 0.265, -0.015).rotation.set(0, Math.PI / 4, -s * 0.38);
+      }
+    }],
+    bunny: ['head', (g) => {
+      for (const s of [-1, 1]) {
+        const e = add(g, new THREE.CapsuleGeometry(0.058, 0.3, 4, 10), M.cap, s * 0.1, 0.44, 0.03); e.rotation.z = -s * 0.16; e.scale.z = 0.55;
+        const n = add(g, new THREE.CapsuleGeometry(0.03, 0.24, 4, 8), M.stripe, s * 0.1, 0.44, -0.005); n.rotation.z = -s * 0.16; n.scale.z = 0.4;
+      }
+    }],
+    bear: ['head', (g) => {
+      for (const s of [-1, 1]) {
+        add(g, sph(0.085), M.cap, s * 0.19, 0.2, 0.02).scale.z = 0.7;
+        add(g, sph(0.05), M.stripe, s * 0.19, 0.2, -0.025).scale.z = 0.5;
+      }
+    }],
+    frog: ['head', (g) => {
+      for (const s of [-1, 1]) {
+        add(g, sph(0.1), M.cap, s * 0.12, 0.24, -0.05);
+        add(g, sph(0.072), M.eye, s * 0.12, 0.25, -0.1);
+        add(g, sph(0.036), M.pupil, s * 0.12, 0.25, -0.168);
+      }
+    }],
+    unicorn: ['head', (g) => {
+      add(g, cone(0.05, 0.3, 14), M.stripe, 0, 0.37, -0.1).rotation.x = -0.35;
+      for (const s of [-1, 1]) add(g, cone(0.055, 0.12, 4), M.cap, s * 0.16, 0.24, 0.03).rotation.z = -s * 0.3;
+      for (let i = 0; i < 4; i++) add(g, sph(0.065), M.shirt, 0, 0.2 - i * 0.07, 0.2 + i * 0.025);
+    }],
+    devil: ['head', (g) => {
+      for (const s of [-1, 1]) add(g, cone(0.045, 0.15, 12), M.cap, s * 0.13, 0.27, -0.04).rotation.z = -s * 0.32;
+    }],
+    antenna: ['head', (g) => {
+      for (const s of [-1, 1]) {
+        add(g, cyl(0.012, 0.012, 0.24, 6), M.stripe, s * 0.1, 0.34, 0).rotation.z = -s * 0.28;
+        add(g, sph(0.048), M.cap, s * 0.135, 0.455, 0);
+      }
+    }],
+    halo: ['head', (g) => {
+      const h = ring(g, 0.17, 0.026, M.halo, 0, 0.37, 0.02);
+      h.rotation.x = Math.PI / 2 + 0.38;                 // tipped toward the front so it reads as a ring
+      h.castShadow = false;
+      return (dt, st) => { h.position.y = 0.37 + Math.sin(st.t * 2.2) * 0.015; };
+    }],
+    fin: ['head', (g) => {
+      const f = add(g, cone(0.16, 0.34, 4), M.cap, 0, 0.36, 0.05); f.scale.set(0.28, 1, 1); f.rotation.x = 0.35;
+    }],
+    ridge: ['head', (g) => {
+      for (let i = 0; i < 4; i++) { const a = -0.5 + i * 0.45; add(g, cone(0.06, 0.13, 6), M.stripe, 0, 0.26 * Math.cos(a) + 0.03, 0.26 * Math.sin(a)).rotation.x = a; }
+    }],
+    // face
+    shades: ['head', (g) => {
+      for (const s of [-1, 1]) add(g, new THREE.BoxGeometry(0.13, 0.075, 0.03), M.dark, s * 0.095, 0.04, -0.315);
+      add(g, new THREE.BoxGeometry(0.08, 0.018, 0.02), M.dark, 0, 0.055, -0.315);
+      for (const s of [-1, 1]) add(g, new THREE.BoxGeometry(0.015, 0.018, 0.22), M.dark, s * 0.19, 0.055, -0.2).rotation.y = s * 0.15;
+    }],
+    goggles: ['head', (g) => {
+      for (const s of [-1, 1]) {
+        add(g, new THREE.TorusGeometry(0.075, 0.022, 8, 18), M.stripe, s * 0.095, 0.035, -0.3);
+        const lens = add(g, new THREE.CircleGeometry(0.07, 18), M.glass, s * 0.095, 0.035, -0.316);
+        lens.rotation.y = Math.PI; lens.castShadow = false;
+      }
+      ring(g, 0.262, 0.02, M.dark, 0, 0.035, 0);
+    }],
+    eyepatch: ['head', (g) => {
+      add(g, cyl(0.072, 0.072, 0.02, 16), M.dark, 0.095, 0.035, -0.318).rotation.x = Math.PI / 2;
+      const strap = ring(g, 0.27, 0.012, M.dark, 0, 0.09, 0); strap.rotation.y = 0.4;
+    }],
+    mask: ['head', (g) => { add(g, new THREE.SphereGeometry(0.276, 22, 8, Math.PI, Math.PI, Math.PI * 0.52, Math.PI * 0.36), M.stripe); }],
+    beard: ['head', (g) => {
+      add(g, new THREE.SphereGeometry(0.278, 20, 8, Math.PI * 1.1, Math.PI * 0.8, Math.PI * 0.55, Math.PI * 0.4), M.stripe).scale.set(1, 1.25, 1.05);
+      for (const s of [-1, 1]) add(g, new THREE.CapsuleGeometry(0.026, 0.07, 4, 8), M.stripe, s * 0.045, -0.05, -0.27).rotation.z = s * 1.25;
+    }],
+    mustache: ['head', (g) => {
+      for (const s of [-1, 1]) add(g, new THREE.CapsuleGeometry(0.026, 0.07, 4, 8), M.stripe, s * 0.045, -0.05, -0.262).rotation.z = s * 1.25;
+    }],
+    eyemask: ['head', (g) => {
+      for (const s of [-1, 1]) add(g, new THREE.TorusGeometry(0.078, 0.03, 8, 18), M.dark, s * 0.095, 0.035, -0.262);
+      add(g, new THREE.BoxGeometry(0.06, 0.03, 0.03), M.dark, 0, 0.045, -0.275);
+    }],
+    visor: ['head', (g) => {
+      add(g, new THREE.SphereGeometry(0.32, 22, 6, Math.PI * 1.12, Math.PI * 0.76, Math.PI * 0.4, Math.PI * 0.16), M.glow).castShadow = false;
+    }],
+    // back
+    cape: ['hips', (g) => {
+      const pivot = new THREE.Group(); pivot.position.set(0, 0.47, 0.2); g.add(pivot);
+      add(pivot, new THREE.BoxGeometry(0.44, 0.58, 0.022), M.stripe, 0, -0.29, 0.015);
+      return (dt, st) => { pivot.rotation.x = -(0.1 + st.k * 0.55 + (st.air ? 0.35 : 0) + Math.sin(st.t * 7) * 0.03 * (0.4 + st.k)); };
+    }],
+    wings: ['hips', (g) => {
+      const ws = [-1, 1].map((s) => {
+        const p = new THREE.Group(); p.position.set(s * 0.08, 0.42, 0.22); g.add(p);
+        const w = add(p, sph(0.16, 14, 10), M.stripe, s * 0.17, 0.05, 0.02); w.scale.set(1.3, 0.75, 0.22); w.rotation.z = s * 0.35;
+        return p;
+      });
+      return (dt, st) => { const f = st.air ? Math.sin(st.t * 18) * 0.5 : Math.sin(st.t * 2.5) * 0.12; ws.forEach((p, i) => { p.rotation.y = (i ? -1 : 1) * (0.35 + f); }); };
+    }],
+    jetpack: ['hips', (g) => {
+      const flames = [];
+      add(g, new THREE.BoxGeometry(0.2, 0.22, 0.06), M.dark, 0, 0.32, 0.23);
+      for (const s of [-1, 1]) {
+        add(g, cyl(0.075, 0.075, 0.32, 14), M.stripe, s * 0.09, 0.3, 0.29);
+        add(g, sph(0.075, 12, 8), M.stripe, s * 0.09, 0.46, 0.29);
+        add(g, cyl(0.05, 0.07, 0.06, 12), M.dark, s * 0.09, 0.115, 0.29);
+        const fl = add(g, cone(0.055, 0.2, 10), M.flame, s * 0.09, -0.01, 0.29);
+        fl.rotation.x = Math.PI; fl.castShadow = false; flames.push(fl);
+      }
+      return (dt, st) => { for (const f of flames) { f.visible = st.air; f.scale.y = 0.7 + Math.random() * 0.6; } };
+    }],
+    backpack: ['hips', (g) => {
+      add(g, new THREE.BoxGeometry(0.36, 0.38, 0.16), M.stripe, 0, 0.3, 0.29);
+      for (const s of [-1, 1]) add(g, cyl(0.04, 0.04, 0.3, 10), M.cap, s * 0.12, 0.3, 0.38);
+    }],
+    tail: ['hips', (g) => {
+      const t = new THREE.Group(); t.position.set(0, 0.06, 0.2); g.add(t);
+      for (let i = 0; i < 7; i++) add(t, sph(0.05 - i * 0.003, 10, 8), M.cap, 0, i * 0.06, 0.03 + i * 0.035);
+      return (dt, st) => { t.rotation.z = Math.sin(st.t * 3) * 0.35; };
+    }],
+    devtail: ['hips', (g) => {
+      const t = new THREE.Group(); t.position.set(0, 0.06, 0.2); g.add(t);
+      for (let i = 0; i < 6; i++) add(t, sph(0.035, 8, 6), M.cap, 0, i * 0.05, 0.03 + i * 0.045);
+      add(t, cone(0.06, 0.1, 4), M.cap, 0, 0.31, 0.3).rotation.x = 0.7;
+      return (dt, st) => { t.rotation.z = Math.sin(st.t * 4) * 0.4; };
+    }],
+    dinotail: ['hips', (g) => {
+      const t = new THREE.Group(); t.position.set(0, 0.08, 0.18); g.add(t);
+      for (let i = 0; i < 5; i++) {
+        const r = 0.11 - i * 0.018;
+        add(t, sph(r, 12, 10), M.shirt, 0, -i * 0.035, 0.05 + i * 0.1);
+        add(t, cone(0.035, 0.08, 6), M.stripe, 0, r - i * 0.035 + 0.02, 0.05 + i * 0.1);
+      }
+      for (let i = 0; i < 3; i++) add(g, cone(0.045, 0.1, 6), M.stripe, 0, 0.45 - i * 0.13, 0.24).rotation.x = Math.PI / 2;
+      return (dt, st) => { t.rotation.y = Math.sin(st.t * 3) * 0.3; };
+    }],
+    puff: ['hips', (g) => { add(g, sph(0.09), M.cap, 0, 0.05, 0.25); }],
+    scarf: ['hips', (g) => {
+      ring(g, 0.2, 0.055, M.cap, 0, 0.47, 0);
+      add(g, new THREE.BoxGeometry(0.1, 0.24, 0.04), M.cap, 0.08, 0.36, 0.23).rotation.z = 0.2;
+    }],
+  };
+  const accs = {};                                       // built items, by id
+  let worn = [];                                         // items of the current skin
+  const animSt = { t: 0, k: 0, air: false };
+
   return {
     root, x: P_START_X, y: 0, z: P_START_Z, vx: 0, vy: 0, vz: 0,
     grounded: true, coyote: 0, jumpBuf: 0, platform: null, carry: 0,
     diving: false, dived: false, slideT: 0, stunT: 0, pushT: 9, spinX: 0, diveBlend: 0,
     squash: 0, lean: 0, yaw: 0, runPhase: 0, blinkT: 2, blink: 0, t: 0, ko: null, flicker: 0,
+    showYaw: null,                                       // set while the runner poses on the skins podium
     get visible() { return root.visible; },
     get height() { return this.diving || this.slideT > 0 ? P_HEIGHT_FLAT : P_HEIGHT; },
+
+    applySkin(def, colors) {
+      M.skin.color.set(colors.skin); M.shirt.color.set(colors.top); M.shorts.color.set(colors.bottom);
+      M.cap.color.set(colors.hat); M.sole.color.set(colors.hat); M.shoe.color.set(colors.shoes); M.stripe.color.set(colors.accent);
+      M.glow.color.set(colors.accent); M.glow.emissive.set(colors.accent);
+      M.halo.color.set(colors.hat); M.halo.emissive.set(colors.hat);
+      for (const id in accs) accs[id].g.visible = false;
+      worn = [];
+      for (const id of [def.head, def.face, def.back]) {
+        if (!id || !ACC[id]) continue;
+        let a = accs[id];
+        if (!a) {
+          const [on, build] = ACC[id], g = new THREE.Group();
+          (on === 'head' ? head : hips).add(g);
+          a = accs[id] = { g, tick: build(g) || null };
+        }
+        a.g.visible = true;
+        worn.push(a);
+      }
+    },
+    showcase(x, z, yaw) {
+      this.reset();
+      this.x = x; this.z = z; this.y = 0; this.grounded = true; this.showYaw = yaw;
+    },
+    poseStill(yaw) {                                     // neutral standing pose (for skin thumbnails)
+      visual.rotation.set(0, yaw, 0); visual.position.set(0, 0, 0); visual.scale.set(1, 1, 1); visual.visible = true;
+      pose(arms, [0, 0], [0.12, 0.12]); pose(legs, [0, 0]);
+      hips.position.y = 0.42; torso.scale.y = 1; eyes.scale.y = 1;
+      animSt.t = 0; animSt.k = 0; animSt.air = false;
+      for (const a of worn) if (a.tick) a.tick(0, animSt);
+    },
 
     reset() {
       this.x = P_START_X; this.z = P_START_Z; this.y = 4.5;
@@ -2174,7 +2570,7 @@ const player = (() => {
       this.grounded = false; this.coyote = 0; this.jumpBuf = 0;
       this.platform = null; this.carry = 0;
       this.diving = false; this.dived = false; this.slideT = 0; this.stunT = 0; this.pushT = 9; this.spinX = 0; this.diveBlend = 0;
-      this.squash = 0; this.lean = 0; this.yaw = 0;
+      this.squash = 0; this.lean = 0; this.yaw = 0; this.showYaw = null;
       this.ko = null; this.flicker = 0;
       visual.rotation.set(0, 0, 0);
       visual.position.set(0, 0, 0);
@@ -2302,10 +2698,12 @@ const player = (() => {
       const steering = state === 'playing' && Math.hypot(input.moveX, input.moveZ) > 0.1;
       const ownVz = this.pushT < 0.2 && !this.platform ? this.vz - (world.speed - this.carry) : this.vz;
       const sp = steering ? Math.hypot(this.vx, ownVz) : 0, k = Math.min(1, sp / MOVE_SPEED);
-      const targetYaw = steering ? Math.atan2(-input.moveX, -input.moveZ) : 0;   // idle: face the blocks
+      const showing = this.showYaw !== null;               // on the skins podium: turn to show off the outfit
+      const targetYaw = showing ? this.showYaw + Math.sin(this.t * 0.6) * 0.35
+        : steering ? Math.atan2(-input.moveX, -input.moveZ) : 0;   // idle: face the blocks
       let dyaw = targetYaw - this.yaw;
       dyaw = ((((dyaw + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) - Math.PI;
-      this.yaw += dyaw * (1 - Math.exp(-(steering ? 30 : 8) * dt));
+      this.yaw += dyaw * (1 - Math.exp(-(steering || showing ? 30 : 8) * dt));
       const flat = this.diving || this.slideT > 0;
       this.diveBlend = damp(this.diveBlend, flat ? 1 : 0, flat ? 18 : 9, dt);
       this.lean = damp(this.lean, this.grounded ? -0.2 * k : 0.05, 10, dt);
@@ -2340,6 +2738,8 @@ const player = (() => {
         pose(legs, [Math.sin(f) * 0.5, -Math.sin(f) * 0.5]);
         hips.position.y = 0.42;
       }
+      animSt.t = this.t; animSt.k = k; animSt.air = !this.grounded;
+      for (const a of worn) if (a.tick) a.tick(dt, animSt);
       this.blinkT -= dt;
       if (this.blinkT < 0) { this.blinkT = rand(2, 5); this.blink = 0.13; }
       if (this.blink > 0) this.blink -= dt;
@@ -2490,13 +2890,34 @@ function cameraParams(aspect) {
   const t = clamp((1.3 - aspect) / 0.75, 0, 1);      // 0 = landscape, 1 = tall portrait
   return { t, dist: lerp(7, 12.5, t), height: lerp(4.5, 8, t), look: lerp(8, 10, t) };
 }
+// The skins screen shows the runner on a podium just beside the arena, facing a close-up camera.
+const SHOW = { x: ARENA_HALF + 3.4, z: -3, yaw: -Math.PI / 2 };
+const podium = (() => {
+  const g = new THREE.Group();
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.45, 0.5, 40),
+    new THREE.MeshStandardMaterial({ color: 0x2a2063, roughness: 0.5, metalness: 0.2, emissive: 0x120a33 }));
+  top.position.y = -0.25; top.receiveShadow = true; top.castShadow = true;
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(1.26, 0.045, 8, 48), new THREE.MeshBasicMaterial({ color: 0xff5fb0, toneMapped: false }));
+  rim.rotation.x = Math.PI / 2;
+  g.add(top, rim);
+  g.position.set(SHOW.x, 0, SHOW.z);
+  g.visible = false;
+  scene.add(g);
+  return g;
+})();
 const camCtl = {
   mode: 'menu', params: cameraParams(innerWidth / Math.max(1, innerHeight)),
   pos: new THREE.Vector3(34, 24, 30), look: new THREE.Vector3(0, 0, ARENA_MID),
   target: new THREE.Vector3(), lookT: new THREE.Vector3(), pivot: new THREE.Vector3(P_START_X, 0, P_START_Z),
   posOff: new THREE.Vector3(), lookOff: new THREE.Vector3(),
-  angle: 0.75, shake: 0, yaw: 0, pitch: 0, rad: 0, ease: false,
+  angle: 0.75, shake: 0, yaw: 0, pitch: 0, rad: 0, ease: false, viewK: 0,
 };
+// Shift the picture so the podium runner sits beside the skins panel (k: 0 = centred, 1 = shifted).
+function setViewShift(k) {
+  if (k < 0.001) { if (camera.view && camera.view.enabled) camera.clearViewOffset(); return; }
+  const w = Math.max(1, stage.clientWidth || innerWidth), h = Math.max(1, stage.clientHeight || innerHeight), wide = w >= h * 1.05;
+  camera.setViewOffset(w, h, wide ? -w * 0.23 * k : 0, wide ? 0 : h * 0.31 * k, w, h);
+}
 // Pitch is an offset from the default elevation; keep the camera between skimming the floor and almost straight down.
 const CAM_ELEV_MIN = 0.1, CAM_ELEV_MAX = 1.38;
 function camBaseElev() { return Math.atan2(camCtl.params.height, camCtl.params.dist); }
@@ -2514,6 +2935,11 @@ function updateCamera(dt) {
     c.lookT.set(0, -1, ARENA_MID - 2);
     c.pos.set(damp(c.pos.x, c.target.x, 1.1, dt), damp(c.pos.y, c.target.y, 1.1, dt), damp(c.pos.z, c.target.z, 1.1, dt));
     c.look.set(damp(c.look.x, c.lookT.x, 1.4, dt), damp(c.look.y, c.lookT.y, 1.4, dt), damp(c.look.z, c.lookT.z, 1.4, dt));
+  } else if (c.mode === 'locker') {                      // skins: close-up of the runner on its podium
+    c.target.set(SHOW.x + 5.9, 2.05, SHOW.z - 1.3);
+    c.lookT.set(SHOW.x, 1.1, SHOW.z);
+    c.pos.set(damp(c.pos.x, c.target.x, 2.6, dt), damp(c.pos.y, c.target.y, 2.6, dt), damp(c.pos.z, c.target.z, 2.6, dt));
+    c.look.set(damp(c.look.x, c.lookT.x, 3.2, dt), damp(c.look.y, c.lookT.y, 3.2, dt), damp(c.look.z, c.lookT.z, 3.2, dt));
   } else {
     // Third-person orbit: the mouse (or a drag) turns the camera all the way around the runner.
     // Yaw and pitch apply straight away; only the point it circles follows the runner smoothly.
@@ -2546,8 +2972,10 @@ function updateCamera(dt) {
   const sh = c.shake * c.shake * 0.6;
   camera.position.set(c.pos.x + (Math.random() - 0.5) * sh, c.pos.y + (Math.random() - 0.5) * sh, c.pos.z + (Math.random() - 0.5) * sh);
   camera.lookAt(c.look);
-  const fov = c.mode === 'menu' ? lerp(50, 64, P.t) : settings.fov + 15 * P.t;   // portrait screens get a little extra
+  const fov = c.mode === 'menu' ? lerp(50, 64, P.t) : c.mode === 'locker' ? lerp(40, 58, P.t) : settings.fov + 15 * P.t;   // portrait gets a little extra
   if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = damp(camera.fov, fov, 3, dt); camera.updateProjectionMatrix(); }
+  c.viewK = damp(c.viewK, c.mode === 'locker' ? 1 : 0, 4, dt);
+  setViewShift(c.viewK);
   sky.position.copy(camera.position);
   stars.pts.position.copy(camera.position);
   placeSun(c.mode === 'menu' ? ARENA_MID : player.z - 12);
@@ -2851,10 +3279,13 @@ const hud = {
 // ---------------------------------------------------------------------
 // 17. Menus & settings screens
 // ---------------------------------------------------------------------
-const SCREENS = ['menu', 'howto', 'settings', 'pause', 'gameover'];
+const SCREENS = ['menu', 'howto', 'settings', 'skins', 'pause', 'gameover'];
 let currentScreen = null, settingsReturn = 'menu';
 function showScreen(name) {
+  const prev = currentScreen;
   currentScreen = name;
+  if (prev === 'skins' && name !== 'skins') closeSkins();
+  if (name === 'skins' && prev !== 'skins') openSkins();
   for (const s of SCREENS) $('screen-' + s).classList.toggle('active', s === name);
   if (name) {
     const el = $('screen-' + name);
@@ -2869,6 +3300,147 @@ function showScreen(name) {
   } else if (document.activeElement && document.activeElement !== document.body) {
     document.activeElement.blur();
   }
+}
+// ---- Skins screen ----
+const skinUI = { slot: 'top', cards: {}, thumbQueue: [], thumbsDone: false };
+function applyCurrentSkin() { player.applySkin(SKIN_BY_ID[skinState.id], skinColors(skinState.id)); }
+function skinChanged() {
+  saveSkins(); applyCurrentSkin(); syncSkinUI();
+  if (!skinUI.thumbQueue.includes(skinState.id)) skinUI.thumbQueue.push(skinState.id);
+}
+function selectSkin(id) {
+  if (id === skinState.id) return;
+  skinState.id = id;
+  saveSkins(); applyCurrentSkin(); syncSkinUI();
+  player.squash = 0.7;                                   // a little bounce for the new outfit
+  audio.play('click');
+}
+function buildSkinUI() {
+  const grid = $('skin-grid');
+  for (const sk of SKINS) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'skin-card'; b.setAttribute('role', 'option');
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 160;
+    const name = document.createElement('span');
+    name.textContent = sk.name;
+    b.append(cv, name);
+    b.addEventListener('click', () => selectSkin(sk.id));
+    grid.appendChild(b);
+    skinUI.cards[sk.id] = { b, cv };
+  }
+  const row = $('slot-row');
+  for (const sl of SKIN_SLOTS) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'slot'; b.dataset.slot = sl.key; b.setAttribute('role', 'tab');
+    b.append(document.createElement('i'), sl.label);
+    b.addEventListener('click', () => { skinUI.slot = sl.key; syncSkinUI(); audio.play('click'); });
+    row.appendChild(b);
+  }
+  $('btn-skin-random').addEventListener('click', () => {
+    const c = { ...(skinState.colors[skinState.id] || {}) };
+    for (const sl of SKIN_SLOTS) if (sl.key !== 'skin') c[sl.key] = pick(SKIN_PALETTE);
+    skinState.colors[skinState.id] = c;
+    skinChanged(); audio.play('click');
+  });
+  $('btn-skin-reset').addEventListener('click', () => { delete skinState.colors[skinState.id]; skinChanged(); audio.play('click'); });
+  $('btn-skin-done').addEventListener('click', () => { audio.play('click'); showScreen('menu'); });
+  // drag beside the panel to turn the runner on its podium
+  const stageEl = $('skin-stage'), drag = { id: null, x: 0 };
+  stageEl.addEventListener('pointerdown', (e) => {
+    drag.id = e.pointerId; drag.x = e.clientX;
+    try { stageEl.setPointerCapture(e.pointerId); } catch { /* ignored */ }
+  });
+  stageEl.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== drag.id || player.showYaw === null) return;
+    player.showYaw += (e.clientX - drag.x) * 0.012;
+    drag.x = e.clientX;
+  });
+  const endDrag = (e) => { if (e.pointerId === drag.id) drag.id = null; };
+  stageEl.addEventListener('pointerup', endDrag);
+  stageEl.addEventListener('pointercancel', endDrag);
+}
+function syncSkinUI() {
+  const id = skinState.id, colors = skinColors(id);
+  $('skin-name').textContent = SKIN_BY_ID[id].name;
+  for (const [cid, c] of Object.entries(skinUI.cards)) c.b.setAttribute('aria-selected', String(cid === id));
+  for (const b of $('slot-row').children) {
+    const on = b.dataset.slot === skinUI.slot;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-selected', String(on));
+    b.style.setProperty('--c', colors[b.dataset.slot]);
+  }
+  const sw = $('swatches');
+  sw.replaceChildren();
+  for (const hex of skinUI.slot === 'skin' ? SKIN_TONES : SKIN_PALETTE) {
+    const b = document.createElement('button');
+    const on = colors[skinUI.slot].toLowerCase() === hex.toLowerCase();
+    b.type = 'button'; b.className = 'swatch' + (on ? ' on' : '');
+    b.style.setProperty('--c', hex);
+    b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(on)); b.setAttribute('aria-label', hex);
+    b.addEventListener('click', () => { (skinState.colors[id] ||= {})[skinUI.slot] = hex; skinChanged(); audio.play('click'); });
+    sw.appendChild(b);
+  }
+}
+function openSkins() {
+  camCtl.mode = 'locker';
+  podium.visible = true;
+  player.showcase(SHOW.x, SHOW.z, SHOW.yaw);
+  player.yaw = SHOW.yaw;
+  if (!skinUI.thumbsDone) { skinUI.thumbsDone = true; skinUI.thumbQueue.push(...SKINS.map((sk) => sk.id)); }
+  syncSkinUI();
+}
+function closeSkins() {
+  podium.visible = false;
+  player.showYaw = null;
+  player.hide();
+  if (state === 'menu') camCtl.mode = 'menu';
+}
+// Skin thumbnails: the runner is rendered into a corner of the main canvas, one outfit at a time,
+// and copied straight into each card before the frame's real render paints over it.
+const thumbScene = new THREE.Scene();
+thumbScene.add(new THREE.HemisphereLight(0xe8e4ff, 0x40305a, 2.1));
+const thumbSun = new THREE.DirectionalLight(0xffffff, 2.4);
+thumbSun.position.set(-1.5, 3, -3.5);
+const thumbRim = new THREE.DirectionalLight(0xff8ad5, 1.3);
+thumbRim.position.set(2.5, 2, 2.5);
+thumbScene.add(thumbSun, thumbRim);
+const thumbCam = new THREE.PerspectiveCamera(27, 1, 0.1, 40);
+thumbCam.position.set(1.4, 1.6, -5.3);
+thumbCam.lookAt(0, 1.12, 0);
+const _thumbClear = new THREE.Color(), _thumbSize = new THREE.Vector2();
+function renderSkinThumbs(ids) {
+  const cv = renderer.domElement, S = 150, px = Math.round(S * renderer.getPixelRatio());
+  if (cv.width < px || cv.height < px) return;
+  const parent = player.root.parent || scene, wasVisible = player.root.visible, pos = player.root.position.clone();
+  thumbScene.add(player.root);
+  player.root.position.set(0, 0, 0);
+  player.root.visible = true;
+  renderer.getClearColor(_thumbClear);
+  const clearAlpha = renderer.getClearAlpha();
+  renderer.setScissorTest(true);
+  renderer.setViewport(0, 0, S, S);
+  renderer.setScissor(0, 0, S, S);
+  renderer.setClearColor(0x2c2266, 1);
+  for (const id of ids) {
+    const card = skinUI.cards[id];
+    if (!card) continue;
+    player.applySkin(SKIN_BY_ID[id], skinColors(id));
+    player.poseStill(0.15);
+    renderer.render(thumbScene, thumbCam);
+    const ctx = card.cv.getContext('2d');
+    ctx.clearRect(0, 0, card.cv.width, card.cv.height);
+    ctx.drawImage(cv, 0, cv.height - px, px, px, 0, 0, card.cv.width, card.cv.height);
+  }
+  renderer.setScissorTest(false);
+  renderer.getSize(_thumbSize);
+  renderer.setViewport(0, 0, _thumbSize.x, _thumbSize.y);
+  renderer.setClearColor(_thumbClear, clearAlpha);
+  parent.add(player.root);
+  player.root.position.copy(pos);
+  player.root.visible = wasVisible;
+  applyCurrentSkin();
+  player.updateVisual(1e-4);                             // back to its live pose before the frame is drawn
 }
 function syncDifficultyUI() {
   const L = LEVELS[settings.difficulty - 1], el = $('set-diff');
@@ -3148,7 +3720,7 @@ const game = {
         if (state === 'playing' || state === 'countdown') this.pause();
         else if (currentScreen === 'settings') showScreen(settingsReturn);
         else if (state === 'paused') { if (performance.now() - lockLostAt > 500) this.resume(); }   // that Esc only freed the cursor
-        else if (currentScreen === 'howto') showScreen('menu');
+        else if (currentScreen === 'howto' || currentScreen === 'skins') showScreen('menu');
         else if (state === 'gameover') this.toMenu();
         break;
       case 'KeyP':
@@ -3373,6 +3945,7 @@ function frame(now) {
   if (dt > 0.1) dt = 0.1;
   perfMonitor(dt);
   update(dt);
+  if (skinUI.thumbQueue.length) renderSkinThumbs(skinUI.thumbQueue.splice(0));
   renderer.render(scene, camera);
 }
 
@@ -3382,6 +3955,7 @@ function frame(now) {
 function wireButtons() {
   $('btn-play').addEventListener('click', () => game.start());
   $('btn-howto').addEventListener('click', () => { audio.play('click'); showScreen('howto'); });
+  $('btn-skins').addEventListener('click', () => { audio.play('click'); showScreen('skins'); });
   $('btn-howto-back').addEventListener('click', () => { audio.play('click'); showScreen('menu'); });
   $('btn-settings').addEventListener('click', () => { audio.play('click'); settingsReturn = 'menu'; syncSettingsUI(); showScreen('settings'); });
   $('btn-pause').addEventListener('click', () => game.pause());
@@ -3408,6 +3982,8 @@ function wireButtons() {
 function init() {
   hud.init();
   renderPatternLibrary();
+  buildSkinUI();
+  applyCurrentSkin();
   bindSettingsUI();
   wireButtons();
   setTouchMode(COARSE || (HAS_TOUCH && !matchMedia('(pointer: fine)').matches));
@@ -3429,7 +4005,8 @@ function init() {
     window.BlockDash = {
       get state() { return state; }, world, player, run, input, debugOverride, debug, game, settings: () => settings, cam: camCtl, lasers,
       rowSafety, planWave, SAMPLES, LIBRARY, speedForWave, laneX, levelName: () => level.name,
-      tick(dt) { update(dt); }, draw() { renderer.render(scene, camera); },
+      tick(dt) { update(dt); }, draw() { if (skinUI.thumbQueue.length) renderSkinThumbs(skinUI.thumbQueue.splice(0)); renderer.render(scene, camera); },
+      skins: { SKINS, state: skinState, select: selectSkin },
       info() { return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, pixelRatio: renderer.getPixelRatio() }; },
       consts: { P_START_Z, P_HALF_W, P_HALF_D, P_HEIGHT, ROW_HALF_D, BLOCK_H, BLOCK_W, BLOCK_D, HIT_HALF_D, JUMP_V, G_UP, G_DOWN, AIR_TIME, MOVE_SPEED, CRUSH_UP, LANES, Z_SPAWN, Z_NEAR, Z_FAR, FALL_HANG, HALF_W, ARENA_HALF, LASER_X },
     };

@@ -92,9 +92,15 @@ Append an entry to `PATTERN_DEFS` in `index.html`:
 
 `minWave` is the earliest wave index (0-based) it can appear at. `rating` (1–5) steers how often it is picked at a given difficulty. Add `climb: true` to a pattern that uses `S` lanes so it only appears on Normal and harder. Invalid patterns are logged to the console and skipped.
 
+## Skins
+
+Pick an outfit under **SKINS** on the main menu. There are 30 original outfits: Classic, Ninja, Astronaut, Robot, Pirate, Chef, Royal, Wizard, Kitty, Bunny, Teddy, Dino, Viking, Cowboy, Knight, Swimmer, Propeller, Party, Super, Alien, Angel, Devil, Froggy, Unicorn, Shark, Snowy, Firefighter, Detective, Jetpack and Sporty. Each is a head, face and back item on the runner, built from simple shapes. Every outfit has six colours you can change: skin, top, bottom, hat, shoes and detail. **RANDOM** rolls new colours and **RESET** goes back to the outfit's own.
+
+The runner shows off the outfit on a podium beside the arena; drag beside the panel to turn it. Some items move: capes and tails sway, propellers spin, wings flap and the jetpack fires while you're in the air.
+
 ## Settings and saved data
 
-The Settings screen covers graphics quality (Low, Medium, High), field of view (70° by default), camera X and Y offset, mouse and camera sensitivity, joystick sensitivity and size, volume, sound effects, music and vibration. Settings (including the difficulty) are stored in `localStorage` under `blockdash.settings.v1`. The personal best is kept per difficulty: `blockdash.bestWave` for Normal and `blockdash.bestWave.1`, `.2`, `.4` and `.5` for the other levels.
+The Settings screen covers graphics quality (Low, Medium, High), field of view (70° by default), camera X and Y offset, mouse and camera sensitivity, joystick sensitivity and size, volume, sound effects, music and vibration. Settings (including the difficulty) are stored in `localStorage` under `blockdash.settings.v1`. The personal best is kept per difficulty: `blockdash.bestWave` for Normal and `blockdash.bestWave.1`, `.2`, `.4` and `.5` for the other levels. The chosen outfit and your colours are stored under `blockdash.skin.v1`.
 
 ## Debugging
 
