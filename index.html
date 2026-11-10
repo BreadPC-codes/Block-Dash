@@ -2296,12 +2296,16 @@ const player = (() => {
       this.squash *= Math.exp(-9 * dt);
       const s = this.squash;
       visual.scale.set(1 + 0.18 * s, 1 - 0.28 * s, 1 + 0.18 * s);
-      // Turn toward the direction of travel; settle back to facing the blocks when idle.
-      const sp = Math.hypot(this.vx, this.vz), k = Math.min(1, sp / MOVE_SPEED);
-      const targetYaw = sp > 1.2 ? Math.atan2(-this.vx, -this.vz) : 0;
+      // Animate only what the runner does itself: being shoved by a wall, or gliding after letting
+      // go, leaves it standing idle. While steering it faces the way you steer; next to a pushing wall
+      // only movement relative to that wall counts as running.
+      const steering = state === 'playing' && Math.hypot(input.moveX, input.moveZ) > 0.1;
+      const ownVz = this.pushT < 0.2 && !this.platform ? this.vz - (world.speed - this.carry) : this.vz;
+      const sp = steering ? Math.hypot(this.vx, ownVz) : 0, k = Math.min(1, sp / MOVE_SPEED);
+      const targetYaw = steering ? Math.atan2(-input.moveX, -input.moveZ) : 0;   // idle: face the blocks
       let dyaw = targetYaw - this.yaw;
       dyaw = ((((dyaw + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) - Math.PI;
-      this.yaw += dyaw * (1 - Math.exp(-(sp > 1.2 ? 30 : 8) * dt));
+      this.yaw += dyaw * (1 - Math.exp(-(steering ? 30 : 8) * dt));
       const flat = this.diving || this.slideT > 0;
       this.diveBlend = damp(this.diveBlend, flat ? 1 : 0, flat ? 18 : 9, dt);
       this.lean = damp(this.lean, this.grounded ? -0.2 * k : 0.05, 10, dt);
