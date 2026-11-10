@@ -411,7 +411,7 @@ body.touch .kbd-hint{display:none}
       <div class="leg"><span class="sw solid"></span><div><b>Stacked blocks</b><small>Two or three cubes high, too tall to jump. If a wall catches you it pushes you back, so slide sideways into a hole before you run out of floor.</small></div></div>
       <div class="leg"><span class="sw low"></span><div><b>Single block</b><small>One cube. A jump gets you on top, and a running jump or a dive clears it. Ride it, hop off, or climb from it onto a stack.</small></div></div>
       <div class="leg"><span class="sw move"></span><div><b>Crusher</b><small>Rises and slams down. Get caught underneath and you're bonked away.</small></div></div>
-      <div class="leg"><span class="sw laser"></span><div><b>Slanted edge &amp; lasers</b><small>A slippery slope runs down to an always-on laser fence on both sides. You can slip past a wall there, but you can't stay: you slide into the laser.</small></div></div>
+      <div class="leg"><span class="sw laser"></span><div><b>Edge gap &amp; lasers</b><small>Beside the walls there's a narrow gap with only a quarter of a tile to spare before the always-on laser fence. Squeeze through, but don't touch the laser.</small></div></div>
     </div>
     <h3>DIFFICULTY</h3>
     <p>The blocks start slow and get 5% faster every 20 waves. Each wave has its own colour, a new wall comes at most every 7 seconds, and the next wave only starts once the last one has left the map. Harder patterns unlock as you go, and from wave 6 a pattern can arrive mirrored. Every wave is checked by the pattern engine, so there is always a way through on the ground.</p>
@@ -585,17 +585,14 @@ const fmtTime = (s) => { s = Math.max(0, Math.floor(s)); return String(Math.floo
 // 2. World constants (units are metres-ish; 1 lane = 2 units)
 // ---------------------------------------------------------------------
 const LANES = 12, LANE_W = 2, HALF_W = (LANES * LANE_W) / 2, RIM = 0;
-// Between the outer lanes and the laser fences runs a narrow slanted, slippery strip:
-// you can slip past a wall there, but you slide toward the laser if you try to stay.
-const SHOULDER = 2.0, SLOPE_DROP = 0.5, ARENA_HALF = HALF_W + SHOULDER;
-const SLOPE_ACCEL = 10, SLOPE_GRIP = 0.6;
+// A narrow flat strip runs between the outer lanes and the laser fences. The outermost wall
+// face sits at HALF_W - 0.1, so the gap to the laser is 1.22: the runner's width (0.72) plus
+// a quarter of a 2-unit tile (0.5). Just enough to squeeze past a wall.
+const SHOULDER = 1.12, ARENA_HALF = HALF_W + SHOULDER;
 // Height of the platform under (x, z), or null over the void.
 function floorAt(x, z) {
-  if (z < Z_FAR || z > Z_NEAR) return null;
-  const ax = Math.abs(x);
-  if (ax <= HALF_W) return 0;
-  if (ax <= ARENA_HALF) return -((ax - HALF_W) / SHOULDER) * SLOPE_DROP;
-  return null;
+  if (z < Z_FAR || z > Z_NEAR || Math.abs(x) > ARENA_HALF) return null;
+  return 0;
 }
 const PATTERN_COLS = 8;                                  // patterns are authored 8 wide (A–H)
 const Z_NEAR = 10, Z_FAR = -32, Z_SPAWN = Z_FAR + 1.2;   // obstacles rise at the far edge and travel toward +z
@@ -612,8 +609,8 @@ const ROW_HALF_D = 0.86;
 const STEP_UP = 0.3;                                      // land on any top this close above your feet
 
 // Laser fences along both long edges of the arena
-const LASER_X = ARENA_HALF + 0.05, LASER_SEG = 8.2;
-const LASER_BEAMS = [-0.15, 0.6, 1.35, 2.1, 2.85];
+const LASER_X = ARENA_HALF, LASER_SEG = 8.2;
+const LASER_BEAMS = [0.25, 0.95, 1.65, 2.35, 3.05];
 
 // Player
 const P_HALF_W = 0.36, P_HALF_D = 0.36, P_HEIGHT = 1.3;
@@ -1364,13 +1361,6 @@ TEX.floor = canvasTex(1024, 512, (g, w, h) => {
   for (let j = 0; j <= 4; j++) g.fillRect(RIM * ux, j * 2 * uz - 1.5, LANES * LANE_W * ux, 3);
 });
 TEX.floor.wrapT = THREE.RepeatWrapping;
-TEX.slope = canvasTex(128, 128, (g, w) => {                                  // glossy diagonal stripes: slide zone
-  g.fillStyle = '#5f6fd6'; g.fillRect(0, 0, w, w);
-  g.fillStyle = '#93a2ff';
-  for (let i = -w; i < w * 2; i += 32) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 12, 0); g.lineTo(i + 12 - w, w); g.lineTo(i - w, w); g.closePath(); g.fill(); }
-});
-TEX.slope.wrapS = TEX.slope.wrapT = THREE.RepeatWrapping;
-TEX.slope.repeat.set(1, ARENA_LEN / 2.5);
 TEX.floor.repeat.set(1, ARENA_LEN / 8);
 TEX.radial = canvasTex(128, 128, (g, w) => {
   const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
@@ -1434,13 +1424,11 @@ scene.add(arena);
   slab.position.set(0, -0.6, ARENA_MID);
   slab.receiveShadow = true;
   arena.add(slab);
-  // Slanted, slippery strips between the outer lanes and the laser fences.
-  const slopeMat = new THREE.MeshStandardMaterial({ map: TEX.slope, roughness: 0.22, metalness: 0.15 });
-  const slopeLen = Math.hypot(SHOULDER, SLOPE_DROP), ang = Math.atan2(SLOPE_DROP, SHOULDER), thick = 0.8;
+  // Narrow flat strips between the outer lanes and the laser fences.
+  const stripMat = new THREE.MeshStandardMaterial({ color: 0x231d50, roughness: 0.6, metalness: 0.1, emissive: 0x0d0828 });
   for (const s of [-1, 1]) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(slopeLen, thick, ARENA_LEN), [sideMat, sideMat, slopeMat, bottomMat, sideMat, sideMat]);
-    m.rotation.z = -s * ang;                              // top face runs from the lane edge (y 0) down to the fence
-    m.position.set(s * (HALF_W + SHOULDER / 2) - s * Math.sin(ang) * thick / 2, -SLOPE_DROP / 2 - Math.cos(ang) * thick / 2, ARENA_MID);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(SHOULDER, 1.2, ARENA_LEN), [sideMat, sideMat, stripMat, bottomMat, sideMat, sideMat]);
+    m.position.set(s * (HALF_W + SHOULDER / 2), -0.6, ARENA_MID);
     m.receiveShadow = true;
     arena.add(m);
   }
@@ -1456,12 +1444,12 @@ scene.add(arena);
   const accentMat = new THREE.MeshBasicMaterial({ color: 0xff5fb0, toneMapped: false });
   const bar = (w, h, d, x, y, z, m) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); arena.add(b); };
   for (const s of [-1, 1]) {
-    bar(0.12, 0.12, ARENA_LEN, s * ARENA_HALF, -SLOPE_DROP, ARENA_MID, edgeMat);   // foot of the slope
-    bar(0.06, 0.06, ARENA_LEN, s * HALF_W, 0.01, ARENA_MID, edgeMat);              // crest where the slope starts
+    bar(0.12, 0.12, ARENA_LEN, s * ARENA_HALF, 0, ARENA_MID, edgeMat);              // outer edge, under the lasers
+    bar(0.05, 0.05, ARENA_LEN, s * HALF_W, 0.01, ARENA_MID, edgeMat);              // where the lanes end
     bar(0.08, 0.08, ARENA_LEN - 2.6, s * (FULL - 1.6) / 2, -2.5, ARENA_MID, accentMat);
   }
-  bar(W + 0.12, 0.12, 0.12, 0, 0, Z_NEAR, edgeMat);
-  bar(W + 0.12, 0.12, 0.12, 0, 0, Z_FAR, edgeMat);
+  bar(FULL + 0.12, 0.12, 0.12, 0, 0, Z_NEAR, edgeMat);
+  bar(FULL + 0.12, 0.12, 0.12, 0, 0, Z_FAR, edgeMat);
   bar(FULL - 1.6, 0.08, 0.08, 0, -2.5, Z_NEAR - 1.3, accentMat);
   const under = new THREE.Mesh(new THREE.PlaneGeometry(70, 160).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({ map: TEX.radial, color: 0x7a3cff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
@@ -1907,8 +1895,8 @@ const world = {
 // ---------------------------------------------------------------------
 const lasers = (() => {
   const nSeg = Math.round(ARENA_LEN / LASER_SEG), segLen = ARENA_LEN / nSeg, nb = LASER_BEAMS.length;
-  const top = LASER_BEAMS[nb - 1], postH = top + 0.4 + SLOPE_DROP;
-  const posts = new THREE.InstancedMesh(new THREE.BoxGeometry(0.24, postH, 0.24).translate(0, postH / 2 - SLOPE_DROP, 0),
+  const top = LASER_BEAMS[nb - 1], postH = top + 0.4;
+  const posts = new THREE.InstancedMesh(new THREE.BoxGeometry(0.24, postH, 0.24).translate(0, postH / 2, 0),
     new THREE.MeshStandardMaterial({ color: 0x2a2452, roughness: 0.35, metalness: 0.6, emissive: 0x0d0820 }), (nSeg + 1) * 2);
   const lights = new THREE.InstancedMesh(new THREE.BoxGeometry(0.3, 0.09, 0.3), new THREE.MeshBasicMaterial({ color: 0xff3048, toneMapped: false }), (nSeg + 1) * 2 * nb);
   const beam = (color, opacity) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
@@ -2058,7 +2046,6 @@ const player = (() => {
 
     step(h, control) {
       this.pushT += h;
-      this.onSlope = this.grounded && !this.platform && Math.abs(this.x) > HALF_W;
       const stunned = this.stunT > 0;
       if (stunned) this.stunT -= h;
       if (this.diving || stunned) {
@@ -2072,14 +2059,12 @@ const player = (() => {
         // Slippery: gentle acceleration, softer braking, and you glide for a while when you let go.
         const ix = control ? input.moveX : 0, iz = control ? input.moveZ : 0;
         const tvx = ix * MOVE_SPEED, tvz = iz * MOVE_SPEED;
-        let a = !this.grounded ? AIR_ACCEL : !(ix || iz) ? FRICTION : this.vx * tvx + this.vz * tvz < 0 ? BRAKE : ACCEL;
-        if (this.onSlope) a *= SLOPE_GRIP;                 // hardly any grip on the slanted edge
+        const a = !this.grounded ? AIR_ACCEL : !(ix || iz) ? FRICTION : this.vx * tvx + this.vz * tvz < 0 ? BRAKE : ACCEL;
         let dx = tvx - this.vx, dz = tvz - this.vz;
         const dl = Math.hypot(dx, dz), md = a * h;
         if (dl > md) { dx *= md / dl; dz *= md / dl; }
         this.vx += dx; this.vz += dz;
       }
-      if (this.onSlope) this.vx += Math.sign(this.x) * SLOPE_ACCEL * h;   // slide down toward the laser
       this.jumpBuf = Math.max(0, this.jumpBuf - h);
       this.coyote = this.grounded ? COYOTE_TIME : Math.max(0, this.coyote - h);
       if (control && !stunned && this.slideT <= 0 && this.jumpBuf > 0) {

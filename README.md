@@ -2,7 +2,7 @@
 
 A single-player 3D obstacle survival game in one file: `index.html` (HTML, CSS and JavaScript, with [Three.js](https://threejs.org/) r170 loaded from a CDN).
 
-Walls of cube blocks sweep across a small floating 12-lane arena with a slippery checkered floor, one wave at a time and at most one new wall every 7 seconds. Slip through the holes, jump or dive over single cubes, or climb on top and ride. A wall that catches you pushes you toward the edge, so slide into a hole before you run out of floor. Between the outer lanes and the always-on laser fences runs a slanted, slippery strip, wide enough to get around a wall. Stand still on it, though, and you slide into the laser in about a second. Every wave you fully survive adds one to the **WAVE SURVIVED** counter.
+Walls of cube blocks sweep across a small floating 12-lane arena with a slippery checkered floor, one wave at a time and at most one new wall every 7 seconds. Slip through the holes, jump or dive over single cubes, or climb on top and ride. A wall that catches you pushes you toward the edge, so slide into a hole before you run out of floor. Between the outer lanes and the always-on laser fences runs a narrow flat gap: the runner fits beside a wall with only a quarter of a tile (0.5 units) to spare, so squeezing past takes precision. Every wave you fully survive adds one to the **WAVE SURVIVED** counter.
 
 You play as a chunky little party-game runner (an original character) who runs, jumps, flails and tumbles.
 
