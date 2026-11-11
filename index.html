@@ -228,7 +228,31 @@ body.touch[data-state=playing] #touch,body.touch[data-state=countdown] #touch{di
 .skin-stage:active{cursor:grabbing}
 .drag-hint{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);padding:6px 14px;border-radius:999px;background:rgba(14,10,38,.55);border:1px solid var(--line);
   color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.14em;white-space:nowrap;pointer-events:none}
+/* ---------- Block designer ---------- */
+.bd-panel{width:min(560px,56vw)}
+.bd-loadout{display:grid;grid-template-columns:repeat(10,1fr);gap:5px}
+.bd-slot{position:relative;padding:3px;border-radius:9px;border:2px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);min-height:0;min-width:0}
+.bd-slot canvas{display:block;width:100%;aspect-ratio:1;image-rendering:pixelated;border-radius:4px}
+.bd-slot b{position:absolute;left:4px;top:3px;font-size:9px;line-height:1;color:#fff;text-shadow:0 1px 2px #000,0 0 3px #000}
+.bd-slot.off canvas{opacity:.28;filter:grayscale(.8)}
+.bd-slot.off::after{content:"OFF";position:absolute;left:0;right:0;bottom:7px;text-align:center;font-size:8px;font-weight:800;letter-spacing:.08em;color:#fff}
+.bd-slot[aria-selected=true]{border-color:var(--gold);box-shadow:0 0 12px rgba(255,210,63,.35)}
+.bd-editor{display:flex;gap:10px;align-items:flex-start}
+#bd-canvas{flex:none;width:min(272px,52vw);height:auto;aspect-ratio:1;border-radius:10px;border:2px solid rgba(255,255,255,.22);touch-action:none;cursor:crosshair;background:#fff}
+.bd-tools{flex:1;display:grid;gap:6px;align-content:start}
+.bd-tool{padding:8px 6px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.05);font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--muted);min-height:0;min-width:0}
+.bd-tool.on,.bd-tool[aria-pressed=true]{background:rgba(255,255,255,.16);color:#fff;border-color:#fff}
+.bd-tool:disabled{opacity:.4}
+.bd-options{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center}
+.bd-check{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#e4dfff;padding:6px 10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.05);cursor:pointer}
+.bd-check input{width:16px;height:16px;margin:0;accent-color:#ffd23f}
+.bd-options select{font:inherit;font-size:12px;font-weight:700;padding:7px 8px;border-radius:10px;border:1px solid var(--line);background:#2a2150;color:#fff}
+.swatch.custom{background:conic-gradient(#ff3b4f,#ffd23f,#3ccf6d,#23c3ff,#7c5cff,#ff5fa2,#ff3b4f);position:relative;overflow:hidden;cursor:pointer}
+.swatch.custom input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
+.bd-hint{margin:0;font-size:11.5px;color:var(--muted);text-align:center;line-height:1.35}
 @media (orientation:portrait){
+  .bd-panel{width:100%}
+  #bd-canvas{width:min(250px,58vw)}
   .skins-layout{flex-direction:column-reverse;gap:8px}
   .skins-panel{width:100%;max-height:64%}
   .skin-grid{max-height:26vh}
@@ -367,6 +391,10 @@ body.touch .kbd-hint{display:none}
   .swatches{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;padding:3px 2px;touch-action:pan-x;flex:none}
   .swatch{width:26px;height:26px;flex:none}
   .skin-actions .btn{min-height:38px;padding:6px 10px}
+  .bd-panel .skin-grid,.bd-hint{display:none}
+  #bd-canvas{width:min(190px,40vh)}
+  .bd-tool{padding:5px 4px;font-size:10px}
+  .bd-check{padding:4px 8px}
   .diff-pick input[type=range]{margin:6px 0 2px}
   .diff-about,.diff-ends{display:none}
   .go-num{font-size:clamp(52px,16vh,80px)}
@@ -447,6 +475,7 @@ body.touch .kbd-hint{display:none}
     <button class="btn primary big" id="btn-play">▶&nbsp; PLAY</button>
     <div class="menu-row">
       <button class="btn" id="btn-skins">SKINS</button>
+      <button class="btn" id="btn-blocks">BLOCKS</button>
       <button class="btn" id="btn-howto">HOW TO PLAY</button>
       <button class="btn" id="btn-settings">SETTINGS</button>
     </div>
@@ -463,7 +492,7 @@ body.touch .kbd-hint{display:none}
       <div class="card">
         <h3>GOAL</h3>
         <p>The floor is a little slippery: you get up to speed fast but glide a short way when you let go. Walls of blocks sweep toward you in <b>waves</b> of eight rows. Get past all eight and <b>WAVE SURVIVED</b> goes up by one.</p>
-        <p>Pick your outfit and its colours under <b>SKINS</b> on the main menu.</p>
+        <p>Pick your outfit and its colours under <b>SKINS</b>, and paint your own walls under <b>BLOCKS</b> on the main menu.</p>
         <p>Slip through the holes, jump the low parts, dive, or <b>jump on top</b> and ride. A wall that catches you <b>pushes you</b> toward the edge. Fall off the front or back edge, or touch a laser fence on the sides, and the run is over.</p>
       </div>
       <div class="card">
@@ -509,6 +538,41 @@ body.touch .kbd-hint{display:none}
       </div>
     </div>
     <div class="skin-stage" id="skin-stage"><span class="drag-hint">DRAG TO TURN</span></div>
+  </div>
+</section>
+
+<!-- ================= BLOCK DESIGNER ================= -->
+<section class="screen" id="screen-blocks" aria-label="Block designer">
+  <div class="skins-layout">
+    <div class="panel skins-panel bd-panel">
+      <h2>BLOCKS</h2>
+      <div class="skin-now" id="bd-title">Design 1</div>
+      <div class="bd-loadout" id="bd-loadout" role="listbox" aria-label="Your 20 block designs"></div>
+      <div class="bd-editor">
+        <canvas id="bd-canvas" width="320" height="320" aria-label="Block face, 16 by 16 pixels"></canvas>
+        <div class="bd-tools" id="bd-tools">
+          <button type="button" class="bd-tool on" data-tool="draw">DRAW</button>
+          <button type="button" class="bd-tool" data-tool="fill">FILL</button>
+          <button type="button" class="bd-tool" data-tool="pick">PICK</button>
+          <button type="button" class="bd-tool" id="bd-mirror" aria-pressed="false">MIRROR</button>
+          <button type="button" class="bd-tool" id="bd-undo">UNDO</button>
+          <button type="button" class="bd-tool" id="bd-clear">CLEAR</button>
+        </div>
+      </div>
+      <div class="swatches" id="bd-palette" role="radiogroup" aria-label="Paint colour"></div>
+      <div class="bd-options">
+        <label class="bd-check"><input type="checkbox" id="bd-on"> In game</label>
+        <label class="bd-check"><input type="checkbox" id="bd-tint"> Wave colour</label>
+        <select id="bd-template" aria-label="Start from a template"></select>
+      </div>
+      <p class="bd-hint" id="bd-hint"></p>
+      <div class="skin-actions">
+        <button class="btn" id="bd-copy">COPY</button>
+        <button class="btn" id="bd-paste">PASTE</button>
+        <button class="btn primary" id="bd-done">DONE</button>
+      </div>
+    </div>
+    <div class="skin-stage" id="bd-stage"><span class="drag-hint">DRAG TO TURN</span></div>
   </div>
 </section>
 
@@ -1737,6 +1801,139 @@ function sightLine() {
 const SIGHT = [sightLine(), sightLine()];
 const CAM_CLEAR = 4.2;                                    // blocks this close to the camera turn see-through
 
+// ---------------------------------------------------------------------
+// 10b. Block designs: a loadout of 20 pixel-art block faces (16×16), painted in the block designer.
+//      Each wave uses the next design that is switched on. A design either takes the wave's colour
+//      (paint it in light tones and it gets tinted) or keeps its own colours.
+// ---------------------------------------------------------------------
+const DESIGN_N = 16, DESIGN_SLOTS = 20, DESIGN_KEY = 'blockdash.blocks.v1';
+function painter(bg) {
+  const N = DESIGN_N, px = new Array(N * N).fill(bg);
+  const set = (x, y, c) => { if (x >= 0 && y >= 0 && x < N && y < N) px[y * N + x] = c; };
+  return {
+    px, set,
+    rect(x, y, w, h, c) { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) set(i, j, c); },
+    frame(c, inset = 0) { const a = inset, b = N - 1 - inset; for (let i = a; i <= b; i++) { set(i, a, c); set(i, b, c); set(a, i, c); set(b, i, c); } },
+    each(fn) { for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const c = fn(x, y); if (c) set(x, y, c); } },
+    art(lines, map) { lines.forEach((line, y) => [...line].forEach((ch, x) => { if (map[ch]) set(x, y, map[ch]); })); },
+  };
+}
+const seeded = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+// Starter designs. Tinted ones are painted in light tones and take each wave's colour.
+const DESIGN_TEMPLATES = [
+  { name: 'Tile', tint: true, draw: (p) => { p.frame('#a29dc4'); p.frame('#d9d5ec', 1); p.rect(2, 10, 12, 4, '#eeecf7'); p.rect(2, 2, 5, 1, '#ffffff'); } },
+  { name: 'Bricks', tint: true, draw: (p) => {
+    p.rect(0, 0, 16, 16, '#bdb8d6');
+    for (let r = 0; r < 4; r++) for (let bx = -8; bx < 16; bx += 8) { const x = bx + (r % 2 ? 4 : 0); p.rect(x, r * 4, 7, 3, '#ffffff'); p.rect(x, r * 4 + 2, 7, 1, '#e6e3f2'); }
+  } },
+  { name: 'Crate', tint: false, draw: (p) => {
+    p.rect(0, 0, 16, 16, '#c08a4a'); p.rect(0, 5, 16, 1, '#a9743a'); p.rect(0, 10, 16, 1, '#a9743a');
+    p.frame('#8a5a28'); p.frame('#8a5a28', 1);
+    for (let i = 2; i < 14; i++) { p.set(i, 15 - i, '#8a5a28'); p.set(i + 1, 15 - i, '#8a5a28'); }
+    for (const [x, y] of [[1, 1], [14, 1], [1, 14], [14, 14]]) p.set(x, y, '#5c3a1a');
+  } },
+  { name: 'Checker', tint: true, draw: (p) => { p.each((x, y) => ((x >> 2) + (y >> 2)) % 2 ? '#cfcae4' : null); p.frame('#a29dc4'); } },
+  { name: 'Hazard', tint: false, draw: (p) => { p.each((x, y) => ((x + y) % 8 < 4 ? '#ffd23f' : '#24253a')); p.frame('#24253a'); } },
+  { name: 'Smiley', tint: false, draw: (p) => {
+    p.rect(0, 0, 16, 16, '#ffd23f'); p.frame('#e0a800');
+    p.rect(4, 4, 2, 3, '#2b1d0e'); p.rect(10, 4, 2, 3, '#2b1d0e');
+    for (const [x, y] of [[3, 9], [4, 10], [5, 11], [6, 11], [7, 11], [8, 11], [9, 11], [10, 11], [11, 10], [12, 9]]) p.set(x, y, '#2b1d0e');
+    p.rect(2, 8, 2, 1, '#ff8a5a'); p.rect(12, 8, 2, 1, '#ff8a5a');
+  } },
+  { name: 'Heart', tint: false, draw: (p) => {
+    p.rect(0, 0, 16, 16, '#ffe1ec'); p.frame('#ff9ec4');
+    p.art(['', '', '...XXX....XXX', '..XXXXX..XXXXX', '.XXoXXXXXXXXXXX', '.XoXXXXXXXXXXXX', '.XXXXXXXXXXXXXX', '..XXXXXXXXXXXX', '...XXXXXXXXXX', '....XXXXXXXX',
+      '.....XXXXXX', '......XXXX', '.......XX'], { X: '#ff3b6b', o: '#ffb3c9' });
+  } },
+  { name: 'Star', tint: false, draw: (p) => {
+    p.rect(0, 0, 16, 16, '#3d7bff'); p.frame('#2a55c0');
+    p.art(['', '', '.......XX', '......XXXX', '......XXXX', '.XXXXXXXXXXXXXX', '..XXXXXXXXXXXX', '...XXXXXXXXXX', '....XXXXXXXX', '....XXXXXXXX',
+      '...XXXXXXXXXX', '...XXXX..XXXX', '..XXX......XXX', '..XX........XX'], { X: '#ffd23f' });
+  } },
+  { name: 'Gem', tint: true, draw: (p) => {
+    p.rect(0, 0, 16, 16, '#8f89b8');
+    p.each((x, y) => (Math.abs(x - 7.5) + Math.abs(y - 7.5) <= 7.5 ? (y < 8 ? (x < 8 ? '#ffffff' : '#dcd8ee') : (x < 8 ? '#dcd8ee' : '#b4aed6')) : null));
+  } },
+  { name: 'Circuit', tint: false, draw: (p) => {
+    p.rect(0, 0, 16, 16, '#0f3d2e'); p.frame('#0a2a20');
+    p.rect(2, 4, 8, 1, '#3ccf6d'); p.rect(9, 4, 1, 8, '#3ccf6d'); p.rect(9, 11, 5, 1, '#3ccf6d');
+    p.rect(1, 8, 5, 1, '#3ccf6d'); p.rect(5, 8, 1, 6, '#3ccf6d'); p.rect(11, 1, 1, 7, '#3ccf6d');
+    for (const [x, y] of [[1, 3], [12, 10], [4, 13], [10, 0], [0, 7]]) p.rect(x, y, 2, 2, '#a6e22e');
+    p.rect(11, 6, 4, 3, '#24253a');
+  } },
+  { name: 'Dots', tint: true, draw: (p) => { for (let y = 1; y < 16; y += 5) for (let x = (y % 2 ? 1 : 3); x < 16; x += 5) p.rect(x, y, 2, 2, '#cfcae4'); p.frame('#bdb8d6'); } },
+  { name: 'Ice', tint: false, draw: (p) => {
+    p.rect(0, 0, 16, 16, '#bfe9ff'); p.frame('#8fd0f2');
+    for (let i = 0; i < 6; i++) { p.set(2 + i, 9 - i, '#ffffff'); p.set(3 + i, 9 - i, '#ffffff'); p.set(8 + i, 14 - i, '#ffffff'); }
+    for (const [x, y] of [[11, 3], [12, 4], [12, 5], [13, 6], [4, 11], [5, 12], [5, 13]]) p.set(x, y, '#7fc8f0');
+  } },
+  { name: 'Lava', tint: false, draw: (p) => {
+    const r = seeded(7); p.rect(0, 0, 16, 16, '#7a1020');
+    for (let k = 0; k < 9; k++) { const x = (r() * 14) | 0, y = (r() * 14) | 0, w = 2 + ((r() * 3) | 0); p.rect(x, y, w, 2, '#ff6a00'); p.set(x + 1, y, '#ffd23f'); }
+    p.frame('#4a0812');
+  } },
+  { name: 'Stone', tint: false, draw: (p) => {
+    const r = seeded(11); p.rect(0, 0, 16, 16, '#8a8f9c');
+    p.each(() => { const v = r(); return v < 0.18 ? '#6b7080' : v > 0.84 ? '#a9aebb' : null; });
+    p.frame('#5d6271');
+  } },
+  { name: 'Gift', tint: false, draw: (p) => { p.rect(0, 0, 16, 16, '#ff3b4f'); p.frame('#c81e33'); p.rect(7, 0, 2, 16, '#ffd23f'); p.rect(0, 7, 16, 2, '#ffd23f'); p.rect(5, 5, 6, 1, '#ffe98a'); } },
+  { name: 'Target', tint: false, draw: (p) => { p.each((x, y) => { const d = Math.hypot(x - 7.5, y - 7.5); return d < 2 || (d >= 4 && d < 6) ? '#ff3b4f' : '#ffffff'; }); p.frame('#c81e33'); } },
+  { name: 'Window', tint: false, draw: (p) => {
+    p.rect(0, 0, 16, 16, '#9fd8ff'); p.frame('#2b2d45'); p.frame('#2b2d45', 1); p.rect(7, 0, 2, 16, '#2b2d45'); p.rect(0, 7, 16, 2, '#2b2d45');
+    for (const [x, y] of [[3, 3], [10, 3], [3, 10], [10, 10]]) { p.set(x, y, '#e6f6ff'); p.set(x + 1, y, '#e6f6ff'); p.set(x, y + 1, '#e6f6ff'); }
+  } },
+  { name: 'Neon', tint: false, draw: (p) => { p.rect(0, 0, 16, 16, '#120d2e'); p.frame('#ff5fb0', 1); p.frame('#44f0ff', 4); p.rect(7, 7, 2, 2, '#ffffff'); } },
+  { name: 'Cookie', tint: false, draw: (p) => {
+    p.rect(0, 0, 16, 16, '#d9a35f'); p.frame('#b9823f');
+    for (const [x, y] of [[3, 3], [10, 2], [6, 7], [12, 8], [3, 11], [9, 12], [13, 13]]) p.rect(x, y, 2, 2, '#4a2a12');
+    for (const [x, y] of [[7, 3], [2, 7], [11, 5], [6, 13]]) p.set(x, y, '#f0c27a');
+  } },
+  { name: 'Plain', tint: true, draw: (p) => { p.frame('#cfcae4'); } },
+];
+const templatePixels = (t) => { const p = painter('#ffffff'); t.draw(p); return p.px; };
+const designs = Array.from({ length: DESIGN_SLOTS }, (_, i) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = DESIGN_N;
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace; tex.magFilter = THREE.NearestFilter; tex.anisotropy = 4;
+  const t = DESIGN_TEMPLATES[i % DESIGN_TEMPLATES.length];
+  return { px: templatePixels(t), tint: t.tint, on: true, canvas, tex, mesh: null };
+});
+function refreshDesign(d) {                              // pixels → canvas → texture
+  const g = d.canvas.getContext('2d');
+  for (let i = 0; i < d.px.length; i++) { g.fillStyle = d.px[i]; g.fillRect(i % DESIGN_N, (i / DESIGN_N) | 0, 1, 1); }
+  d.tex.needsUpdate = true;
+}
+(() => {                                                 // saved loadout
+  let st = null;
+  try { st = JSON.parse(store.get(DESIGN_KEY) || 'null'); } catch { st = null; }
+  (st && Array.isArray(st.slots) ? st.slots : []).slice(0, DESIGN_SLOTS).forEach((sl, i) => {
+    if (!sl) return;
+    const d = designs[i];
+    if (typeof sl.px === 'string' && /^[0-9a-f]{1536}$/i.test(sl.px)) d.px = sl.px.match(/.{6}/g).map((h) => '#' + h.toLowerCase());
+    d.tint = !!sl.tint; d.on = !!sl.on;
+  });
+})();
+designs.forEach(refreshDesign);
+let designSaveT = 0;
+function saveDesigns() {
+  clearTimeout(designSaveT);
+  designSaveT = setTimeout(() => store.set(DESIGN_KEY, JSON.stringify({
+    v: 1, slots: designs.map((d) => ({ px: d.px.map((c) => c.slice(1)).join(''), tint: d.tint ? 1 : 0, on: d.on ? 1 : 0 })),
+  })), 250);
+}
+function designMesh(i) {                                 // one instanced mesh per design in use, made on demand
+  const d = designs[i];
+  if (!d.mesh) {
+    d.mesh = makeInstanced(UNIT_BOX, new THREE.MeshStandardMaterial({ map: d.tex, roughness: 0.5, metalness: 0.05 }), 600);
+    const q = QUALITY[settings.quality];
+    d.mesh.castShadow = q.shadows; d.mesh.receiveShadow = q.shadows;
+  }
+  return d.mesh;
+}
+const CLIMB_BRIGHT = new THREE.Color(1.3, 1.3, 1.3);    // climb lanes in a design that keeps its own colours
+
 // One colour per wave, and the next wave always gets a different one.
 // (Purple stays reserved for crushers, cyan for the runner.)
 const WAVE_COLORS = ['#ff4d5e', '#3d7bff', '#3ccf6d', '#ff8a2a', '#ff5fa2', '#ffd23f', '#a6e22e', '#f4f1ff'].map((c) => new THREE.Color(c));
@@ -1756,7 +1953,7 @@ const _p = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1), _c = new THRE
 const world = {
   mode: 'demo', rows: [], waves: [], nextIndex: 0,
   lastRowZ: null, lastSolidZ: null, prev: null, lastPatternId: null,
-  speed: DEMO_SPEED, targetSpeed: DEMO_SPEED, time: 0, firstZ: -14, emergeDelay: 0, flash: 0, demoColor: 0, lastWave: null,
+  speed: DEMO_SPEED, targetSpeed: DEMO_SPEED, time: 0, firstZ: -14, emergeDelay: 0, flash: 0, demoColor: 0, demoDesign: 0, lastWave: null,
 
   reset(mode) {
     for (const r of this.rows) if (r.emerged && !r.falling && !r.sinking) { r.sinking = true; r.sinkT = 0; }
@@ -1824,7 +2021,9 @@ const world = {
     const color = WAVE_COLORS[(demo ? this.demoColor++ : index) % WAVE_COLORS.length];
     const stepColor = color.clone().lerp(WHITE, 0.5);      // climb lanes are lighter, so the way up stands out
     const period = demo ? 2.0 : crusherPeriodForWave(index);
-    const wave = { index, pattern, mirrored, demo, rows: [], speed, announced: false };
+    const usable = designs.flatMap((d, i) => (d.on ? [i] : []));   // the loadout, in order
+    const design = usable.length ? usable[(demo ? this.demoDesign++ : index) % usable.length] : -1;
+    const wave = { index, pattern, mirrored, demo, rows: [], speed, announced: false, design };
     for (let i = 0; i < 8; i++) {
       const cells = cellRows[i];
       const row = {
@@ -1837,7 +2036,7 @@ const world = {
         if (c === '.') continue;
         const units = c === '3' || c === 'S' ? 3 : c === '#' ? (Math.random() < 0.25 ? 3 : 2) : 1;     // stacks of whole blocks
         const h = units * BLOCK_H, tint = c === 'M' ? WHITE : c === 'S' ? stepColor : color;
-        const part = (oz, n) => ({ ox: 0, oz, w: BLOCK_W, d: BLOCK_D, y0: 0, h: n * BLOCK_H, units: n, color: tint });
+        const part = (oz, n) => ({ ox: 0, oz, w: BLOCK_W, d: BLOCK_D, y0: 0, h: n * BLOCK_H, units: n, color: tint, climb: c === 'S' });
         // 'S': steps in front of the wall, two blocks high and then one, to climb over it
         const parts = c === 'S' ? [part(0, 3), part(BLOCK_D, 2), part(2 * BLOCK_D, 1)] : [part(0, units)];
         const ext = { x0: -BLOCK_W / 2, x1: BLOCK_W / 2, z0: -BLOCK_D / 2, z1: (c === 'S' ? 2.5 : 0.5) * BLOCK_D, h };
@@ -2048,7 +2247,8 @@ const world = {
   },
 
   render(dt) {
-    const n = { '#': 0, M: 0, mk: 0, ghost: 0 };
+    const n = this.counts || (this.counts = new Map());
+    n.clear();
     // Sight lines from the camera to the runner's head and feet (stopping just short of the runner).
     const see = camCtl.mode === 'follow' && player.visible && player.y > -3;
     if (see) {
@@ -2077,11 +2277,13 @@ const world = {
             ghost = dx * dx + dy * dy + dz * dz < CAM_CLEAR * CAM_CLEAR
               || SIGHT.some((sg) => sg.hits(x0 - m, y0, z0 - m, x1 + m, y1, z1 + m));
           }
-          const key = ghost ? 'ghost' : b.type === 'M' ? 'M' : '#', mesh = MESH[key];
+          const di = row.wave.design, dsg = di >= 0 && b.type !== 'M' ? designs[di] : null;
+          const mesh = ghost ? MESH.ghost : b.type === 'M' ? MESH.M : dsg ? designMesh(di) : MESH['#'];
+          const color = !dsg || dsg.tint || ghost ? part.color : part.climb ? CLIMB_BRIGHT : WHITE;
           for (let u = 0; u < part.units; u++) {             // a stack is drawn as whole blocks
-            const i = n[key];
+            const i = n.get(mesh) || 0;
             if (i >= mesh.instanceMatrix.count) break;
-            n[key]++;
+            n.set(mesh, i + 1);
             _mp.makeScale(BLOCK_W, BLOCK_H, BLOCK_D);
             if (row.falling) {
               _mp.setPosition(part.ox, part.y0 + u * BLOCK_H, part.oz);
@@ -2090,21 +2292,22 @@ const world = {
               _m4.copy(_mp).setPosition(b.x + part.ox, b.y + part.y0 + u * BLOCK_H + sinkOff, row.z + part.oz);
             }
             mesh.setMatrixAt(i, _m4);
-            mesh.setColorAt(i, part.color);
+            mesh.setColorAt(i, color);
           }
         }
-        if (b.type === 'M' && !row.falling && !row.sinking && row.emergeT > 0 && n.mk < MESH.mk.instanceMatrix.count) {
+        const mk = n.get(MESH.mk) || 0;
+        if (b.type === 'M' && !row.falling && !row.sinking && row.emergeT > 0 && mk < MESH.mk.instanceMatrix.count) {
           const near = 1 - clamp(b.y / CRUSH_UP, 0, 1);       // marker glows as the crusher descends
           _m4.makeTranslation(b.x, 0.03, row.z);
-          MESH.mk.setMatrixAt(n.mk, _m4);
-          MESH.mk.setColorAt(n.mk, _c.setScalar(0.3 + 0.7 * near));
-          n.mk++;
+          MESH.mk.setMatrixAt(mk, _m4);
+          MESH.mk.setColorAt(mk, _c.setScalar(0.3 + 0.7 * near));
+          n.set(MESH.mk, mk + 1);
         }
       }
     }
-    for (const key in MESH) {
-      const m = MESH[key];
-      m.count = n[key];
+    for (const m of [...Object.values(MESH), ...designs.filter((d) => d.mesh).map((d) => d.mesh)]) {
+      m.count = n.get(m) || 0;
+      m.visible = m.count > 0;
       m.instanceMatrix.needsUpdate = true;
       m.instanceColor.needsUpdate = true;
     }
@@ -2905,6 +3108,26 @@ const podium = (() => {
   scene.add(g);
   return g;
 })();
+// The block designer shows the design on a little stack of cubes on the same podium.
+const blockPreview = (() => {
+  const mat = new THREE.MeshStandardMaterial({ map: designs[0].tex, roughness: 0.5, metalness: 0.05 });
+  const g = new THREE.Group(), c = BLOCK_W * 0.62;
+  for (const [x, y] of [[-0.6, 0], [-0.6, 1], [0.6, 0]]) {   // a two-block stack and a single block
+    const m = new THREE.Mesh(UNIT_BOX, mat);
+    m.scale.setScalar(c);
+    m.position.set(x, y * c, 0);
+    m.castShadow = true; m.receiveShadow = true;
+    g.add(m);
+  }
+  g.position.set(SHOW.x, 0, SHOW.z);
+  g.visible = false;
+  scene.add(g);
+  return {
+    g, yaw: 0, t: 0,
+    show(d, waveColor) { mat.map = d.tex; mat.color.copy(d.tint ? waveColor : WHITE); },
+    update(dt) { if (!g.visible) return; this.t += dt; g.rotation.y = Math.PI / 2 + this.yaw + Math.sin(this.t * 0.5) * 0.45; },
+  };
+})();
 const camCtl = {
   mode: 'menu', params: cameraParams(innerWidth / Math.max(1, innerHeight)),
   pos: new THREE.Vector3(34, 24, 30), look: new THREE.Vector3(0, 0, ARENA_MID),
@@ -2935,8 +3158,9 @@ function updateCamera(dt) {
     c.lookT.set(0, -1, ARENA_MID - 2);
     c.pos.set(damp(c.pos.x, c.target.x, 1.1, dt), damp(c.pos.y, c.target.y, 1.1, dt), damp(c.pos.z, c.target.z, 1.1, dt));
     c.look.set(damp(c.look.x, c.lookT.x, 1.4, dt), damp(c.look.y, c.lookT.y, 1.4, dt), damp(c.look.z, c.lookT.z, 1.4, dt));
-  } else if (c.mode === 'locker') {                      // skins: close-up of the runner on its podium
-    c.target.set(SHOW.x + 5.9, 2.05, SHOW.z - 1.3);
+  } else if (c.mode === 'locker') {                      // skins / blocks: close-up of the podium
+    const zoom = blockPreview.g.visible ? 1.3 + 0.9 * P.t : 1;   // the block stack is wider than the runner
+    c.target.set(SHOW.x + 5.9 * zoom, 1.1 + 0.95 * zoom, SHOW.z - 1.3 * zoom);
     c.lookT.set(SHOW.x, 1.1, SHOW.z);
     c.pos.set(damp(c.pos.x, c.target.x, 2.6, dt), damp(c.pos.y, c.target.y, 2.6, dt), damp(c.pos.z, c.target.z, 2.6, dt));
     c.look.set(damp(c.look.x, c.lookT.x, 3.2, dt), damp(c.look.y, c.lookT.y, 3.2, dt), damp(c.look.z, c.lookT.z, 3.2, dt));
@@ -3279,13 +3503,15 @@ const hud = {
 // ---------------------------------------------------------------------
 // 17. Menus & settings screens
 // ---------------------------------------------------------------------
-const SCREENS = ['menu', 'howto', 'settings', 'skins', 'pause', 'gameover'];
+const SCREENS = ['menu', 'howto', 'settings', 'skins', 'blocks', 'pause', 'gameover'];
 let currentScreen = null, settingsReturn = 'menu';
 function showScreen(name) {
   const prev = currentScreen;
   currentScreen = name;
   if (prev === 'skins' && name !== 'skins') closeSkins();
   if (name === 'skins' && prev !== 'skins') openSkins();
+  if (prev === 'blocks' && name !== 'blocks') closeBlocks();
+  if (name === 'blocks' && prev !== 'blocks') openBlocks();
   for (const s of SCREENS) $('screen-' + s).classList.toggle('active', s === name);
   if (name) {
     const el = $('screen-' + name);
@@ -3394,6 +3620,211 @@ function closeSkins() {
   podium.visible = false;
   player.showYaw = null;
   player.hide();
+  if (state === 'menu') camCtl.mode = 'menu';
+}
+// ---- Block designer ----
+const BD_PALETTE = ['#ffffff', '#e6ecff', '#cfcae4', '#a29dc4', '#6b7a99', '#34364f', '#1b1530', '#000000',
+  '#ff3b4f', '#ff8a5a', '#ff8a2a', '#ffd23f', '#fff1a8', '#a6e22e', '#3ccf6d', '#0f7d4a',
+  '#44f0ff', '#23c3ff', '#3d7bff', '#7c5cff', '#b44dff', '#ff5fa2', '#c08a4a', '#5c3a1a'];
+const bd = { slot: 0, tool: 'draw', color: '#ff3b4f', mirror: false, undo: [], drawing: false, last: null, hover: null, clip: null };
+const bdDesign = () => designs[bd.slot];
+function bdChanged(live) {
+  refreshDesign(bdDesign());
+  drawBlockEditor();
+  if (!live) saveDesigns();
+}
+function bdPushUndo() {
+  const d = bdDesign();
+  bd.undo.push({ slot: bd.slot, px: d.px.slice(), tint: d.tint });
+  if (bd.undo.length > 50) bd.undo.shift();
+}
+function bdUndo() {
+  const u = bd.undo.pop();
+  if (!u) return;
+  bd.slot = u.slot;
+  const d = bdDesign();
+  d.px = u.px; d.tint = u.tint;
+  bdChanged(); syncBlockUI(); audio.play('click');
+}
+function bdPaint(x, y) {
+  const d = bdDesign(), N = DESIGN_N;
+  d.px[y * N + x] = bd.color;
+  if (bd.mirror) d.px[y * N + (N - 1 - x)] = bd.color;
+}
+function bdLine(a, b) {                                  // paint every cell between two cells
+  let x = a.x, y = a.y;
+  const dx = Math.abs(b.x - x), dy = -Math.abs(b.y - y), sx = x < b.x ? 1 : -1, sy = y < b.y ? 1 : -1;
+  let err = dx + dy;
+  for (;;) {
+    bdPaint(x, y);
+    if (x === b.x && y === b.y) break;
+    const e2 = 2 * err;
+    if (e2 >= dy) { err += dy; x += sx; }
+    if (e2 <= dx) { err += dx; y += sy; }
+  }
+}
+function bdFill(x, y) {
+  const d = bdDesign(), N = DESIGN_N, from = d.px[y * N + x], to = bd.color;
+  if (from === to) return;
+  const todo = [[x, y]];
+  while (todo.length) {
+    const [cx, cy] = todo.pop();
+    if (cx < 0 || cy < 0 || cx >= N || cy >= N || d.px[cy * N + cx] !== from) continue;
+    d.px[cy * N + cx] = to;
+    todo.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
+  }
+}
+function bdCell(e) {
+  const r = $('bd-canvas').getBoundingClientRect(), N = DESIGN_N;
+  return { x: clamp(Math.floor(((e.clientX - r.left) / r.width) * N), 0, N - 1), y: clamp(Math.floor(((e.clientY - r.top) / r.height) * N), 0, N - 1) };
+}
+function bdSetColor(hex) {
+  bd.color = hex.toLowerCase();
+  if (bd.tool === 'pick') bd.tool = 'draw';
+  syncBlockUI();
+}
+function drawBlockEditor() {
+  const cv = $('bd-canvas'), g = cv.getContext('2d'), N = DESIGN_N, S = cv.width / N, d = bdDesign();
+  for (let i = 0; i < N * N; i++) { g.fillStyle = d.px[i]; g.fillRect((i % N) * S, ((i / N) | 0) * S, S, S); }
+  g.strokeStyle = 'rgba(20,14,50,.22)'; g.lineWidth = 1;
+  g.beginPath();
+  for (let k = 1; k < N; k++) { const v = Math.round(k * S) + 0.5; g.moveTo(v, 0); g.lineTo(v, cv.height); g.moveTo(0, v); g.lineTo(cv.width, v); }
+  g.stroke();
+  if (bd.mirror) {
+    g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 2; g.setLineDash([6, 5]);
+    g.beginPath(); g.moveTo(cv.width / 2, 0); g.lineTo(cv.width / 2, cv.height); g.stroke();
+    g.setLineDash([]);
+  }
+  if (bd.hover && !bd.drawing) {
+    g.strokeStyle = '#ffffff'; g.lineWidth = 2;
+    const cells = [bd.hover];
+    if (bd.mirror && bd.tool === 'draw') cells.push({ x: N - 1 - bd.hover.x, y: bd.hover.y });
+    for (const c of cells) g.strokeRect(c.x * S + 1, c.y * S + 1, S - 2, S - 2);
+  }
+}
+function syncBlockUI() {
+  const d = bdDesign(), inGame = designs.filter((x) => x.on).length;
+  $('bd-title').textContent = `Design ${bd.slot + 1}${d.on ? '' : ' · not in game'}`;
+  [...$('bd-loadout').children].forEach((b, i) => { b.setAttribute('aria-selected', String(i === bd.slot)); b.classList.toggle('off', !designs[i].on); });
+  for (const t of document.querySelectorAll('#bd-tools [data-tool]')) t.classList.toggle('on', t.dataset.tool === bd.tool);
+  $('bd-mirror').setAttribute('aria-pressed', String(bd.mirror));
+  $('bd-undo').disabled = !bd.undo.length;
+  for (const b of $('bd-palette').querySelectorAll('button.swatch')) {
+    const on = b.dataset.hex === bd.color;
+    b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on));
+  }
+  $('bd-palette').querySelector('.swatch.custom').classList.toggle('on', !BD_PALETTE.includes(bd.color));
+  $('bd-on').checked = d.on;
+  $('bd-tint').checked = d.tint;
+  $('bd-paste').disabled = !bd.clip;
+  $('bd-hint').textContent = inGame ? `${inGame} of ${DESIGN_SLOTS} designs are in game. Each wave uses the next one, in order.`
+    : 'No designs are in game, so the walls use the classic look.';
+  blockPreview.show(d, WAVE_COLORS[bd.slot % WAVE_COLORS.length]);
+  drawBlockEditor();
+}
+function buildBlockUI() {
+  const lo = $('bd-loadout');
+  designs.forEach((d, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'bd-slot'; b.setAttribute('role', 'option'); b.setAttribute('aria-label', `Design ${i + 1}`);
+    const num = document.createElement('b');
+    num.textContent = i + 1;
+    b.append(d.canvas, num);                             // the design's own canvas doubles as its thumbnail
+    b.addEventListener('click', () => { bd.slot = i; syncBlockUI(); audio.play('click'); });
+    lo.appendChild(b);
+  });
+  for (const t of document.querySelectorAll('#bd-tools [data-tool]')) t.addEventListener('click', () => { bd.tool = t.dataset.tool; syncBlockUI(); audio.play('click'); });
+  $('bd-mirror').addEventListener('click', () => { bd.mirror = !bd.mirror; syncBlockUI(); audio.play('click'); });
+  $('bd-undo').addEventListener('click', bdUndo);
+  $('bd-clear').addEventListener('click', () => { bdPushUndo(); bdDesign().px.fill(bd.color); bdChanged(); syncBlockUI(); audio.play('click'); });
+  const pal = $('bd-palette');
+  for (const hex of BD_PALETTE) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'swatch'; b.dataset.hex = hex; b.style.setProperty('--c', hex);
+    b.setAttribute('role', 'radio'); b.setAttribute('aria-label', hex);
+    b.addEventListener('click', () => bdSetColor(hex));
+    pal.appendChild(b);
+  }
+  const custom = document.createElement('label'), inp = document.createElement('input');
+  custom.className = 'swatch custom'; custom.title = 'Any colour';
+  inp.type = 'color'; inp.value = '#7fdbff'; inp.setAttribute('aria-label', 'Pick any colour');
+  inp.addEventListener('input', () => bdSetColor(inp.value));
+  custom.appendChild(inp);
+  pal.appendChild(custom);
+  $('bd-on').addEventListener('change', (e) => { bdDesign().on = e.target.checked; saveDesigns(); syncBlockUI(); });
+  $('bd-tint').addEventListener('change', (e) => { bdPushUndo(); bdDesign().tint = e.target.checked; saveDesigns(); syncBlockUI(); });
+  const sel = $('bd-template');
+  sel.append(new Option('Template…', ''));
+  DESIGN_TEMPLATES.forEach((t, i) => sel.append(new Option(t.name, String(i))));
+  sel.addEventListener('change', () => {
+    if (sel.value === '') return;
+    const t = DESIGN_TEMPLATES[+sel.value], d = bdDesign();
+    bdPushUndo();
+    d.px = templatePixels(t); d.tint = t.tint;
+    sel.value = '';
+    bdChanged(); syncBlockUI(); audio.play('click');
+  });
+  $('bd-copy').addEventListener('click', () => { const d = bdDesign(); bd.clip = { px: d.px.slice(), tint: d.tint }; syncBlockUI(); audio.play('click'); });
+  $('bd-paste').addEventListener('click', () => {
+    if (!bd.clip) return;
+    const d = bdDesign();
+    bdPushUndo();
+    d.px = bd.clip.px.slice(); d.tint = bd.clip.tint;
+    bdChanged(); syncBlockUI(); audio.play('click');
+  });
+  $('bd-done').addEventListener('click', () => { audio.play('click'); showScreen('menu'); });
+  // paint on the 16×16 grid
+  const cv = $('bd-canvas');
+  cv.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    const c = bdCell(e), N = DESIGN_N;
+    if (bd.tool === 'pick') { bdSetColor(bdDesign().px[c.y * N + c.x]); return; }
+    bdPushUndo();
+    if (bd.tool === 'fill') { bdFill(c.x, c.y); bdChanged(); syncBlockUI(); return; }
+    bd.drawing = true; bd.last = c;
+    bdPaint(c.x, c.y);
+    bdChanged(true);
+    try { cv.setPointerCapture(e.pointerId); } catch { /* ignored */ }
+  });
+  cv.addEventListener('pointermove', (e) => {
+    const c = bdCell(e);
+    bd.hover = c;
+    if (bd.drawing && (c.x !== bd.last.x || c.y !== bd.last.y)) { bdLine(bd.last, c); bd.last = c; bdChanged(true); }
+    else if (!bd.drawing) drawBlockEditor();
+  });
+  const endStroke = () => { if (!bd.drawing) return; bd.drawing = false; bdChanged(); syncBlockUI(); };
+  cv.addEventListener('pointerup', endStroke);
+  cv.addEventListener('pointercancel', endStroke);
+  cv.addEventListener('lostpointercapture', endStroke);
+  cv.addEventListener('pointerleave', () => { bd.hover = null; if (!bd.drawing) drawBlockEditor(); });
+  window.addEventListener('keydown', (e) => {
+    if (currentScreen === 'blocks' && (e.ctrlKey || e.metaKey) && e.code === 'KeyZ') { e.preventDefault(); bdUndo(); }
+  });
+  // drag beside the panel to turn the preview
+  const stageEl = $('bd-stage'), drag = { id: null, x: 0 };
+  stageEl.addEventListener('pointerdown', (e) => {
+    drag.id = e.pointerId; drag.x = e.clientX;
+    try { stageEl.setPointerCapture(e.pointerId); } catch { /* ignored */ }
+  });
+  stageEl.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== drag.id) return;
+    blockPreview.yaw += (e.clientX - drag.x) * 0.012;
+    drag.x = e.clientX;
+  });
+  const endDrag = (e) => { if (e.pointerId === drag.id) drag.id = null; };
+  stageEl.addEventListener('pointerup', endDrag);
+  stageEl.addEventListener('pointercancel', endDrag);
+}
+function openBlocks() {
+  camCtl.mode = 'locker';
+  podium.visible = true;
+  player.hide();
+  blockPreview.g.visible = true;
+  syncBlockUI();
+}
+function closeBlocks() {
+  podium.visible = false;
+  blockPreview.g.visible = false;
   if (state === 'menu') camCtl.mode = 'menu';
 }
 // Skin thumbnails: the runner is rendered into a corner of the main canvas, one outfit at a time,
@@ -3720,7 +4151,7 @@ const game = {
         if (state === 'playing' || state === 'countdown') this.pause();
         else if (currentScreen === 'settings') showScreen(settingsReturn);
         else if (state === 'paused') { if (performance.now() - lockLostAt > 500) this.resume(); }   // that Esc only freed the cursor
-        else if (currentScreen === 'howto' || currentScreen === 'skins') showScreen('menu');
+        else if (currentScreen === 'howto' || currentScreen === 'skins' || currentScreen === 'blocks') showScreen('menu');
         else if (state === 'gameover') this.toMenu();
         break;
       case 'KeyP':
@@ -3808,6 +4239,7 @@ function applyQualityScene() {
   stars.setCount(q.stars);
   for (const key of ['#', 'M']) { MESH[key].castShadow = q.shadows; MESH[key].receiveShadow = q.shadows; }
   MESH.ghost.castShadow = q.shadows; MESH.ghost.receiveShadow = false;
+  for (const d of designs) if (d.mesh) { d.mesh.castShadow = q.shadows; d.mesh.receiveShadow = q.shadows; }
 }
 function createRenderer() {
   const q = QUALITY[settings.quality];
@@ -3926,6 +4358,7 @@ function update(rawDt) {
   const frozen = state === 'paused' || state === 'countdown';
   const vdt = frozen ? 0 : gdt;
   player.updateVisual(vdt);
+  blockPreview.update(dt);
   updatePlayerExtras();
   particles.update(vdt);
   rings.update(vdt);
@@ -3956,6 +4389,7 @@ function wireButtons() {
   $('btn-play').addEventListener('click', () => game.start());
   $('btn-howto').addEventListener('click', () => { audio.play('click'); showScreen('howto'); });
   $('btn-skins').addEventListener('click', () => { audio.play('click'); showScreen('skins'); });
+  $('btn-blocks').addEventListener('click', () => { audio.play('click'); showScreen('blocks'); });
   $('btn-howto-back').addEventListener('click', () => { audio.play('click'); showScreen('menu'); });
   $('btn-settings').addEventListener('click', () => { audio.play('click'); settingsReturn = 'menu'; syncSettingsUI(); showScreen('settings'); });
   $('btn-pause').addEventListener('click', () => game.pause());
@@ -3984,6 +4418,7 @@ function init() {
   renderPatternLibrary();
   buildSkinUI();
   applyCurrentSkin();
+  buildBlockUI();
   bindSettingsUI();
   wireButtons();
   setTouchMode(COARSE || (HAS_TOUCH && !matchMedia('(pointer: fine)').matches));
@@ -4007,6 +4442,7 @@ function init() {
       rowSafety, planWave, SAMPLES, LIBRARY, speedForWave, laneX, levelName: () => level.name,
       tick(dt) { update(dt); }, draw() { if (skinUI.thumbQueue.length) renderSkinThumbs(skinUI.thumbQueue.splice(0)); renderer.render(scene, camera); },
       skins: { SKINS, state: skinState, select: selectSkin },
+      designs, meshCounts: () => ({ hash: MESH['#'].count, ghost: MESH.ghost.count }),
       info() { return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, pixelRatio: renderer.getPixelRatio() }; },
       consts: { P_START_Z, P_HALF_W, P_HALF_D, P_HEIGHT, ROW_HALF_D, BLOCK_H, BLOCK_W, BLOCK_D, HIT_HALF_D, JUMP_V, G_UP, G_DOWN, AIR_TIME, MOVE_SPEED, CRUSH_UP, LANES, Z_SPAWN, Z_NEAR, Z_FAR, FALL_HANG, HALF_W, ARENA_HALF, LASER_X },
     };

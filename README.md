@@ -98,9 +98,19 @@ Pick an outfit under **SKINS** on the main menu. There are 30 original outfits: 
 
 The runner shows off the outfit on a podium beside the arena; drag beside the panel to turn it. Some items move: capes and tails sway, propellers spin, wings flap and the jetpack fires while you're in the air.
 
+## Block designer
+
+Paint your own blocks under **BLOCKS** on the main menu. You get a loadout of 20 designs, each a 16×16 pixel block face shown on every side of the cube. The loadout starts with 20 starter designs you can paint over: Tile, Bricks, Crate, Checker, Hazard, Smiley, Heart, Star, Gem, Circuit, Dots, Ice, Lava, Stone, Gift, Target, Window, Neon, Cookie and Plain.
+
+- **DRAW** paints cells (drag to paint a line), **FILL** floods an area, and **PICK** takes a colour from the design. **MIRROR** paints both halves at once, and **UNDO** (or Ctrl+Z) steps back. **CLEAR** paints the whole face in the current colour.
+- Choose from 24 colours, or any colour with the rainbow swatch. **Template…** loads one of the starter designs into the slot, and **COPY** / **PASTE** copy a design from one slot to another.
+- **In game** puts a design in the loadout the walls use. Each wave uses the next design that is in game, in slot order. With none in game, the walls use the classic look.
+- **Wave colour** tints the design with each wave's colour; paint it in light tones for that. Without it the design keeps its own colours. Climb lanes are drawn a little brighter either way, and crushers keep their own look.
+- The design shows live on a little stack of blocks on the podium beside the panel; drag there to turn it.
+
 ## Settings and saved data
 
-The Settings screen covers graphics quality (Low, Medium, High), field of view (70° by default), camera X and Y offset, mouse and camera sensitivity, joystick sensitivity and size, volume, sound effects, music and vibration. Settings (including the difficulty) are stored in `localStorage` under `blockdash.settings.v1`. The personal best is kept per difficulty: `blockdash.bestWave` for Normal and `blockdash.bestWave.1`, `.2`, `.4` and `.5` for the other levels. The chosen outfit and your colours are stored under `blockdash.skin.v1`.
+The Settings screen covers graphics quality (Low, Medium, High), field of view (70° by default), camera X and Y offset, mouse and camera sensitivity, joystick sensitivity and size, volume, sound effects, music and vibration. Settings (including the difficulty) are stored in `localStorage` under `blockdash.settings.v1`. The personal best is kept per difficulty: `blockdash.bestWave` for Normal and `blockdash.bestWave.1`, `.2`, `.4` and `.5` for the other levels. The chosen outfit and your colours are stored under `blockdash.skin.v1`, and your 20 block designs under `blockdash.blocks.v1`.
 
 ## Debugging
 
