@@ -233,7 +233,7 @@ body.touch[data-state=playing] #touch,body.touch[data-state=countdown] #touch{di
 .lt-panel{width:min(440px,46vw)}
 .lt-slots{display:grid;grid-template-columns:repeat(10,1fr);gap:5px}
 .lt-slot{position:relative;padding:3px;border-radius:8px;border:2px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);min-height:0;min-width:0}
-.lt-slot canvas{display:block;width:100%;aspect-ratio:5/9;image-rendering:pixelated;border-radius:3px}
+.lt-slot canvas{display:block;width:100%;aspect-ratio:3/5;image-rendering:pixelated;border-radius:3px}
 .lt-slot b{position:absolute;left:4px;top:3px;font-size:9px;line-height:1;color:#fff;text-shadow:0 1px 2px #000,0 0 3px #000}
 .lt-slot.on::after{content:"";position:absolute;right:3px;top:3px;width:8px;height:8px;border-radius:50%;background:#3ccf6d;box-shadow:0 0 0 2px #120d2e}
 .lt-slot[aria-selected=true]{border-color:var(--gold);box-shadow:0 0 12px rgba(255,210,63,.35)}
@@ -799,7 +799,7 @@ const fmtTime = (s) => { s = Math.max(0, Math.floor(s)); return String(Math.floo
 // ---------------------------------------------------------------------
 // 2. World constants (units are metres-ish; 1 lane = 2 units)
 // ---------------------------------------------------------------------
-const LANES = 10, LANE_W = 2, HALF_W = (LANES * LANE_W) / 2, RIM = 0;
+const LANES = 12, LANE_W = 2, HALF_W = (LANES * LANE_W) / 2, RIM = 0;   // 12 lanes of 2 × 2 squares
 // Runner hitbox: the runner stands about as tall as one block.
 const P_HALF_W = 0.46, P_HALF_D = 0.46, P_HEIGHT = 1.55;
 // The laser fences stand right beside the outer lanes, on a thin rim far too narrow for the runner,
@@ -811,7 +811,7 @@ function floorAt(x, z) {
   return 0;
 }
 const PATTERN_COLS = 8;                                  // patterns are authored 8 wide (A–H)
-const Z_NEAR = 10, Z_FAR = -26, Z_SPAWN = Z_FAR + 1.2;   // obstacles rise at the far edge and travel toward +z
+const Z_NEAR = 10, Z_FAR = -30, Z_SPAWN = Z_FAR + 1.2;   // 20 squares long; obstacles rise at the far edge and travel toward +z
 const ARENA_LEN = Z_NEAR - Z_FAR, ARENA_MID = (Z_NEAR + Z_FAR) / 2;
 const laneX = (i) => -HALF_W + LANE_W * (i + 0.5);
 
@@ -1229,7 +1229,7 @@ function planWave(cellRows, comfort, breather, prev) {
 const PAD = (LANES - PATTERN_COLS) / 2;
 const padRow = (cells) => [...Array(PAD).fill(cells[0]), ...cells, ...Array(PAD).fill(cells[cells.length - 1])];
 function validatePattern(p) {
-  const rows = p.rows.map((r) => (p.full ? r.cells : padRow(r.cells)));   // custom layouts are already 10 lanes wide
+  const rows = p.rows.map((r) => (p.full ? r.cells : padRow(r.cells)));   // custom layouts are already as wide as the arena
   if (rows.every((c) => c.every((x) => x === '.'))) throw new Error('the pattern has no obstacles');
   rows.forEach((c, i) => {
     if (c.every((x) => x === '.')) return;
@@ -1316,13 +1316,17 @@ const saveBest = () => store.set(bestKey(level.n), String(bestWave));
 
 // ---------------------------------------------------------------------
 // 6b. Custom wave layouts: 30 slots made in the WAVES editor. A layout covers the whole map, one cell
-//     per square of the checkered floor (10 lanes × 18 squares), and the wave arrives exactly as built.
+//     per square of the checkered floor (12 lanes × 20 squares), and the wave arrives exactly as built.
 // ---------------------------------------------------------------------
 const LAYOUT_SLOTS = 30, LAYOUT_KEY = 'blockdash.layouts.v1', LAYOUT_CELLS = '.J#3SM', LAYOUT_W = LANES;   // every lane of the arena
-const SQ = LANE_W, LAYOUT_H = Math.round(ARENA_LEN / SQ);   // the floor's squares, one block each: 18 from the near edge to the far one
+const SQ = LANE_W, LAYOUT_H = Math.round(ARENA_LEN / SQ);   // the floor's squares, one block each: 20 from the near edge to the far one
 const OLD_ROW_AT = [1, 3, 6, 8, 10, 12, 14, 16];         // where 8-row layouts (older saves, built-in patterns) land on the map
 const emptyMap = () => Array.from({ length: LAYOUT_H }, () => Array(LAYOUT_W).fill('.'));
 const fromEightRows = (rows8) => { const m = emptyMap(); rows8.forEach((r, k) => { m[OLD_ROW_AT[k]] = r.slice(); }); return m; };
+const widenRow = (cells) => {                            // narrower rows from older saves: carry the edge cells outward
+  const pad = (LAYOUT_W - cells.length) / 2;
+  return [...Array(Math.floor(pad)).fill(cells[0]), ...cells, ...Array(Math.ceil(pad)).fill(cells[cells.length - 1])];
+};
 const layouts = Array.from({ length: LAYOUT_SLOTS }, (_, i) => ({
   name: `Layout ${i + 1}`, rows: emptyMap(), on: false, pattern: null,
 }));
@@ -1342,11 +1346,13 @@ function checkLayout(i) {                                // any layout with at l
       if (!sl) return;
       const L = layouts[i];
       if (typeof sl.name === 'string' && sl.name.trim()) L.name = sl.name.trim().slice(0, 18);
-      const ok = (r, n) => typeof r === 'string' && r.length === n && [...r].every((c) => LAYOUT_CELLS.includes(c));
-      if (Array.isArray(sl.rows) && sl.rows.length === LAYOUT_H && sl.rows.every((r) => ok(r, LAYOUT_W))) L.rows = sl.rows.map((r) => [...r]);
-      else if (Array.isArray(sl.rows) && sl.rows.length === 8) {           // older layouts: 8 rows, put where the old editor showed them
-        if (sl.rows.every((r) => ok(r, LAYOUT_W))) L.rows = fromEightRows(sl.rows.map((r) => [...r]));
-        else if (sl.rows.every((r) => ok(r, PATTERN_COLS))) L.rows = fromEightRows(sl.rows.map((r) => padRow([...r])));   // and 8 lanes wide
+      // Rows of 8 or 10 lanes (older saves) are widened. 8-row layouts go where the old editor showed them;
+      // maps from before the arena grew keep their place from the near edge, with the new far rows empty.
+      const ok = (r) => typeof r === 'string' && r.length <= LAYOUT_W && r.length >= PATTERN_COLS && [...r].every((c) => LAYOUT_CELLS.includes(c));
+      if (Array.isArray(sl.rows) && sl.rows.length && sl.rows.every(ok)) {
+        const rows = sl.rows.map((r) => widenRow([...r]));
+        if (rows.length === 8) L.rows = fromEightRows(rows);
+        else if (rows.length <= LAYOUT_H) L.rows = [...rows, ...emptyMap().slice(rows.length)];
       }
       L.on = !!sl.on;
     });
@@ -2311,7 +2317,9 @@ const world = {
     let land = null;
     for (const c of boxes) {
       if (!overlaps(c)) continue;
-      if (c.y1 - p.y <= STEP_UP) {                          // feet are just below the top: land on it
+      // Feet just below the top: land on it. Not while still on the way up, though: a jump that starts
+      // against a wall (say one shoving you along) keeps its full height and lands on the way down.
+      if (c.y1 - p.y <= STEP_UP && p.vy - c.vy <= 0.5) {
         if (!land || c.y1 > land.top) land = { row: c.row, block: c.b, part: c.part, top: c.y1 };
         continue;
       }
@@ -2323,7 +2331,8 @@ const world = {
       const tX = closeX > 0.05 ? ox / closeX : Infinity;
       const tZ = closeZ > 0.05 ? oz / closeZ : Infinity;
       const tY = (p.y + ph - c.y0) / Math.max(closeY, 1e-3);
-      if (closeY > 0.5 && tY < tX && tY < tZ) {             // underside: a crusher coming down, or a head bump
+      const fromBelow = tY <= h * 1.5 + 1e-4;               // the head really was under the block a moment ago
+      if (closeY > 0.5 && fromBelow && tY < tX && tY < tZ) {   // underside: a crusher coming down, or a head bump
         if (c.vy < -0.5) {
           p.z = c.z1 + P_HALF_D + 0.02;                     // squeezed out in front of it
           p.stun(0.7, rand(-1.5, 1.5), 5, this.speed + 4);
@@ -3226,6 +3235,7 @@ function updatePlayerExtras() {
 // ---------------------------------------------------------------------
 // 14. Camera: menu orbit, 360° third-person orbit around the runner, shake
 // ---------------------------------------------------------------------
+const ARENA_K = Math.hypot(ARENA_HALF * 2, ARENA_LEN) / 41.4;   // how much bigger the arena is than the one the overview cameras were tuned on
 function cameraParams(aspect) {
   const t = clamp((1.3 - aspect) / 0.75, 0, 1);      // 0 = landscape, 1 = tall portrait
   return { t, dist: lerp(7, 12.5, t), height: lerp(4.5, 8, t), look: lerp(8, 10, t) };
@@ -3277,7 +3287,7 @@ const layoutView = (() => {
   const crushers = new THREE.InstancedMesh(UNIT_BOX, crushMat, CRUSH_CAP);
   for (const m of [blocks, crushers]) { m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false; m.count = 0; g.add(m); }
   for (let i = 0; i < BLOCK_CAP; i++) blocks.setColorAt(i, WHITE);
-  const pts = [];                                          // the floor's squares: 10 lanes × 18 rows
+  const pts = [];                                          // the floor's squares: 12 lanes × 20 rows
   for (let l = 0; l <= LANES; l++) { const x = -HALF_W + l * LANE_W; pts.push(x, 0.04, Z_FAR, x, 0.04, Z_NEAR); }
   for (let k = 0; k <= LAYOUT_H; k++) { const z = Z_NEAR - SQ * k; pts.push(-HALF_W, 0.04, z, HALF_W, 0.04, z); }
   const lineGeo = new THREE.BufferGeometry();
@@ -3291,7 +3301,7 @@ const layoutView = (() => {
   arrow.moveTo(0, -1); arrow.lineTo(1.1, 0.5); arrow.lineTo(0, 0.05); arrow.lineTo(-1.1, 0.5); arrow.closePath();
   const arrowGeo = new THREE.ShapeGeometry(arrow).rotateX(-Math.PI / 2);
   const arrowMat = new THREE.MeshBasicMaterial({ color: 0x44f0ff, toneMapped: false, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
-  for (const x of [-6, 0, 6]) for (const z of [-27.4, -29.4]) { const a = new THREE.Mesh(arrowGeo, arrowMat); a.position.set(x, 0.05, z); g.add(a); }
+  for (const x of [-HALF_W / 2, 0, HALF_W / 2]) for (const z of [Z_FAR - 1.4, Z_FAR - 3.4]) { const a = new THREE.Mesh(arrowGeo, arrowMat); a.position.set(x, 0.05, z); g.add(a); }
   const blockCells = [], crushCells = [], _m = new THREE.Matrix4(), _col = new THREE.Color();
   const HEIGHT = { J: 1, '#': 2, 3: 3, S: 3, M: 1, '.': 0 };
   return {
@@ -3376,8 +3386,8 @@ function updateCamera(dt) {
   const c = camCtl, P = c.params;
   if (c.mode === 'menu') {
     c.angle += dt * 0.06;
-    const r = 38 * (1 + P.t * 0.45);
-    c.target.set(Math.sin(c.angle) * r, 18 + Math.sin(c.angle * 0.7) * 3 + P.t * 8, ARENA_MID + 4 + Math.cos(c.angle) * r);
+    const r = 38 * ARENA_K * (1 + P.t * 0.45);
+    c.target.set(Math.sin(c.angle) * r, (18 + Math.sin(c.angle * 0.7) * 3 + P.t * 8) * ARENA_K, ARENA_MID + 4 + Math.cos(c.angle) * r);
     c.lookT.set(0, -1, ARENA_MID - 2);
     c.pos.set(damp(c.pos.x, c.target.x, 1.1, dt), damp(c.pos.y, c.target.y, 1.1, dt), damp(c.pos.z, c.target.z, 1.1, dt));
     c.look.set(damp(c.look.x, c.lookT.x, 1.4, dt), damp(c.look.y, c.lookT.y, 1.4, dt), damp(c.look.z, c.lookT.z, 1.4, dt));
@@ -3390,7 +3400,7 @@ function updateCamera(dt) {
   } else if (c.mode === 'editor') {                      // WAVES: the arena from above
     const side = P.t > 0.5;                              // tall screens: lay the arena sideways
     c.lookT.set(0, 0, ARENA_MID - 0.2);
-    if (side) c.target.set(16, 86, c.lookT.z); else c.target.set(0, 46, c.lookT.z + 12);
+    if (side) c.target.set(16 * ARENA_K, 86 * ARENA_K, c.lookT.z); else c.target.set(0, 46 * ARENA_K, c.lookT.z + 12 * ARENA_K);
     c.pos.set(damp(c.pos.x, c.target.x, 2.4, dt), damp(c.pos.y, c.target.y, 2.4, dt), damp(c.pos.z, c.target.z, 2.4, dt));
     c.look.set(damp(c.look.x, c.lookT.x, 3, dt), damp(c.look.y, c.lookT.y, 3, dt), damp(c.look.z, c.lookT.z, 3, dt));
   } else {
