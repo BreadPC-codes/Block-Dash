@@ -233,7 +233,7 @@ body.touch[data-state=playing] #touch,body.touch[data-state=countdown] #touch{di
 .lt-panel{width:min(440px,46vw)}
 .lt-slots{display:grid;grid-template-columns:repeat(10,1fr);gap:5px}
 .lt-slot{position:relative;padding:3px;border-radius:8px;border:2px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);min-height:0;min-width:0}
-.lt-slot canvas{display:block;width:100%;aspect-ratio:5/4;image-rendering:pixelated;border-radius:3px}
+.lt-slot canvas{display:block;width:100%;aspect-ratio:5/9;image-rendering:pixelated;border-radius:3px}
 .lt-slot b{position:absolute;left:4px;top:3px;font-size:9px;line-height:1;color:#fff;text-shadow:0 1px 2px #000,0 0 3px #000}
 .lt-slot.on::after{content:"";position:absolute;right:3px;top:3px;width:8px;height:8px;border-radius:50%;background:#3ccf6d;box-shadow:0 0 0 2px #120d2e}
 .lt-slot[aria-selected=true]{border-color:var(--gold);box-shadow:0 0 12px rgba(255,210,63,.35)}
@@ -1319,19 +1319,23 @@ let bestWave = loadBest(settings.difficulty);
 const saveBest = () => store.set(bestKey(level.n), String(bestWave));
 
 // ---------------------------------------------------------------------
-// 6b. Custom wave layouts: 30 slots of 8×8 cells made in the WAVES editor, in the same
-//     format as the built-in patterns, and checked by the same survivability solver.
+// 6b. Custom wave layouts: 30 slots made in the WAVES editor. A layout covers the whole map, one cell
+//     per square of the checkered floor (10 lanes × 18 squares), and the wave arrives exactly as built.
 // ---------------------------------------------------------------------
 const LAYOUT_SLOTS = 30, LAYOUT_KEY = 'blockdash.layouts.v1', LAYOUT_CELLS = '.J#3SM', LAYOUT_W = LANES;   // every lane of the arena
+const SQ = LANE_W, LAYOUT_H = Math.round(ARENA_LEN / SQ);   // the floor's squares, one block each: 18 from the near edge to the far one
+const OLD_ROW_AT = [1, 3, 6, 8, 10, 12, 14, 16];         // where 8-row layouts (older saves, built-in patterns) land on the map
+const emptyMap = () => Array.from({ length: LAYOUT_H }, () => Array(LAYOUT_W).fill('.'));
+const fromEightRows = (rows8) => { const m = emptyMap(); rows8.forEach((r, k) => { m[OLD_ROW_AT[k]] = r.slice(); }); return m; };
 const layouts = Array.from({ length: LAYOUT_SLOTS }, (_, i) => ({
-  name: `Layout ${i + 1}`, rows: Array.from({ length: 8 }, () => Array(LAYOUT_W).fill('.')), on: false, pattern: null,
+  name: `Layout ${i + 1}`, rows: emptyMap(), on: false, pattern: null,
 }));
 const layoutOpts = { only: false };
 function checkLayout(i) {                                // any layout with at least one block is a wave: nothing is checked or blocked
   const L = layouts[i];
   if (L.rows.every((r) => r.every((c) => c === '.'))) { L.pattern = null; return; }
   L.pattern = { id: `custom-${i}`, name: L.name || `Layout ${i + 1}`, custom: true, full: true, slot: i, minWave: 0, rating: 3, wall: true,
-    climb: L.rows.some((r) => r.includes('S')), rows: L.rows.map((cells, k) => ({ rowNumber: 8 - k, cells: cells.slice() })) };
+    climb: L.rows.some((r) => r.includes('S')), rows: L.rows.map((cells, k) => ({ rowNumber: LAYOUT_H - k, cells: cells.slice() })) };
 }
 (() => {
   let st = null;
@@ -1343,9 +1347,10 @@ function checkLayout(i) {                                // any layout with at l
       const L = layouts[i];
       if (typeof sl.name === 'string' && sl.name.trim()) L.name = sl.name.trim().slice(0, 18);
       const ok = (r, n) => typeof r === 'string' && r.length === n && [...r].every((c) => LAYOUT_CELLS.includes(c));
-      if (Array.isArray(sl.rows) && sl.rows.length === 8) {
-        if (sl.rows.every((r) => ok(r, LAYOUT_W))) L.rows = sl.rows.map((r) => [...r]);
-        else if (sl.rows.every((r) => ok(r, PATTERN_COLS))) L.rows = sl.rows.map((r) => padRow([...r]));   // older 8-lane layouts
+      if (Array.isArray(sl.rows) && sl.rows.length === LAYOUT_H && sl.rows.every((r) => ok(r, LAYOUT_W))) L.rows = sl.rows.map((r) => [...r]);
+      else if (Array.isArray(sl.rows) && sl.rows.length === 8) {           // older layouts: 8 rows, put where the old editor showed them
+        if (sl.rows.every((r) => ok(r, LAYOUT_W))) L.rows = fromEightRows(sl.rows.map((r) => [...r]));
+        else if (sl.rows.every((r) => ok(r, PATTERN_COLS))) L.rows = fromEightRows(sl.rows.map((r) => padRow([...r])));   // and 8 lanes wide
       }
       L.on = !!sl.on;
     });
@@ -1356,7 +1361,7 @@ let layoutSaveT = 0;
 function saveLayouts() {
   clearTimeout(layoutSaveT);
   layoutSaveT = setTimeout(() => store.set(LAYOUT_KEY, JSON.stringify({
-    v: 1, only: layoutOpts.only, slots: layouts.map((L) => ({ name: L.name, rows: L.rows.map((r) => r.join('')), on: L.on ? 1 : 0 })),
+    v: 2, only: layoutOpts.only, slots: layouts.map((L) => ({ name: L.name, rows: L.rows.map((r) => r.join('')), on: L.on ? 1 : 0 })),
   })), 250);
 }
 const layoutsInGame = () => layouts.filter((L) => L.on && L.pattern).map((L) => L.pattern);
@@ -1884,14 +1889,14 @@ function makeInstanced(geo, mat, cap, shadows = true) {
 const crushMat = new THREE.MeshStandardMaterial({ map: TEX.crush, emissiveMap: TEX.crushGlow, emissive: 0xffffff, emissiveIntensity: 0.7, roughness: 0.35, metalness: 0.15 });
 const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);      // scaled per block part
 const MESH = {
-  '#': makeInstanced(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.block, roughness: 0.45, metalness: 0.05 }), 720),
-  M: makeInstanced(UNIT_BOX, crushMat, 160),
+  '#': makeInstanced(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.block, roughness: 0.45, metalness: 0.05 }), 1400),
+  M: makeInstanced(UNIT_BOX, crushMat, 420),
   // Blocks between the camera and the runner are drawn see-through so they never hide you.
   ghost: makeInstanced(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.block, roughness: 0.45, metalness: 0.05,
-    transparent: true, opacity: 0.28, depthWrite: false }), 240),
+    transparent: true, opacity: 0.28, depthWrite: false }), 400),
   mk: makeInstanced(new THREE.PlaneGeometry(BLOCK_W, BLOCK_D).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({ map: TEX.marker, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
-      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }), 160, false),
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }), 400, false),
 };
 // A sight line (segment) and a slab test against an axis-aligned box.
 function sightLine() {
@@ -2039,7 +2044,7 @@ function saveDesigns() {
 function designMesh(i) {                                 // one instanced mesh per design in use, made on demand
   const d = designs[i];
   if (!d.mesh) {
-    d.mesh = makeInstanced(UNIT_BOX, new THREE.MeshStandardMaterial({ map: d.tex, roughness: 0.5, metalness: 0.05 }), 600);
+    d.mesh = makeInstanced(UNIT_BOX, new THREE.MeshStandardMaterial({ map: d.tex, roughness: 0.5, metalness: 0.05 }), 1400);
     const q = QUALITY[settings.quality];
     d.mesh.castShadow = q.shadows; d.mesh.receiveShadow = q.shadows;
   }
@@ -2108,30 +2113,46 @@ const world = {
     const wallGap = WALL_GAP * speed;                      // distance that keeps walls WALL_GAP seconds apart
     const comfort = demo ? 0.45 : comfortForWave(index);
     const breather = demo ? 1.5 : breatherForWave(index);
-    const cellRows = pattern.rows.map((r) => { const c = mirrored ? r.cells.slice().reverse() : r.cells; return pattern.full ? c.slice() : padRow(c); });
-    const plan = planWave(cellRows, comfort, breather, this.prev);
-    this.prev = plan.final;
+    let cellRows, zs, empty, rowNumbers;
+    if (pattern.full) {
+      // Your own layout arrives exactly as you built it on the map: one row per square, side by side,
+      // from the first row with blocks in it to the last. It still comes WALL_GAP after the last wall.
+      const all = pattern.rows.map((r) => (mirrored ? r.cells.slice().reverse() : r.cells.slice()));
+      const used = all.map((c) => c.some((x) => x !== '.'));
+      const a = used.indexOf(true), b = used.lastIndexOf(true);
+      cellRows = all.slice(a, b + 1);
+      rowNumbers = pattern.rows.slice(a, b + 1).map((r) => r.rowNumber);
+      empty = used.slice(a, b + 1).map((u) => !u);
+      const zFirst = this.lastSolidZ === null ? this.firstZ : Math.min(this.firstZ, this.lastSolidZ - wallGap);
+      zs = cellRows.map((_, k) => zFirst - SQ * k);
+      this.prev = null;
+    } else {
+      cellRows = pattern.rows.map((r) => padRow(mirrored ? r.cells.slice().reverse() : r.cells));
+      rowNumbers = pattern.rows.map((r) => r.rowNumber);
+      const plan = planWave(cellRows, comfort, breather, this.prev);
+      this.prev = plan.final;
+      empty = cellRows.map((_, i) => !plan.types[i]);
 
-    // Lay the 8 rows out along z. Spacing comes from the solver's time budget.
-    // (a custom layout nobody can survive has no finite time budget: it just gets the usual spacing)
-    const dist = (t) => Math.max(MIN_ROW_SPACING, 2 * ROW_HALF_D + 2 * P_HALF_D + vDesign * (Number.isFinite(t) ? t : 0));
-    const solid = plan.solid, zs = new Array(8).fill(0), lead = solid[0];
-    const stepsOut = (i) => (cellRows[i].includes('S') ? 2 * BLOCK_D : 0);   // a climb wall's steps stick out in front
-    let zFirst;
-    if (this.lastSolidZ === null) zFirst = this.firstZ - lead * EMPTY_SPACING;
-    else zFirst = Math.min(this.firstZ - lead * EMPTY_SPACING, this.lastSolidZ - Math.max(dist(plan.interTime) + stepsOut(lead), wallGap));
-    const startRef = this.lastRowZ === null ? zFirst + (lead + 1) * EMPTY_SPACING : this.lastRowZ;
-    for (let i = 0; i < lead; i++) zs[i] = lerp(startRef, zFirst, (i + 1) / (lead + 1));
-    zs[lead] = zFirst;
-    for (let k = 1; k < solid.length; k++) {
-      const a = solid[k - 1], b = solid[k];
-      zs[b] = zs[a] - Math.max(dist(plan.gaps[k - 1]) + stepsOut(b), (b - a) * EMPTY_SPACING, wallGap);
-      for (let i = a + 1; i < b; i++) zs[i] = lerp(zs[a], zs[b], (i - a) / (b - a));
+      // Lay the 8 rows out along z. Spacing comes from the solver's time budget.
+      const dist = (t) => Math.max(MIN_ROW_SPACING, 2 * ROW_HALF_D + 2 * P_HALF_D + vDesign * t);
+      const solid = plan.solid, lead = solid[0];
+      const stepsOut = (i) => (cellRows[i].includes('S') ? 2 * BLOCK_D : 0);   // a climb wall's steps stick out in front
+      zs = new Array(8).fill(0);
+      let zFirst;
+      if (this.lastSolidZ === null) zFirst = this.firstZ - lead * EMPTY_SPACING;
+      else zFirst = Math.min(this.firstZ - lead * EMPTY_SPACING, this.lastSolidZ - Math.max(dist(plan.interTime) + stepsOut(lead), wallGap));
+      const startRef = this.lastRowZ === null ? zFirst + (lead + 1) * EMPTY_SPACING : this.lastRowZ;
+      for (let i = 0; i < lead; i++) zs[i] = lerp(startRef, zFirst, (i + 1) / (lead + 1));
+      zs[lead] = zFirst;
+      for (let k = 1; k < solid.length; k++) {
+        const a = solid[k - 1], b = solid[k];
+        zs[b] = zs[a] - Math.max(dist(plan.gaps[k - 1]) + stepsOut(b), (b - a) * EMPTY_SPACING, wallGap);
+        for (let i = a + 1; i < b; i++) zs[i] = lerp(zs[a], zs[b], (i - a) / (b - a));
+      }
+      for (let i = solid[solid.length - 1] + 1; i < 8; i++) zs[i] = zs[i - 1] - EMPTY_SPACING;
     }
-    const last = solid[solid.length - 1];
-    for (let i = last + 1; i < 8; i++) zs[i] = zs[i - 1] - EMPTY_SPACING;
-    this.lastSolidZ = zs[last];
-    this.lastRowZ = zs[7];
+    this.lastSolidZ = zs[empty.lastIndexOf(false)];
+    this.lastRowZ = zs[zs.length - 1];
 
     const color = WAVE_COLORS[(demo ? this.demoColor++ : index) % WAVE_COLORS.length];
     const stepColor = color.clone().lerp(WHITE, 0.5);      // climb lanes are lighter, so the way up stands out
@@ -2139,10 +2160,10 @@ const world = {
     const usable = designs.flatMap((d, i) => (d.on ? [i] : []));   // the loadout, in order
     const design = usable.length ? usable[(demo ? this.demoDesign++ : index) % usable.length] : -1;
     const wave = { index, pattern, mirrored, demo, rows: [], speed, announced: false, design };
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < cellRows.length; i++) {
       const cells = cellRows[i];
       const row = {
-        wave, idx: i, rowNumber: pattern.rows[i].rowNumber, cells, z: zs[i], empty: !plan.types[i], blocks: [],
+        wave, idx: i, pip: Math.min(7, Math.floor((i * 8) / cellRows.length)), rowNumber: rowNumbers[i], cells, z: zs[i], empty: empty[i], blocks: [],
         emerged: false, emergeT: 0, stagger: zs[i] >= Z_SPAWN ? i * 0.07 : 0,
         passed: false, falling: false, fallT: 0, fallSpeed: 0, sinking: false, sinkT: 0, remove: false,
       };
@@ -3251,26 +3272,26 @@ const blockPreview = (() => {
     update(dt) { if (!g.visible) return; this.t += dt; g.rotation.y = Math.PI / 2 + this.yaw + Math.sin(this.t * 0.5) * 0.45; },
   };
 })();
-// The WAVES editor shows the layout as real blocks on the arena, seen from above. Each layout row
-// gets a band of the arena; the band next to the runner is the row that reaches you first.
-const LT_BAND = 4.3, LT_NEAR = 9.4;
-const ltBandZ = (k) => LT_NEAR - LT_BAND * k - LT_BAND / 2;
+// The WAVES editor shows the layout as real blocks on the arena, seen from above: one cell per square of
+// the checkered floor. The row next to the runner is the front of the wave and reaches you first.
+const ltRowZ = (k) => Z_NEAR - SQ * (k + 0.5);
 const layoutView = (() => {
   const g = new THREE.Group();
   g.visible = false;
   scene.add(g);
-  const blocks = new THREE.InstancedMesh(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.block, roughness: 0.45, metalness: 0.05 }), 600);
-  const crushers = new THREE.InstancedMesh(UNIT_BOX, crushMat, 96);
+  const BLOCK_CAP = LAYOUT_H * LANES * 6 + LAYOUT_H * 2 * 3, CRUSH_CAP = LAYOUT_H * (LANES + 2);   // a whole map of climbs, edge pieces too
+  const blocks = new THREE.InstancedMesh(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.block, roughness: 0.45, metalness: 0.05 }), BLOCK_CAP);
+  const crushers = new THREE.InstancedMesh(UNIT_BOX, crushMat, CRUSH_CAP);
   for (const m of [blocks, crushers]) { m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false; m.count = 0; g.add(m); }
-  for (let i = 0; i < 600; i++) blocks.setColorAt(i, WHITE);
-  const pts = [], zFar = LT_NEAR - LT_BAND * 8;            // floor grid: 10 lanes × 8 bands
-  for (let l = 0; l <= LANES; l++) { const x = -HALF_W + l * LANE_W; pts.push(x, 0.04, zFar, x, 0.04, LT_NEAR); }
-  for (let k = 0; k <= 8; k++) { const z = LT_NEAR - LT_BAND * k; pts.push(-HALF_W, 0.04, z, HALF_W, 0.04, z); }
+  for (let i = 0; i < BLOCK_CAP; i++) blocks.setColorAt(i, WHITE);
+  const pts = [];                                          // the floor's squares: 10 lanes × 18 rows
+  for (let l = 0; l <= LANES; l++) { const x = -HALF_W + l * LANE_W; pts.push(x, 0.04, Z_FAR, x, 0.04, Z_NEAR); }
+  for (let k = 0; k <= LAYOUT_H; k++) { const z = Z_NEAR - SQ * k; pts.push(-HALF_W, 0.04, z, HALF_W, 0.04, z); }
   const lineGeo = new THREE.BufferGeometry();
   lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
   g.add(new THREE.LineSegments(lineGeo, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 })));
-  const hover = new THREE.InstancedMesh(new THREE.PlaneGeometry(LANE_W - 0.14, LT_BAND - 0.14).rotateX(-Math.PI / 2),
-    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, depthWrite: false, toneMapped: false }), 8 * LANES);
+  const hover = new THREE.InstancedMesh(new THREE.PlaneGeometry(LANE_W - 0.14, SQ - 0.14).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, depthWrite: false, toneMapped: false }), LAYOUT_H * LANES);
   hover.count = 0; hover.frustumCulled = false; hover.renderOrder = 3;
   g.add(hover);
   const arrow = new THREE.Shape();                       // arrows past the far edge: the way the walls roll in
@@ -3285,7 +3306,7 @@ const layoutView = (() => {
     draw(L) {
       let nb = 0, nc = 0;
       L.rows.forEach((row, k) => {
-        const zc = ltBandZ(k) - 0.7;
+        const zc = ltRowZ(k);
         row.forEach((c, lane) => {
           if (c === '.') return;
           const x = laneX(lane), cell = { k, col: lane };
@@ -3296,13 +3317,16 @@ const layoutView = (() => {
             if (edge) { _m.makeScale(EDGE_FILL_W, BLOCK_H, BLOCK_D).setPosition(x + edge * EDGE_FILL_OX, 0, zc); crushers.setMatrixAt(nc, _m); crushCells[nc++] = cell; }
             return;
           }
-          const stack = [[0, HEIGHT[c], BLOCK_D, 0, BLOCK_W]];
-          if (c === 'S') stack.push([0.93 + 0.4, 2, 0.8, 0, BLOCK_W], [0.93 + 1.2, 1, 0.8, 0, BLOCK_W]);   // steps, drawn shallow so every row fits
-          if (edge) stack.push([0, HEIGHT[c], BLOCK_D, edge * EDGE_FILL_OX, EDGE_FILL_W]);
-          for (const [dz, n, d, dx, w] of stack) {
+          const stack = [[0, HEIGHT[c], BLOCK_D, 0, BLOCK_W, cell]];
+          if (c === 'S') {                                 // the steps stand on the two squares in front, as in the game
+            stack.push([BLOCK_D, 2, BLOCK_D, 0, BLOCK_W, k >= 1 ? { k: k - 1, col: lane } : cell],   // (clicking a step paints the square under it)
+              [2 * BLOCK_D, 1, BLOCK_D, 0, BLOCK_W, k >= 2 ? { k: k - 2, col: lane } : cell]);
+          }
+          if (edge) stack.push([0, HEIGHT[c], BLOCK_D, edge * EDGE_FILL_OX, EDGE_FILL_W, cell]);
+          for (const [dz, n, d, dx, w, pick] of stack) {
             for (let u = 0; u < n; u++) {
               _m.makeScale(w, BLOCK_H, d).setPosition(x + dx, u * BLOCK_H, zc + dz);
-              blocks.setMatrixAt(nb, _m); blocks.setColorAt(nb, _col.set(LT_COLORS[c])); blockCells[nb++] = cell;
+              blocks.setMatrixAt(nb, _m); blocks.setColorAt(nb, _col.set(LT_COLORS[c])); blockCells[nb++] = pick;
             }
           }
         });
@@ -3316,8 +3340,8 @@ const layoutView = (() => {
     setHover(cells, L) {                                 // highlight the cells about to be painted, on top of what is there
       let n = 0;
       for (const c of cells) {                           // one tile per lane
-        if (n >= 8 * LANES) break;
-        _m.makeTranslation(laneX(c.col), HEIGHT[L.rows[c.k][c.col]] * BLOCK_H + 0.06, ltBandZ(c.k));
+        if (n >= LAYOUT_H * LANES) break;
+        _m.makeTranslation(laneX(c.col), HEIGHT[L.rows[c.k][c.col]] * BLOCK_H + 0.06, ltRowZ(c.k));
         hover.setMatrixAt(n++, _m);
       }
       hover.count = n;
@@ -3334,8 +3358,8 @@ function ltPick(e) {                                     // which layout cell is
   if (hit && hit.instanceId !== undefined) return layoutView.cellOf(hit.object, hit.instanceId);
   if (!ltRay.ray.intersectPlane(LT_FLOOR, _ltHit) || Math.abs(_ltHit.x) > LASER_X) return null;
   const lane = clamp(Math.floor((_ltHit.x + HALF_W) / LANE_W), 0, LANES - 1);   // the strip by the fence belongs to the outer lane
-  const k = Math.floor((LT_NEAR - _ltHit.z) / LT_BAND);
-  if (k < 0 || k > 7) return null;
+  const k = Math.floor((Z_NEAR - _ltHit.z) / SQ);
+  if (k < 0 || k >= LAYOUT_H) return null;
   return { k, col: lane };
 }
 const camCtl = {
@@ -3376,7 +3400,7 @@ function updateCamera(dt) {
     c.look.set(damp(c.look.x, c.lookT.x, 3.2, dt), damp(c.look.y, c.lookT.y, 3.2, dt), damp(c.look.z, c.lookT.z, 3.2, dt));
   } else if (c.mode === 'editor') {                      // WAVES: the arena from above
     const side = P.t > 0.5;                              // tall screens: lay the arena sideways
-    c.lookT.set(0, 0, LT_NEAR - LT_BAND * 4 - 0.4);
+    c.lookT.set(0, 0, ARENA_MID - 0.2);
     if (side) c.target.set(16, 86, c.lookT.z); else c.target.set(0, 46, c.lookT.z + 12);
     c.pos.set(damp(c.pos.x, c.target.x, 2.4, dt), damp(c.pos.y, c.target.y, 2.4, dt), damp(c.pos.z, c.target.z, 2.4, dt));
     c.look.set(damp(c.look.x, c.lookT.x, 3, dt), damp(c.look.y, c.lookT.y, 3, dt), damp(c.look.z, c.lookT.z, 3, dt));
@@ -3682,7 +3706,7 @@ const hud = {
     }
   },
   resetPips() { this.pipsEl.classList.remove('done'); for (const p of this.pips) p.classList.remove('on'); },
-  lightPip(i) { if (this.pips[i]) this.pips[i].classList.add('on'); },
+  lightPip(i) { for (let k = 0; k <= i && k < this.pips.length; k++) this.pips[k].classList.add('on'); },   // a long wave of your own shares the 8 pips
   pipsDone() { this.pipsEl.classList.add('done'); },
   setTime(sec) {
     const s = Math.floor(sec);
@@ -3853,7 +3877,7 @@ const ltLayout = () => layouts[lt.slot];
 function ltMessage(L) {
   if (!L.pattern) return { cls: 'empty', text: 'Paint some blocks to make a layout.' };
   const n = L.rows.reduce((sum, r) => sum + r.filter((c) => c !== '.').length, 0);
-  return { cls: 'ok', text: `✓ Ready to play · ${n} of ${8 * LAYOUT_W} squares filled` };
+  return { cls: 'ok', text: `✓ Ready to play · ${n} of ${LAYOUT_H * LAYOUT_W} squares filled` };
 }
 function ltChanged(live) {
   checkLayout(lt.slot);
@@ -3874,7 +3898,7 @@ function ltRegion(k0, c0) {                              // the touching cells o
   const L = ltLayout(), from = L.rows[k0][c0], seen = new Set(), out = [], todo = [[k0, c0]];
   while (todo.length) {
     const [k, c] = todo.pop(), key = k * LAYOUT_W + c;
-    if (k < 0 || k > 7 || c < 0 || c >= LAYOUT_W || seen.has(key) || L.rows[k][c] !== from) continue;
+    if (k < 0 || k >= LAYOUT_H || c < 0 || c >= LAYOUT_W || seen.has(key) || L.rows[k][c] !== from) continue;
     seen.add(key); out.push({ k, col: c });
     todo.push([k + 1, c], [k - 1, c], [k, c + 1], [k, c - 1]);
   }
@@ -3894,7 +3918,7 @@ function drawLayoutCell(g, c, x, y, S) {
   g.fillStyle = c === '.' ? ((x + y) % 2 ? '#2a2150' : '#30275c') : LT_COLORS[c];
   g.fillRect(x * S, y * S, S, S);
   if (c === '.') return;
-  g.fillStyle = 'rgba(255,255,255,.28)'; g.fillRect(x * S + 2, y * S + 2, S - 4, Math.max(2, S * 0.12));   // a little top highlight
+  if (S >= 8) { g.fillStyle = 'rgba(255,255,255,.28)'; g.fillRect(x * S + 2, y * S + 2, S - 4, Math.max(2, S * 0.12)); }   // a little top highlight
   if (S < 20) return;
   if (c === 'S') {                                       // a tiny staircase
     g.fillStyle = '#b3122e';
@@ -3909,7 +3933,7 @@ function drawLayoutCell(g, c, x, y, S) {
 }
 function drawLayoutThumb(i) {
   const cv = $('lt-slots').children[i].querySelector('canvas'), g = cv.getContext('2d'), L = layouts[i];
-  for (let y = 0; y < 8; y++) for (let x = 0; x < LAYOUT_W; x++) drawLayoutCell(g, L.rows[y][x], x, 7 - y, cv.width / LAYOUT_W);   // first row at the bottom, like the arena view
+  for (let y = 0; y < LAYOUT_H; y++) for (let x = 0; x < LAYOUT_W; x++) drawLayoutCell(g, L.rows[y][x], x, LAYOUT_H - 1 - y, cv.width / LAYOUT_W);   // first row at the bottom, like the arena view
 }
 function syncLayoutUI() {
   const L = ltLayout(), msg = ltMessage(L), inGame = layoutsInGame().length;
@@ -3940,7 +3964,7 @@ function openWaves() {
   camCtl.mode = 'editor';
   world.paused = true;
   layoutView.g.visible = true;
-  player.showcase(0, 9.7, 0);                            // your runner marks the near edge
+  player.showcase(0, Z_NEAR + 0.9, 0);                   // your runner waits just off the near edge
   player.yaw = 0;
   scene.fog.near = 400; scene.fog.far = 600;             // a clear view from up high
   syncLayoutUI();
@@ -3958,7 +3982,7 @@ function buildLayoutUI() {
   layouts.forEach((L, i) => {
     const b = document.createElement('button'), cv = document.createElement('canvas'), num = document.createElement('b');
     b.type = 'button'; b.className = 'lt-slot'; b.setAttribute('role', 'option'); b.setAttribute('aria-label', `Layout ${i + 1}`);
-    cv.width = 8 * LAYOUT_W; cv.height = 64;
+    cv.width = 4 * LAYOUT_W; cv.height = 4 * LAYOUT_H;
     num.textContent = i + 1;
     b.append(cv, num);
     b.addEventListener('click', () => { lt.slot = i; syncLayoutUI(); audio.play('click'); });
@@ -4003,7 +4027,7 @@ function buildLayoutUI() {
     if (!p) return;
     ltPushUndo();
     const L = ltLayout();
-    L.rows = p.rows.map((r) => padRow(r.cells));
+    L.rows = fromEightRows(p.rows.map((r) => padRow(r.cells)));
     if (/^Layout \d+$/.test(L.name)) L.name = p.name.slice(0, 18);
     ltChanged(); audio.play('click');
   });
@@ -4619,7 +4643,7 @@ const game = {
     particles.burst(player.x, 0.06, player.z, 4 + Math.round(k * 6), ['#cfc6ff', '#ffffff'], { speed: 2.6, up: 1.2, size: [0.07, 0.15], life: [0.3, 0.5], grav: 0.6, bounce: 0 });
   },
   onRowPassed(row) {
-    hud.lightPip(row.idx);
+    hud.lightPip(row.pip);
     if (!row.blocks.length) return;
     let near = Infinity;
     for (const b of row.blocks) near = Math.min(near, Math.abs(b.x - player.x));
@@ -4887,7 +4911,7 @@ function init() {
       layoutBlockCount: () => layoutView.meshes.map((m) => m.count),
       fogNear: () => scene.fog.near,
       ltCellScreen: (k, col, top = 0) => {                // where a layout cell is on screen in the WAVES editor
-        const v = new THREE.Vector3(laneX(col), top, ltBandZ(k)).project(camera), r = renderer.domElement.getBoundingClientRect();
+        const v = new THREE.Vector3(laneX(col), top, ltRowZ(k)).project(camera), r = renderer.domElement.getBoundingClientRect();
         return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height };
       },
       info() { return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, pixelRatio: renderer.getPixelRatio() }; },
