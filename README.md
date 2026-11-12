@@ -48,7 +48,7 @@ Each built-in wave is an 8×8 ASCII grid (your own layouts cover the whole map; 
 | `3` | Stack of exactly 3 cubes: a wall you can't jump |
 | `S` | Climb lane: a 3-cube stack with steps in front of it (2 cubes high, then 1). Jump onto the low step, then the middle one, then onto the top, and drop down behind the wall. Climb lanes are drawn in a lighter colour |
 | `X` `Y` | Spikes, one (`X`) or two (`Y`) cubes high: dark cubes with spikes on every side but the bottom. You can't stand on them, and touching them knocks you backwards |
-| `K` `G` | Breakable block, one (`K`) or two (`G`) cubes high: cracked glass. Solid like any block (you can stand on a one-high one), but dive or belly-slide into it and it shatters |
+| `K` `G` | Breakable glass, one (`K`) or two (`G`) blocks stacked: solid like any block (you can stand on a one-high one), but dive or belly-slide into a block and it shatters. Each block breaks on its own |
 | `B b` | Bar: a low striped bar lying across two lanes (`B` is its left half, `b` its right). Hop over it; touching it knocks you backwards |
 
 How contact works:
@@ -56,7 +56,7 @@ How contact works:
 - **Front of an incoming wall:** it pushes you along with it. You can slide sideways along it freely into a hole, or run away from it. You can still jump while it shoves you, to the full height: against a single-block wall you sail up and land on top of it.
 - **Side of a block:** solid. You stop against it.
 - **Back of a wall:** solid too. If you catch up with a wall that has already passed you, you stop against it and move along with it.
-- **Breakable blocks:** solid like any block, so they push you and you can stand on a one-high one. Dive into one, or belly-slide into it after a dive, and it shatters (the whole stack, if it's two high) and you carry straight on. A two-high one is too tall to jump, so diving is the way through.
+- **Breakable blocks:** solid like any block, so they push you and you can stand on a one-high one. Dive into one, or belly-slide into it after a dive, and it shatters and you carry straight on. Every glass block breaks on its own: in a stack, only the block you dive into breaks (just grazing the next one doesn't count), and the blocks above it stay where they are, floating. So a low dive (jump, then dive on the way down) breaks the bottom block of a two-high stack and you go under the top one, while a dive from the top of a jump breaks the top one and leaves the bottom one standing.
 - **Spikes and bars:** solid, and they knock you backwards with a short tumble (no control for under half a second). Coming at you, they throw you back toward the near edge; touch one from the side or from behind and you're thrown away from it. You can't stand on either. A bar is low (0.8 units), so a jump timed as it arrives, or a running jump, clears it. Get knocked off the edge and the run ends with **Knocked off the edge**.
 - **Top of a block:** safe to stand on. A ridden block carries you toward the near edge, and you keep that momentum when you jump off. Every block is the same cube, and taller obstacles are whole cubes stacked on top of each other. Stacks can't be reached from the floor; climb onto them from a single block, or up the steps of a climb lane. While you climb you ride along with the wall, so climbing doesn't eat into the time before the next wall.
 - **Dive:** press jump again in the air. You lunge forward in your steering direction (or the way you face) with a small hop and a low profile, covering about 6.4 units from the top of a jump, then do a short belly slide.

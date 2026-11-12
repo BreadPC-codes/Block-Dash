@@ -577,7 +577,7 @@ body.touch .kbd-hint{display:none}
       <div class="leg"><span class="sw climb"></span><div><b>Climb wall</b><small>Three blocks high with no hole (Normal and harder). Its lighter lane has steps in front: jump onto the low step, then the middle one, then over the top, and drop down behind it.</small></div></div>
       <div class="leg"><span class="sw move"></span><div><b>Crusher</b><small>Rises and slams down. Get caught underneath and you're bonked away.</small></div></div>
       <div class="leg"><span class="sw spike"></span><div><b>Spikes</b><small>A block covered in spikes, one or two high. You can't stand on it, and touching it from any side knocks you backwards with a tumble.</small></div></div>
-      <div class="leg"><span class="sw brk"></span><div><b>Breakable block</b><small>Cracked glass, one or two high. Solid like any block, but dive into it (or belly-slide into it) and it shatters.</small></div></div>
+      <div class="leg"><span class="sw brk"></span><div><b>Breakable block</b><small>Cracked glass. Solid like any block, but dive into it (or belly-slide into it) and it shatters. Each block breaks on its own: smash the bottom one of a stack and the one above stays where it is.</small></div></div>
       <div class="leg"><span class="sw bar"></span><div><b>Bar</b><small>A low striped bar lying across two squares. Hop over it: touch it and you're knocked backwards.</small></div></div>
       <div class="leg"><span class="sw laser"></span><div><b>Laser fences</b><small>They stand right beside the outer lanes, so there is no way around a wall at the sides. Touch one and the run is over.</small></div></div>
     </div>
@@ -2322,7 +2322,7 @@ const world = {
             const t = V[voxAt(k, l, lv)];
             if (t === '.') { lv++; continue; }
             let n = 1;
-            if (t !== 'B' && t !== 'M') while (lv + n < VOX_H && V[voxAt(k, l, lv + n)] === t) n++;
+            if (t !== 'B' && t !== 'M' && t !== 'K') while (lv + n < VOX_H && V[voxAt(k, l, lv + n)] === t) n++;   // (each glass block stands alone)
             runs.push({ lane, t, lv, n });
             lv += n;
           }
@@ -2375,11 +2375,11 @@ const world = {
     const usable = designs.flatMap((d, i) => (d.on ? [i] : []));   // the loadout, in order
     const design = usable.length ? usable[(demo ? this.demoDesign++ : index) % usable.length] : -1;
     const wave = { index, pattern, mirrored, demo, rows: [], speed, announced: false, design };
-    const voxBlock = ({ lane, t, lv, n }, i) => {           // one run of a stack you built: n blocks of one kind from level lv
+    const voxBlock = ({ lane, t, lv, n }, i, rise) => {     // one run of a stack you built: n blocks of one kind from level lv
       const y0 = lv * BLOCK_H, common = { lane, x: laneX(lane), vy: 0, phase: (i * 0.23 + lane * 0.11) % 1, period, down: false, fy: 0, fvy: 0, rot: 0, rotV: 0, rotZ: 0 };
       if (t === 'B') {                                      // a low bar segment, flush with the ones beside it
         const parts = [{ ox: 0, oz: 0, w: LANE_W, d: BAR_D, y0, h: BAR_H, units: 1, color: WHITE, hazard: 'bar' }];
-        return { ...common, type: 'B', units: 1, y: -(y0 + BAR_H + 0.3), riseH: y0 + BAR_H + 0.3, parts,
+        return { ...common, type: 'B', units: 1, y: -rise, riseH: rise, parts,
           ext: { x0: -LANE_W / 2, x1: LANE_W / 2, z0: -BAR_D / 2, z1: BAR_D / 2, h: y0 + BAR_H } };
       }
       if (t === 'M' && lv > 0) return null;                 // crushers only work on the floor
@@ -2388,7 +2388,7 @@ const world = {
       const part = spiked ? { ...base, w: BLOCK_W + 2 * SPIKE_PAD, d: BLOCK_D + 2 * SPIKE_PAD, h: n * BLOCK_H + SPIKE_PAD, hazard: 'spike' }
         : breakable ? { ...base, breakable: true } : base;
       const top = y0 + part.h + (spiked ? 0.3 : 0);
-      return { ...common, type: t, units: n, y: -(top + 0.3), riseH: top + 0.3, parts: [part],
+      return { ...common, type: t, units: n, y: -rise, riseH: rise, parts: [part],
         ext: { x0: -part.w / 2, x1: part.w / 2, z0: -part.d / 2, z1: part.d / 2, h: top } };
     };
     for (let i = 0; i < cellRows.length; i++) {
@@ -2398,7 +2398,11 @@ const world = {
         emerged: false, emergeT: 0, stagger: zs[i] >= Z_SPAWN ? i * 0.07 : 0,
         passed: false, falling: false, fallT: 0, fallSpeed: 0, sinking: false, sinkT: 0, remove: false,
       };
-      if (voxRuns) for (const r of voxRuns[i]) { const blk = voxBlock(r, i); if (blk) row.blocks.push(blk); }
+      if (voxRuns) {                                        // the blocks of a stack rise out of the floor together
+        const tops = [];
+        for (const r of voxRuns[i]) tops[r.lane] = Math.max(tops[r.lane] || 0, r.lv * BLOCK_H + (r.t === 'B' ? BAR_H : r.n * BLOCK_H + (r.t === 'X' ? 0.6 : 0)));
+        for (const r of voxRuns[i]) { const blk = voxBlock(r, i, tops[r.lane] + 0.3); if (blk) row.blocks.push(blk); }
+      }
       for (let lane = 0; lane < LANES && !voxRuns; lane++) {
         const c = cells[lane];
         if (c === '.' || (c === 'b' && cells[lane - 1] === 'B')) continue;   // (a bar's right half comes with its left)
@@ -2422,8 +2426,11 @@ const world = {
               : [part(0, units)];
         const hw = parts[0].w / 2;
         const ext = { x0: -hw, x1: hw, z0: -parts[0].d / 2, z1: c === 'S' ? 2.5 * BLOCK_D : parts[0].d / 2, h };
-        row.blocks.push({ type: c, lane, x: laneX(lane), y: -(h + 0.3), vy: 0, units, riseH: h + 0.3, parts, ext,
-          phase: (i * 0.23 + lane * 0.11) % 1, period, down: false, fy: 0, fvy: 0, rot: 0, rotV: 0, rotZ: 0 });
+        const blk = { type: c, lane, x: laneX(lane), y: -(h + 0.3), vy: 0, units, riseH: h + 0.3, parts, ext,
+          phase: (i * 0.23 + lane * 0.11) % 1, period, down: false, fy: 0, fvy: 0, rot: 0, rotV: 0, rotZ: 0 };
+        if (breakable && units > 1) {                     // stacked glass: each block breaks on its own
+          for (let u = 0; u < units; u++) row.blocks.push({ ...blk, units: 1, parts: [{ ...parts[0], y0: u * BLOCK_H, h: BLOCK_H, units: 1 }] });
+        } else row.blocks.push(blk);
       }
       // How far the row reaches in z, and where its centre of mass is (it tips once that is past the edge).
       let mass = 0, mz = 0;
@@ -2540,9 +2547,16 @@ const world = {
       && c.y1 > p.y + 1e-4 && c.y0 < p.y + ph;
     let event = null, knock = null;
     // 0) Diving (or belly-sliding) into a breakable block shatters it, and you carry straight on.
+    // In a stack of glass only the block you're mostly in breaks; the ones above or below stay put.
     if (p.diving || p.slideT > 0) {
+      const pick = new Map();
       for (const c of boxes) {
         if (!c.part.breakable || c.b.broken || !overlaps(c)) continue;
+        const key = `${c.cx.toFixed(2)}|${c.cz.toFixed(2)}`, inside = Math.min(c.y1, p.y + ph) - Math.max(c.y0, p.y);
+        if (inside < 0.3) continue;                         // only grazing it: a bump, not a break
+        if (!pick.has(key) || inside > pick.get(key).inside) pick.set(key, { c, inside });
+      }
+      for (const { c } of pick.values()) {
         c.b.broken = true;
         c.row.blocks = c.row.blocks.filter((bk) => bk !== c.b);
         event = { kind: 'break', row: c.row, block: c.b, x: c.cx, y: c.y0, z: c.cz, h: c.y1 - c.y0 };
