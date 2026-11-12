@@ -326,6 +326,8 @@ input[type=range]:focus-visible{outline:2px solid var(--cyan);outline-offset:6px
 .sw.solid{height:44px;background:linear-gradient(180deg,#ff6b78 0 47%,#9b2335 47% 53%,#ff4d5e 53%);box-shadow:inset 0 2px 0 rgba(255,255,255,.35),0 3px 0 rgba(0,0,0,.35)}
 .sw.low{height:22px;background:linear-gradient(180deg,#ff6b78,#ff4d5e);box-shadow:inset 0 2px 0 rgba(255,255,255,.35),0 3px 0 rgba(0,0,0,.35)}
 .sw.climb{background:linear-gradient(180deg,#ffd0d5,#ff8f9b);clip-path:polygon(0 100%,0 67%,33% 67%,33% 34%,66% 34%,66% 0,100% 0,100% 100%);border-radius:3px}
+.sw.spike{background:linear-gradient(180deg,#f1eeff,#8f88bb);clip-path:polygon(0 100%,0 34%,12% 0,25% 34%,37% 0,50% 34%,62% 0,75% 34%,87% 0,100% 34%,100% 100%)}
+.sw.bar{height:14px;border-radius:7px;background:repeating-linear-gradient(135deg,#ffc93c 0 6px,#2b1d4a 6px 12px);box-shadow:0 3px 0 rgba(0,0,0,.35)}
 .sw.move{background:linear-gradient(160deg,#d08bff,#8a2be2);box-shadow:0 0 14px rgba(196,107,255,.65),0 3px 0 #4b1585}
 .sw.laser{background:repeating-linear-gradient(180deg,transparent 0 6px,#ff3b4f 6px 8px),linear-gradient(90deg,#2a2450 0 4px,transparent 4px calc(100% - 4px),#2a2450 calc(100% - 4px));
   box-shadow:0 0 12px rgba(255,59,79,.55)}
@@ -335,6 +337,7 @@ input[type=range]:focus-visible{outline:2px solid var(--cyan);outline-offset:6px
 .pmeta{font-size:11px;color:var(--muted);margin-bottom:8px}
 .pgrid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px}
 .pgrid .c{aspect-ratio:1;border-radius:2px;background:rgba(255,255,255,.07)}
+.pgrid .c.x{background:#d8d4f2;box-shadow:inset 0 0 0 2px #6b6396}.pgrid .c.bar{background:#ffc93c;transform:scaleY(.55)}
 .pgrid .c.s{background:#ff4d5e}.pgrid .c.s3{background:#c22a3d}.pgrid .c.st{background:#ffc2c8}.pgrid .c.j{background:#ffa3ab}.pgrid .c.m{background:#b44dff;box-shadow:0 0 5px rgba(180,77,255,.7)}
 
 /* Pause / Game over */
@@ -537,7 +540,9 @@ body.touch .kbd-hint{display:none}
       <div class="leg"><span class="sw low"></span><div><b>Single block</b><small>One cube. A jump gets you on top, and a running jump or a dive clears it. Ride it, hop off, or climb from it onto a stack.</small></div></div>
       <div class="leg"><span class="sw climb"></span><div><b>Climb wall</b><small>Three blocks high with no hole (Normal and harder). Its lighter lane has steps in front: jump onto the low step, then the middle one, then over the top, and drop down behind it.</small></div></div>
       <div class="leg"><span class="sw move"></span><div><b>Crusher</b><small>Rises and slams down. Get caught underneath and you're bonked away.</small></div></div>
-      <div class="leg"><span class="sw laser"></span><div><b>Edge gap &amp; lasers</b><small>Beside the walls there's a narrow gap with only a quarter of a tile to spare before the always-on laser fence. Squeeze through, but don't touch the laser.</small></div></div>
+      <div class="leg"><span class="sw spike"></span><div><b>Spikes</b><small>A block covered in spikes. You can't stand on it, and touching it from any side knocks you backwards with a tumble.</small></div></div>
+      <div class="leg"><span class="sw bar"></span><div><b>Bar</b><small>A low striped bar lying across two squares. Hop over it: touch it and you're knocked backwards.</small></div></div>
+      <div class="leg"><span class="sw laser"></span><div><b>Laser fences</b><small>They stand right beside the outer lanes, so there is no way around a wall at the sides. Touch one and the run is over.</small></div></div>
     </div>
     <h3>DIFFICULTY</h3>
     <p>Pick a difficulty on the main menu, from <b>Very easy</b> to <b>Very hard</b>. The easy levels have slower walls, more time to react and no climbing. <b>Normal</b> mixes in the odd climb wall, and <b>Hard</b> and <b>Very hard</b> are faster, with lots of parkour. Your personal best is kept separately for each difficulty.</p>
@@ -834,6 +839,10 @@ const P_START_X = 0, P_START_Z = -3;
 const DIVE_SPEED = 16, DIVE_UP = 5.2, DIVE_SLIDE = 0.3, P_HEIGHT_FLAT = 0.9;
 const MOVE_SPEED = 9.5, ACCEL = 72, BRAKE = 85, FRICTION = 24, AIR_ACCEL = 36;   // responsive, with a short glide
 const G_UP = 34, G_DOWN = 50, JUMP_V = 12.6;           // apex ≈ 2.33: lands on a single cube
+// Spikes and bars knock you backwards: a short tumble away from them (toward the near edge if they're coming at you).
+const KNOCK_BACK = 6.5, KNOCK_UP = 6.5, KNOCK_STUN = 0.45, KNOCK_COOLDOWN = 0.35;
+const BAR_H = 0.8, BAR_D = 0.8;                           // a bar lies on the floor across two squares: hop over it
+const SPIKE_PAD = 0.3;                                    // the spikes reach this far out of the cube's faces before they knock you
 const JUMP_APEX = JUMP_V ** 2 / (2 * G_UP);
 const AIR_TIME = JUMP_V / G_UP + Math.sqrt((2 * JUMP_APEX) / G_DOWN);
 const COYOTE_TIME = 0.09, JUMP_BUFFER = 0.13;
@@ -1048,6 +1057,46 @@ const PATTERN_DEFS = [
   3 | . . . . . . . . |
   2 | # J # # # # J # |
   1 | # # # # # . # # |` },
+  { id: 'barhop', name: 'Bar Hop', minWave: 1, rating: 2, wall: true, ascii: `
+      A B C D E F G H
+  8 | # B b # # B b # |
+  7 | . . . . . . . . |
+  6 | # # B b B b # # |
+  5 | . . . . . . . . |
+  4 | # B b # # . . # |
+  3 | . . . . . . . . |
+  2 | # B b B b B b # |
+  1 | . . . . . . . . |` },
+  { id: 'spikefence', name: 'Spike Fence', minWave: 2, rating: 2, wall: true, ascii: `
+      A B C D E F G H
+  8 | # X X . . X X # |
+  7 | . . . . . . . . |
+  6 | X # # # . . # X |
+  5 | . . . . . . . . |
+  4 | # . . X X # # # |
+  3 | . . . . . . . . |
+  2 | X X # # # # . . |
+  1 | . . . . . . . . |` },
+  { id: 'barrun', name: 'Bar Run', minWave: 4, rating: 3, wall: true, ascii: `
+      A B C D E F G H
+  8 | X B b B b B b X |
+  7 | . . . . . . . . |
+  6 | # # . . X X # # |
+  5 | . . . . . . . . |
+  4 | X X B b B b X X |
+  3 | . . . . . . . . |
+  2 | # . . # # B b # |
+  1 | . . . . . . . . |` },
+  { id: 'spikeslalom', name: 'Spike Slalom', minWave: 5, rating: 3, ascii: `
+      A B C D E F G H
+  8 | . . X . . . X . |
+  7 | . . . . . . . . |
+  6 | X . . . X . . . |
+  5 | . . . . . . . . |
+  4 | . . X B b . . X |
+  3 | . . . . . . . . |
+  2 | X . . . . X . . |
+  1 | . B b . . . . X |` },
   { id: 'gauntlet', name: 'The Gauntlet', minWave: 10, rating: 5, ascii: `
       A B C D E F G H
   8 | # . . # # . . # |
@@ -1103,7 +1152,7 @@ const PATTERN_DEFS = [
 const FIXED_OPENING = ['wallrush', 'corridor', 'hopwall'];   // gentle introduction for waves 1-3
 
 // --- Parser: ASCII grid → { rows: [{ rowNumber, cells[8] }] } in arrival order (8 → 1)
-const SYMBOLS = new Set(['#', '.', 'J', 'M', '3', 'S']);
+const SYMBOLS = new Set(['#', '.', 'J', 'M', '3', 'S', 'X', 'B', 'b']);   // X spikes, B b a bar's left and right half
 function parsePattern(def) {
   const byRow = {};
   for (const line of def.ascii.split('\n')) {
@@ -1152,7 +1201,7 @@ function rowSafety(cells) {            // 0 = blocked, 1 = free, 2 = needs a jum
       const c = cells[i];
       if (c === '.' || Math.abs(x - laneX(i)) >= CLEARANCE) continue;
       if (c === 'S') t = 3;
-      else if (c === 'J') { if (t === 1) t = 2; }
+      else if (c === 'J' || c === 'B' || c === 'b') { if (t === 1) t = 2; }   // a single block or a low bar: jump it
       else { t = 0; break; }
     }
     out[s] = t;
@@ -1227,6 +1276,7 @@ function planWave(cellRows, comfort, breather, prev) {
 }
 // The arena is wider than a pattern: the outer columns extend to the edges.
 const PAD = (LANES - PATTERN_COLS) / 2;
+const flipRow = (cells) => cells.slice().reverse().map((c) => (c === 'B' ? 'b' : c === 'b' ? 'B' : c));   // mirror, bars stay left-to-right
 const padRow = (cells) => [...Array(PAD).fill(cells[0]), ...cells, ...Array(PAD).fill(cells[cells.length - 1])];
 function validatePattern(p) {
   const rows = p.rows.map((r) => (p.full ? r.cells : padRow(r.cells)));   // custom layouts are already as wide as the arena
@@ -1318,7 +1368,7 @@ const saveBest = () => store.set(bestKey(level.n), String(bestWave));
 // 6b. Custom wave layouts: 30 slots made in the WAVES editor. A layout covers the whole map, one cell
 //     per square of the checkered floor (12 lanes × 20 squares), and the wave arrives exactly as built.
 // ---------------------------------------------------------------------
-const LAYOUT_SLOTS = 30, LAYOUT_KEY = 'blockdash.layouts.v1', LAYOUT_CELLS = '.J#3SM', LAYOUT_W = LANES;   // every lane of the arena
+const LAYOUT_SLOTS = 30, LAYOUT_KEY = 'blockdash.layouts.v1', LAYOUT_CELLS = '.J#3SMXBb', LAYOUT_W = LANES;   // every lane of the arena
 const SQ = LANE_W, LAYOUT_H = Math.round(ARENA_LEN / SQ);   // the floor's squares, one block each: 20 from the near edge to the far one
 const OLD_ROW_AT = [1, 3, 6, 8, 10, 12, 14, 16];         // where 8-row layouts (older saves, built-in patterns) land on the map
 const emptyMap = () => Array.from({ length: LAYOUT_H }, () => Array(LAYOUT_W).fill('.'));
@@ -1697,6 +1747,13 @@ TEX.floor = canvasTex(1024, 512, (g, w, h) => {
   for (let k = 0; k <= LANES; k++) g.fillRect((RIM + k * LANE_W) * ux - 1.5, 0, 3, h);
   for (let j = 0; j <= 4; j++) g.fillRect(RIM * ux, j * 2 * uz - 1.5, LANES * LANE_W * ux, 3);
 });
+TEX.bar = canvasTex(128, 128, (g, w, h) => {              // hazard stripes, wound round the bar
+  g.fillStyle = '#2b1d4a'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#ffc93c';
+  for (let x = -w; x < w * 2; x += 64) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 32, 0); g.lineTo(x + 32 + h, h); g.lineTo(x + h, h); g.closePath(); g.fill(); }
+});
+TEX.bar.wrapS = TEX.bar.wrapT = THREE.RepeatWrapping;
+TEX.bar.repeat.set(1, 3);
 TEX.floor.wrapT = THREE.RepeatWrapping;
 TEX.floor.repeat.set(1, ARENA_LEN / 8);
 TEX.radial = canvasTex(128, 128, (g, w) => {
@@ -1890,12 +1947,34 @@ function makeInstanced(geo, mat, cap, shadows = true) {
 }
 const crushMat = new THREE.MeshStandardMaterial({ map: TEX.crush, emissiveMap: TEX.crushGlow, emissive: 0xffffff, emissiveIntensity: 0.7, roughness: 0.35, metalness: 0.15 });
 const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);      // scaled per block part
+// Spikes for a unit cube (base at y = 0): four square pyramids on each face but the bottom, as one geometry.
+const SPIKE_GEO = (() => {
+  const pos = [], S = 0.17, H = 0.3;                      // half the base width and the height, in cube units
+  const faces = [                                         // outward normal, u, v (u × v = normal), face centre
+    [[0, 1, 0], [1, 0, 0], [0, 0, -1], [0, 1, 0]], [[0, 0, 1], [1, 0, 0], [0, 1, 0], [0, 0.5, 0.5]],
+    [[0, 0, -1], [-1, 0, 0], [0, 1, 0], [0, 0.5, -0.5]], [[1, 0, 0], [0, 0, -1], [0, 1, 0], [0.5, 0.5, 0]],
+    [[-1, 0, 0], [0, 0, 1], [0, 1, 0], [-0.5, 0.5, 0]],
+  ];
+  for (const [nn, u, v, c] of faces) for (const a of [-0.24, 0.24]) for (const bb of [-0.24, 0.24]) {
+    const at = (su, sv, h) => [0, 1, 2].map((i) => c[i] + u[i] * (a + su * S) + v[i] * (bb + sv * S) + nn[i] * h);
+    const q = [at(-1, -1, 0), at(1, -1, 0), at(1, 1, 0), at(-1, 1, 0)], tip = at(0, 0, H);
+    for (let i = 0; i < 4; i++) pos.push(...q[i], ...q[(i + 1) % 4], ...tip);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+})();
+const BAR_GEO = new THREE.CylinderGeometry(0.5, 0.5, 1, 24).rotateZ(Math.PI / 2).translate(0, 0.5, 0);   // along x, lying on y = 0
+const SPIKE_BASE = new THREE.Color('#4b4170');
 const MESH = {
   '#': makeInstanced(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.block, roughness: 0.45, metalness: 0.05 }), 1400),
   M: makeInstanced(UNIT_BOX, crushMat, 420),
   // Blocks between the camera and the runner are drawn see-through so they never hide you.
   ghost: makeInstanced(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.block, roughness: 0.45, metalness: 0.05,
     transparent: true, opacity: 0.28, depthWrite: false }), 400),
+  spikes: makeInstanced(SPIKE_GEO, new THREE.MeshStandardMaterial({ color: 0xf1eeff, roughness: 0.25, metalness: 0.55, emissive: 0x2a1450 }), 420),
+  bar: makeInstanced(BAR_GEO, new THREE.MeshStandardMaterial({ map: TEX.bar, roughness: 0.4, metalness: 0.1, emissive: 0x1c1000 }), 260),
   mk: makeInstanced(new THREE.PlaneGeometry(BLOCK_W, BLOCK_D).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({ map: TEX.marker, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
       polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }), 400, false),
@@ -2119,7 +2198,7 @@ const world = {
     if (pattern.full) {
       // Your own layout arrives exactly as you built it on the map: one row per square, side by side,
       // from the first row with blocks in it to the last. It still comes WALL_GAP after the last wall.
-      const all = pattern.rows.map((r) => (mirrored ? r.cells.slice().reverse() : r.cells.slice()));
+      const all = pattern.rows.map((r) => (mirrored ? flipRow(r.cells) : r.cells.slice()));
       const used = all.map((c) => c.some((x) => x !== '.'));
       const a = used.indexOf(true), b = used.lastIndexOf(true);
       cellRows = all.slice(a, b + 1);
@@ -2129,7 +2208,7 @@ const world = {
       zs = cellRows.map((_, k) => zFirst - SQ * k);
       this.prev = null;
     } else {
-      cellRows = pattern.rows.map((r) => padRow(mirrored ? r.cells.slice().reverse() : r.cells));
+      cellRows = pattern.rows.map((r) => padRow(mirrored ? flipRow(r.cells) : r.cells));
       rowNumbers = pattern.rows.map((r) => r.rowNumber);
       const plan = planWave(cellRows, comfort, breather, this.prev);
       this.prev = plan.final;
@@ -2171,14 +2250,24 @@ const world = {
       };
       for (let lane = 0; lane < LANES; lane++) {
         const c = cells[lane];
-        if (c === '.') continue;
+        if (c === '.' || (c === 'b' && cells[lane - 1] === 'B')) continue;   // (a bar's right half comes with its left)
+        if (c === 'B' || c === 'b') {                     // a low bar across two squares (one, if it lost its other half)
+          const two = c === 'B' && cells[lane + 1] === 'b', w = two ? 2 * LANE_W - 0.14 : BLOCK_W;
+          const parts = [{ ox: 0, oz: 0, w, d: BAR_D, y0: 0, h: BAR_H, units: 1, color: WHITE, hazard: 'bar' }];
+          row.blocks.push({ type: 'B', lane, x: two ? laneX(lane) + LANE_W / 2 : laneX(lane), y: -(BAR_H + 0.3), vy: 0, units: 1, riseH: BAR_H + 0.3, parts,
+            ext: { x0: -w / 2, x1: w / 2, z0: -BAR_D / 2, z1: BAR_D / 2, h: BAR_H }, phase: 0, period, down: false, fy: 0, fvy: 0, rot: 0, rotV: 0, rotZ: 0 });
+          continue;
+        }
         // stacks of whole blocks; '#' in the built-in patterns is 2 or 3 high, in your own layouts exactly 2
         const units = c === '3' || c === 'S' ? 3 : c === '#' ? (pattern.custom ? 2 : Math.random() < 0.25 ? 3 : 2) : 1;
-        const h = units * BLOCK_H, tint = c === 'M' ? WHITE : c === 'S' ? stepColor : color;
+        const h = units * BLOCK_H + (c === 'X' ? 0.6 : 0), tint = c === 'M' ? WHITE : c === 'S' ? stepColor : c === 'X' ? SPIKE_BASE : color;
         const part = (oz, n) => ({ ox: 0, oz, w: BLOCK_W, d: BLOCK_D, y0: 0, h: n * BLOCK_H, units: n, color: tint, climb: c === 'S' });
-        // 'S': steps in front of the wall, two blocks high and then one, to climb over it
-        const parts = c === 'S' ? [part(0, 3), part(BLOCK_D, 2), part(2 * BLOCK_D, 1)] : [part(0, units)];
-        const ext = { x0: -BLOCK_W / 2, x1: BLOCK_W / 2, z0: -BLOCK_D / 2, z1: (c === 'S' ? 2.5 : 0.5) * BLOCK_D, h };
+        // 'S': steps in front of the wall, two blocks high and then one, to climb over it. 'X': a cube of spikes.
+        const parts = c === 'S' ? [part(0, 3), part(BLOCK_D, 2), part(2 * BLOCK_D, 1)]
+          : c === 'X' ? [{ ...part(0, 1), w: BLOCK_W + 2 * SPIKE_PAD, d: BLOCK_D + 2 * SPIKE_PAD, h: BLOCK_H + SPIKE_PAD, hazard: 'spike' }]
+            : [part(0, units)];
+        const hw = parts[0].w / 2;
+        const ext = { x0: -hw, x1: hw, z0: -parts[0].d / 2, z1: c === 'S' ? 2.5 * BLOCK_D : parts[0].d / 2, h };
         row.blocks.push({ type: c, lane, x: laneX(lane), y: -(h + 0.3), vy: 0, units, riseH: h + 0.3, parts, ext,
           phase: (i * 0.23 + lane * 0.11) % 1, period, down: false, fy: 0, fvy: 0, rot: 0, rotV: 0, rotZ: 0 });
       }
@@ -2289,13 +2378,13 @@ const world = {
         const by = row.falling ? b.fy : b.y, vy = row.falling ? b.fvy : b.vy;
         for (const part of b.parts) {
           const hx = part.w / 2 - 0.03, hz = part.d / 2, cx = b.x + part.ox, cz = row.z + part.oz, y0 = by + part.y0;
-          boxes.push({ row, b, part, cx, cz, vy, x0: cx - hx, x1: cx + hx, z0: cz - hz, z1: cz + hz, y0, y1: y0 + part.h });
+          boxes.push({ row, b, part, cx, cz, vy, x0: cx - hx, x1: cx + hx, z0: cz - hz, z1: cz + hz, y0, y1: y0 + part.h, hazard: part.hazard || null });
         }
       }
     }
     const overlaps = (c) => c.x1 > p.x - P_HALF_W && c.x0 < p.x + P_HALF_W && c.z1 > p.z - P_HALF_D && c.z0 < p.z + P_HALF_D
       && c.y1 > p.y + 1e-4 && c.y0 < p.y + ph;
-    let event = null;
+    let event = null, knock = null;
     // 1) Leading faces of an incoming row move the player out in front of them first, so sliding
     //    sideways along a wall never snags on the next block of that same wall.
     if (sweeping) {
@@ -2307,9 +2396,12 @@ const world = {
       }
       if (by) {
         p.z = by.z1 + P_HALF_D + 1e-3;
-        if (p.vz + p.carry < this.speed) p.vz = this.speed - p.carry;   // carried along with the wall's momentum
-        event = { kind: 'push', row: by.row, block: by.b, fresh: p.pushT > 0.25 };
-        p.pushT = 0;
+        if (by.hazard) knock = by;                          // spikes and bars knock you back instead
+        else {
+          if (p.vz + p.carry < this.speed) p.vz = this.speed - p.carry;   // carried along with the wall's momentum
+          event = { kind: 'push', row: by.row, block: by.b, fresh: p.pushT > 0.25 };
+          p.pushT = 0;
+        }
       }
     }
     // 2) Whatever still overlaps: land on tops, get bonked under crushers, stop at sides and backs.
@@ -2320,9 +2412,11 @@ const world = {
       // Feet just below the top: land on it. Not while still on the way up, though: a jump that starts
       // against a wall (say one shoving you along) keeps its full height and lands on the way down.
       if (c.y1 - p.y <= STEP_UP && p.vy - c.vy <= 0.5) {
+        if (c.hazard) { p.y = c.y1 + 1e-3; knock = knock || c; continue; }   // no standing on spikes or a bar
         if (!land || c.y1 > land.top) land = { row: c.row, block: c.b, part: c.part, top: c.y1 };
         continue;
       }
+      if (c.hazard) knock = knock || c;                     // still solid (below), but it throws you off too
       const left = p.x < c.cx, behind = p.z < c.cz;
       const ox = left ? p.x + P_HALF_W - c.x0 : c.x1 - (p.x - P_HALF_W);   // how far in, from the near side
       const oz = behind ? p.z + P_HALF_D - c.z0 : c.z1 - (p.z - P_HALF_D);
@@ -2360,6 +2454,13 @@ const world = {
       }
     }
     if (land) p.landOn(land, this.speed);
+    if (knock && p.knockT > KNOCK_COOLDOWN && p.stunT <= 0) {
+      // Thrown away from it: back toward the near edge if it's coming at you (or you landed on it), the
+      // other way if you ran into its back, and sideways too if you touched it from the side.
+      const side = clamp((p.x - knock.cx) / ((knock.x1 - knock.x0) / 2 + P_HALF_W), -1, 1);
+      p.knock(side, p.z >= knock.cz || p.y >= knock.y1 - 0.05 ? this.speed + KNOCK_BACK : -KNOCK_BACK);
+      event = { kind: 'knock', row: knock.row, block: knock.b, hazard: knock.hazard };
+    }
     return event;
   },
 
@@ -2415,22 +2516,35 @@ const world = {
           _mb.compose(_p.set(b.x, b.fy, row.z), _q, _one);
         }
         for (const part of b.parts) {
+          if (part.hazard === 'bar') {                      // a low striped bar
+            const i = n.get(MESH.bar) || 0;
+            if (i < MESH.bar.instanceMatrix.count) {
+              n.set(MESH.bar, i + 1);
+              _mp.makeScale(part.w, part.h, part.d);
+              if (row.falling) { _mp.setPosition(part.ox, part.y0, part.oz); _m4.multiplyMatrices(_mb, _mp); }
+              else _m4.copy(_mp).setPosition(b.x + part.ox, b.y + part.y0 + sinkOff, row.z + part.oz);
+              MESH.bar.setMatrixAt(i, _m4);
+              MESH.bar.setColorAt(i, WHITE);
+            }
+            continue;
+          }
           let ghost = false;
-          if (see) {
+          if (see && !part.hazard) {
             const x0 = b.x + part.ox - part.w / 2, x1 = x0 + part.w, z0 = row.z + part.oz - part.d / 2, z1 = z0 + part.d;
             const y0 = base + part.y0, y1 = y0 + part.h, cp = camera.position;   // right in front of the camera: clear the view
             const dx = Math.max(x0 - cp.x, 0, cp.x - x1), dy = Math.max(y0 - cp.y, 0, cp.y - y1), dz = Math.max(z0 - cp.z, 0, cp.z - z1);
             ghost = dx * dx + dy * dy + dz * dz < CAM_CLEAR * CAM_CLEAR
               || SIGHT.some((sg) => sg.hits(x0 - m, y0, z0 - m, x1 + m, y1, z1 + m));
           }
-          const di = row.wave.design, dsg = di >= 0 && b.type !== 'M' ? designs[di] : null;
+          const di = row.wave.design, dsg = di >= 0 && b.type !== 'M' && !part.hazard ? designs[di] : null;
           const mesh = ghost ? MESH.ghost : b.type === 'M' ? MESH.M : dsg ? designMesh(di) : MESH['#'];
           const color = !dsg || dsg.tint || ghost ? part.color : part.climb ? CLIMB_BRIGHT : WHITE;
           for (let u = 0; u < part.units; u++) {             // a stack is drawn as whole blocks
             const i = n.get(mesh) || 0;
             if (i >= mesh.instanceMatrix.count) break;
             n.set(mesh, i + 1);
-            _mp.makeScale(part.w, BLOCK_H, part.d);
+            if (part.hazard) _mp.makeScale(BLOCK_W, BLOCK_H, BLOCK_D);   // spikes: the cube itself (the spikes stick out of it)
+            else _mp.makeScale(part.w, BLOCK_H, part.d);
             if (row.falling) {
               _mp.setPosition(part.ox, part.y0 + u * BLOCK_H, part.oz);
               _m4.multiplyMatrices(_mb, _mp);
@@ -2439,6 +2553,12 @@ const world = {
             }
             mesh.setMatrixAt(i, _m4);
             mesh.setColorAt(i, color);
+            const si = n.get(MESH.spikes) || 0;
+            if (part.hazard === 'spike' && si < MESH.spikes.instanceMatrix.count) {
+              n.set(MESH.spikes, si + 1);
+              MESH.spikes.setMatrixAt(si, _m4);
+              MESH.spikes.setColorAt(si, WHITE);
+            }
           }
         }
         const mk = n.get(MESH.mk) || 0;
@@ -2876,7 +2996,7 @@ const player = (() => {
   return {
     root, x: P_START_X, y: 0, z: P_START_Z, vx: 0, vy: 0, vz: 0,
     grounded: true, coyote: 0, jumpBuf: 0, platform: null, carry: 0,
-    diving: false, dived: false, slideT: 0, stunT: 0, pushT: 9, spinX: 0, diveBlend: 0,
+    diving: false, dived: false, slideT: 0, stunT: 0, pushT: 9, knockT: 9, spinX: 0, diveBlend: 0,
     squash: 0, lean: 0, yaw: 0, runPhase: 0, blinkT: 2, blink: 0, t: 0, ko: null, flicker: 0,
     showYaw: null,                                       // set while the runner poses on the skins podium
     get visible() { return root.visible; },
@@ -2918,7 +3038,7 @@ const player = (() => {
       this.vx = this.vz = this.vy = 0;
       this.grounded = false; this.coyote = 0; this.jumpBuf = 0;
       this.platform = null; this.carry = 0;
-      this.diving = false; this.dived = false; this.slideT = 0; this.stunT = 0; this.pushT = 9; this.spinX = 0; this.diveBlend = 0;
+      this.diving = false; this.dived = false; this.slideT = 0; this.stunT = 0; this.pushT = 9; this.knockT = 9; this.spinX = 0; this.diveBlend = 0;
       this.squash = 0; this.lean = 0; this.yaw = 0; this.showYaw = null;
       this.ko = null; this.flicker = 0;
       visual.rotation.set(0, 0, 0);
@@ -2929,6 +3049,10 @@ const player = (() => {
     },
     hide() { root.visible = false; },
     requestJump() { this.jumpBuf = JUMP_BUFFER; },
+    knock(side, vz) {                                    // spikes or a bar: thrown back with a little tumble
+      this.stun(KNOCK_STUN, side * 4, KNOCK_UP, vz);
+      this.knockT = 0;
+    },
     landOn(l, speed) {
       const airborne = !this.grounded;
       const impact = Math.max(0, l.block.vy - this.vy);
@@ -2952,7 +3076,7 @@ const player = (() => {
     },
 
     step(h, control) {
-      this.pushT += h;
+      this.pushT += h; this.knockT += h;
       const stunned = this.stunT > 0;
       if (stunned) this.stunT -= h;
       if (this.diving || stunned) {
@@ -3285,7 +3409,9 @@ const layoutView = (() => {
   const BLOCK_CAP = LAYOUT_H * LANES * 6, CRUSH_CAP = LAYOUT_H * LANES;   // room for a whole map of climbs
   const blocks = new THREE.InstancedMesh(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.block, roughness: 0.45, metalness: 0.05 }), BLOCK_CAP);
   const crushers = new THREE.InstancedMesh(UNIT_BOX, crushMat, CRUSH_CAP);
-  for (const m of [blocks, crushers]) { m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false; m.count = 0; g.add(m); }
+  const spikes = new THREE.InstancedMesh(SPIKE_GEO, MESH.spikes.material, LAYOUT_H * LANES);
+  const bars = new THREE.InstancedMesh(BAR_GEO, MESH.bar.material, LAYOUT_H * LANES);
+  for (const m of [blocks, crushers, spikes, bars]) { m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false; m.count = 0; g.add(m); }
   for (let i = 0; i < BLOCK_CAP; i++) blocks.setColorAt(i, WHITE);
   const pts = [];                                          // the floor's squares: 12 lanes × 20 rows
   for (let l = 0; l <= LANES; l++) { const x = -HALF_W + l * LANE_W; pts.push(x, 0.04, Z_FAR, x, 0.04, Z_NEAR); }
@@ -3302,17 +3428,30 @@ const layoutView = (() => {
   const arrowGeo = new THREE.ShapeGeometry(arrow).rotateX(-Math.PI / 2);
   const arrowMat = new THREE.MeshBasicMaterial({ color: 0x44f0ff, toneMapped: false, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
   for (const x of [-HALF_W / 2, 0, HALF_W / 2]) for (const z of [Z_FAR - 1.4, Z_FAR - 3.4]) { const a = new THREE.Mesh(arrowGeo, arrowMat); a.position.set(x, 0.05, z); g.add(a); }
-  const blockCells = [], crushCells = [], _m = new THREE.Matrix4(), _col = new THREE.Color();
-  const HEIGHT = { J: 1, '#': 2, 3: 3, S: 3, M: 1, '.': 0 };
+  const blockCells = [], crushCells = [], spikeCells = [], barCells = [], _m = new THREE.Matrix4(), _col = new THREE.Color();
+  const HEIGHT = { J: 1, '#': 2, 3: 3, S: 3, M: 1, X: 1, B: BAR_H / BLOCK_H, b: BAR_H / BLOCK_H, '.': 0 };
   return {
     g,
     draw(L) {
-      let nb = 0, nc = 0;
+      let nb = 0, nc = 0, ns = 0, nr = 0;
       L.rows.forEach((row, k) => {
         const zc = ltRowZ(k);
         row.forEach((c, lane) => {
           if (c === '.') return;
           const x = laneX(lane), cell = { k, col: lane };
+          if (c === 'B' || c === 'b') {                    // a bar: drawn once, from its left half
+            if (c === 'b' && row[lane - 1] === 'B') return;
+            const two = c === 'B' && row[lane + 1] === 'b';
+            _m.makeScale(two ? 2 * LANE_W - 0.14 : BLOCK_W, BAR_H, BAR_D).setPosition(two ? x + LANE_W / 2 : x, 0, zc);
+            bars.setMatrixAt(nr, _m); barCells[nr++] = cell;
+            return;
+          }
+          if (c === 'X') {                                 // a dark cube with spikes all over
+            _m.makeScale(BLOCK_W, BLOCK_H, BLOCK_D).setPosition(x, 0, zc);
+            blocks.setMatrixAt(nb, _m); blocks.setColorAt(nb, SPIKE_BASE); blockCells[nb++] = cell;
+            spikes.setMatrixAt(ns, _m); spikeCells[ns++] = cell;
+            return;
+          }
           if (c === 'M') {
             _m.makeScale(BLOCK_W, BLOCK_H, BLOCK_D).setPosition(x, 0, zc);
             crushers.setMatrixAt(nc, _m); crushCells[nc++] = cell;
@@ -3331,12 +3470,12 @@ const layoutView = (() => {
           }
         });
       });
-      blocks.count = nb; crushers.count = nc;
-      blocks.instanceMatrix.needsUpdate = true; blocks.instanceColor.needsUpdate = true; crushers.instanceMatrix.needsUpdate = true;
-      blocks.computeBoundingSphere(); crushers.computeBoundingSphere();
+      blocks.count = nb; crushers.count = nc; spikes.count = ns; bars.count = nr;
+      for (const m of [blocks, crushers, spikes, bars]) { m.instanceMatrix.needsUpdate = true; m.computeBoundingSphere(); }
+      blocks.instanceColor.needsUpdate = true;
     },
-    cellOf(mesh, i) { return (mesh === crushers ? crushCells : blockCells)[i] || null; },
-    meshes: [blocks, crushers],
+    cellOf(mesh, i) { return (mesh === crushers ? crushCells : mesh === spikes ? spikeCells : mesh === bars ? barCells : blockCells)[i] || null; },
+    meshes: [blocks, crushers, spikes, bars], barMesh: bars,
     setHover(cells, L) {                                 // highlight the cells about to be painted, on top of what is there
       let n = 0;
       for (const c of cells) {                           // one tile per lane
@@ -3355,7 +3494,11 @@ function ltPick(e) {                                     // which layout cell is
   _ltNdc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   ltRay.setFromCamera(_ltNdc, camera);
   const hit = ltRay.intersectObjects(layoutView.meshes, false)[0];
-  if (hit && hit.instanceId !== undefined) return layoutView.cellOf(hit.object, hit.instanceId);
+  if (hit && hit.instanceId !== undefined) {
+    const c = layoutView.cellOf(hit.object, hit.instanceId);
+    if (c && hit.object === layoutView.barMesh) return { k: c.k, col: clamp(Math.floor((hit.point.x + HALF_W) / LANE_W), 0, LANES - 1) };   // the half you clicked
+    return c;
+  }
   if (!ltRay.ray.intersectPlane(LT_FLOOR, _ltHit)) return null;
   const lane = Math.floor((_ltHit.x + HALF_W) / LANE_W), k = Math.floor((Z_NEAR - _ltHit.z) / SQ);   // only the squares themselves
   if (lane < 0 || lane >= LANES || k < 0 || k >= LAYOUT_H) return null;
@@ -3869,8 +4012,9 @@ function closeSkins() {
 const LT_BRUSHES = [
   { c: '.', label: 'HOLE' }, { c: 'J', label: '1 BLOCK' }, { c: '#', label: '2 BLOCKS' },   // stacks of exactly 1, 2 or 3 blocks
   { c: '3', label: '3 BLOCKS' }, { c: 'S', label: 'CLIMB' }, { c: 'M', label: 'CRUSHER' },
+  { c: 'X', label: 'SPIKES' }, { c: 'B', label: 'BAR' },                // these two knock you back; a bar spans two squares
 ];
-const LT_COLORS = { '.': '#2a2150', J: '#ffa3ab', '#': '#ff4d5e', 3: '#b3122e', S: '#ffd0d5', M: '#b44dff' };
+const LT_COLORS = { '.': '#2a2150', J: '#ffa3ab', '#': '#ff4d5e', 3: '#b3122e', S: '#ffd0d5', M: '#b44dff', X: '#d8d4f2', B: '#ffc93c', b: '#ffc93c' };
 const lt = { slot: 0, brush: '#', mirror: false, fill: false, undo: [], painting: false, last: null };
 const ltLayout = () => layouts[lt.slot];
 function ltMessage(L) {
@@ -3888,16 +4032,46 @@ function ltPushUndo() {
   lt.undo.push({ slot: lt.slot, rows: ltLayout().rows.map((r) => r.slice()) });
   if (lt.undo.length > 60) lt.undo.shift();
 }
+// A bar is two cells, 'B' then 'b'. Painting over either half removes the whole bar.
+function ltUnpair(r, col) {
+  if (r[col] === 'B' && r[col + 1] === 'b') r[col + 1] = '.';
+  if (r[col] === 'b' && r[col - 1] === 'B') r[col - 1] = '.';
+}
+function ltSetCell(L, k, col, c) { ltUnpair(L.rows[k], col); L.rows[k][col] = c; }
+function ltPutBar(L, k, col) {                           // a bar starting at col (or ending there, on the right edge)
+  const a = clamp(col, 0, LAYOUT_W - 2), r = L.rows[k];
+  ltUnpair(r, a); ltUnpair(r, a + 1);
+  r[a] = 'B'; r[a + 1] = 'b';
+  return a;
+}
+const ltBarAt = (col) => clamp(col, 0, LAYOUT_W - 2);
 function ltPaint(x, y) {
   const L = ltLayout();
-  L.rows[y][x] = lt.brush;
-  if (lt.mirror) L.rows[y][LAYOUT_W - 1 - x] = lt.brush;
+  if (lt.brush === 'B') {
+    if (lt.painting && L.rows[y][x] === 'b' && L.rows[y][x - 1] === 'B') return;   // dragging across a bar just laid
+    const a = ltPutBar(L, y, x);
+    if (lt.mirror && LAYOUT_W - 2 - a !== a) ltPutBar(L, y, LAYOUT_W - 2 - a);
+    return;
+  }
+  ltSetCell(L, y, x, lt.brush);
+  if (lt.mirror) ltSetCell(L, y, LAYOUT_W - 1 - x, lt.brush);
+}
+function ltFillBars(L, cells) {                          // FILL with BAR: bars two by two along each row of the area
+  const byRow = new Map();
+  for (const m of cells) (byRow.get(m.k) || byRow.set(m.k, []).get(m.k)).push(m.col);
+  for (const [k, cols] of byRow) {
+    cols.sort((a, b) => a - b);
+    for (let i = 0; i < cols.length; i++) {
+      if (cols[i + 1] === cols[i] + 1) { ltPutBar(L, k, cols[i]); i++; } else ltSetCell(L, k, cols[i], '.');   // a lone square can't hold a bar
+    }
+  }
 }
 function ltRegion(k0, c0) {                              // the touching cells of the same kind (what FILL will paint)
-  const L = ltLayout(), from = L.rows[k0][c0], seen = new Set(), out = [], todo = [[k0, c0]];
+  const kind = (c) => (c === 'b' ? 'B' : c);             // both halves of a bar count as bar
+  const L = ltLayout(), from = kind(L.rows[k0][c0]), seen = new Set(), out = [], todo = [[k0, c0]];
   while (todo.length) {
     const [k, c] = todo.pop(), key = k * LAYOUT_W + c;
-    if (k < 0 || k >= LAYOUT_H || c < 0 || c >= LAYOUT_W || seen.has(key) || L.rows[k][c] !== from) continue;
+    if (k < 0 || k >= LAYOUT_H || c < 0 || c >= LAYOUT_W || seen.has(key) || kind(L.rows[k][c]) !== from) continue;
     seen.add(key); out.push({ k, col: c });
     todo.push([k + 1, c], [k - 1, c], [k, c + 1], [k, c - 1]);
   }
@@ -3912,6 +4086,16 @@ function ltFillCells(c) {                               // FILL: the touching ar
     if (!seen.has(key)) { seen.add(key); cells.push({ k: m.k, col: LAYOUT_W - 1 - m.col }); }
   }
   return cells;
+}
+function ltHoverCells(c) {                              // the squares a click would paint
+  if (lt.fill) return ltFillCells(c);
+  if (lt.brush === 'B') {
+    const a = ltBarAt(c.col), m = LAYOUT_W - 2 - a, out = [{ k: c.k, col: a }, { k: c.k, col: a + 1 }];
+    if (lt.mirror && m !== a) out.push({ k: c.k, col: m }, { k: c.k, col: m + 1 });
+    return out;
+  }
+  const m = LAYOUT_W - 1 - c.col;
+  return lt.mirror && c.col !== m ? [c, { k: c.k, col: m }] : [c];
 }
 function drawLayoutCell(g, c, x, y, S) {
   g.fillStyle = c === '.' ? ((x + y) % 2 ? '#2a2150' : '#30275c') : LT_COLORS[c];
@@ -3928,7 +4112,7 @@ function drawLayoutCell(g, c, x, y, S) {
   g.fillStyle = c === 'J' ? '#7a1b2a' : '#ffffff';
   g.font = `800 ${Math.round(S * 0.36)}px system-ui, sans-serif`;
   g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText({ J: '1', '#': '2', 3: '3', M: 'M' }[c], x * S + S / 2, y * S + S / 2 + 1);
+  g.fillText({ J: '1', '#': '2', 3: '3', M: 'M', X: '✱', B: '=', b: '=' }[c], x * S + S / 2, y * S + S / 2 + 1);
 }
 function drawLayoutThumb(i) {
   const cv = $('lt-slots').children[i].querySelector('canvas'), g = cv.getContext('2d'), L = layouts[i];
@@ -4006,9 +4190,11 @@ function buildLayoutUI() {
   $('lt-mirror').addEventListener('click', () => { lt.mirror = !lt.mirror; syncLayoutUI(); audio.play('click'); });
   $('lt-fill').addEventListener('click', () => { lt.fill = !lt.fill; syncLayoutUI(); audio.play('click'); });
   $('lt-all').addEventListener('click', () => {         // every square of the grid in the current brush
-    const L = ltLayout();
-    if (L.rows.every((r) => r.every((c) => c === lt.brush))) return;
-    ltPushUndo(); L.rows.forEach((r) => r.fill(lt.brush)); ltChanged(); audio.play('click');
+    const L = ltLayout(), before = JSON.stringify(L.rows);
+    ltPushUndo();
+    L.rows.forEach((r) => { if (lt.brush === 'B') r.forEach((_, i) => { r[i] = i % 2 ? 'b' : 'B'; }); else r.fill(lt.brush); });   // bars two by two
+    if (JSON.stringify(L.rows) === before) { lt.undo.pop(); return; }
+    ltChanged(); audio.play('click');
   });
   $('lt-undo').addEventListener('click', () => {
     const u = lt.undo.pop();
@@ -4039,10 +4225,10 @@ function buildLayoutUI() {
     if (!c) return;
     e.preventDefault();
     if (lt.fill) {                                       // FILL: paint the whole touching area at once
-      const L = ltLayout(), cells = ltFillCells(c).filter((m) => L.rows[m.k][m.col] !== lt.brush);
-      if (!cells.length) return;
+      const L = ltLayout(), cells = ltFillCells(c), before = JSON.stringify(L.rows);
       ltPushUndo();
-      for (const m of cells) L.rows[m.k][m.col] = lt.brush;
+      if (lt.brush === 'B') ltFillBars(L, cells); else for (const m of cells) ltSetCell(L, m.k, m.col, lt.brush);
+      if (JSON.stringify(L.rows) === before) { lt.undo.pop(); return; }
       ltChanged(); audio.play('click');
       return;
     }
@@ -4054,8 +4240,7 @@ function buildLayoutUI() {
   });
   st.addEventListener('pointermove', (e) => {
     const c = ltPick(e);
-    const m = c && LAYOUT_W - 1 - c.col;
-    layoutView.setHover(!c ? [] : lt.fill ? ltFillCells(c) : lt.mirror && c.col !== m ? [c, { k: c.k, col: m }] : [c], ltLayout());
+    layoutView.setHover(c ? ltHoverCells(c) : [], ltLayout());
     if (!lt.painting || !c || (c.col === lt.last.col && c.k === lt.last.k)) return;
     let { col, k } = lt.last;                            // fill in the cells between, so fast drags leave no gaps
     while (col !== c.col || k !== c.k) { col += Math.sign(c.col - col); k += Math.sign(c.k - k); ltPaint(col, k); }
@@ -4340,7 +4525,7 @@ function updateMenuBest() {
 function renderPatternLibrary() {
   const wrap = $('pattern-lib');
   wrap.replaceChildren();
-  const cls = { '#': 'c s', J: 'c j', M: 'c m', '.': 'c', 3: 'c s3', S: 'c st' };
+  const cls = { '#': 'c s', J: 'c j', M: 'c m', '.': 'c', 3: 'c s3', S: 'c st', X: 'c x', B: 'c bar', b: 'c bar' };
   for (const p of LIBRARY) {
     const card = document.createElement('div');
     card.className = 'pcard';
@@ -4556,7 +4741,7 @@ const game = {
       vibrate([40, 30, 40, 30, 120]);
       return;
     }
-    run.causeText = player.pushT < 0.8 ? 'Pushed off the edge by a wall'
+    run.causeText = player.knockT < 1.5 ? 'Knocked off the edge' : player.pushT < 0.8 ? 'Pushed off the edge by a wall'
       : player.carry > 0 ? 'Rode a block off the edge' : 'Fell off the arena';
     camCtl.shake = 0.3;
     audio.play('fall');
@@ -4575,6 +4760,12 @@ const game = {
       particles.burst(player.x, player.y + 1.75, player.z, 12, ['#ffd23f', '#ffffff', '#c46bff'], { speed: 3.5, up: 4, size: [0.08, 0.16], life: [0.5, 0.9], grav: 0.5 });
     } else if (c.kind === 'bump') {
       audio.play('push');
+    } else if (c.kind === 'knock') {
+      audio.play('bonk');
+      vibrate([20, 15, 40]);
+      camCtl.shake = Math.max(camCtl.shake, 0.35);
+      particles.burst(player.x, player.y + 0.9, player.z - P_HALF_D, 10, c.hazard === 'bar' ? ['#ffc93c', '#ffffff'] : ['#f1eeff', '#c46bff', '#ffffff'],
+        { speed: 3.2, up: 3, size: [0.07, 0.14], life: [0.35, 0.6], grav: 0.6 });
     }
   },
   onDive() {
@@ -4697,7 +4888,7 @@ function applyQualityScene() {
   decor.setCount(q.decor);
   dust.setCount(q.dust);
   stars.setCount(q.stars);
-  for (const key of ['#', 'M']) { MESH[key].castShadow = q.shadows; MESH[key].receiveShadow = q.shadows; }
+  for (const key of ['#', 'M', 'spikes', 'bar']) { MESH[key].castShadow = q.shadows; MESH[key].receiveShadow = q.shadows; }
   MESH.ghost.castShadow = q.shadows; MESH.ghost.receiveShadow = false;
   for (const d of designs) if (d.mesh) { d.mesh.castShadow = q.shadows; d.mesh.receiveShadow = q.shadows; }
 }
@@ -4904,7 +5095,7 @@ function init() {
       rowSafety, planWave, SAMPLES, LIBRARY, speedForWave, laneX, levelName: () => level.name,
       tick(dt) { update(dt); }, draw() { if (skinUI.thumbQueue.length) renderSkinThumbs(skinUI.thumbQueue.splice(0)); renderer.render(scene, camera); },
       skins: { SKINS, state: skinState, select: selectSkin },
-      designs, meshCounts: () => ({ hash: MESH['#'].count, ghost: MESH.ghost.count }), layouts, layoutOpts,
+      designs, meshCounts: () => ({ hash: MESH['#'].count, ghost: MESH.ghost.count, spikes: MESH.spikes.count, bars: MESH.bar.count }), layouts, layoutOpts,
       checkLayouts: () => layouts.forEach((L, i) => checkLayout(i)),
       layoutHoverCount: () => layoutView.g.children.find((o) => o.isInstancedMesh && o.material.opacity === 0.3).count,
       layoutBlockCount: () => layoutView.meshes.map((m) => m.count),
