@@ -108,9 +108,19 @@ Paint your own blocks under **BLOCKS** on the main menu. You get a loadout of 20
 - **Wave colour** tints the design with each wave's colour; paint it in light tones for that. Without it the design keeps its own colours. Climb lanes are drawn a little brighter either way, and crushers keep their own look.
 - The design shows live on a little stack of blocks on the podium beside the panel; drag there to turn it.
 
+## Wave layouts
+
+Arrange the walls yourself under **WAVES** on the main menu. You get 30 layout slots. Each layout is an 8×8 grid in the same format as the built-in patterns. Each grid row is one row of the wave, and the top row reaches you first. The eight columns are the lanes; the outer ones stretch to the edges of the 10-lane arena.
+
+- Brushes: **HOLE**, **SINGLE** (one block: jump onto or over it), **BLOCK** (2–3 high), **TALL** (exactly 3 high), **CLIMB** (a 3-high wall lane with steps in front) and **CRUSHER**. Click or drag to paint; **MIRROR** paints both sides at once, and there is **UNDO** (or Ctrl+Z) and **CLEAR**. **Start from…** copies any built-in pattern into the slot.
+- Give each layout a name; it shows in the wave banner when it comes up.
+- The survivability solver checks the layout as you paint. It says whether there is always a way through, or which row has none. A layout that can't be survived is never used.
+- **In game** mixes the layout in with the built-in waves. **Only my layouts** makes every wave one of yours, in slot order. The difficulty slider still sets the speed and reaction time.
+- **TRY IT** starts a practice run with only that layout. Practice runs don't count for your personal best, and when the run ends **BACK TO EDITOR** takes you straight back.
+
 ## Settings and saved data
 
-The Settings screen covers graphics quality (Low, Medium, High), field of view (70° by default), camera X and Y offset, mouse and camera sensitivity, joystick sensitivity and size, volume, sound effects, music and vibration. Settings (including the difficulty) are stored in `localStorage` under `blockdash.settings.v1`. The personal best is kept per difficulty: `blockdash.bestWave` for Normal and `blockdash.bestWave.1`, `.2`, `.4` and `.5` for the other levels. The chosen outfit and your colours are stored under `blockdash.skin.v1`, and your 20 block designs under `blockdash.blocks.v1`.
+The Settings screen covers graphics quality (Low, Medium, High), field of view (70° by default), camera X and Y offset, mouse and camera sensitivity, joystick sensitivity and size, volume, sound effects, music and vibration. Settings (including the difficulty) are stored in `localStorage` under `blockdash.settings.v1`. The personal best is kept per difficulty: `blockdash.bestWave` for Normal and `blockdash.bestWave.1`, `.2`, `.4` and `.5` for the other levels. The chosen outfit and your colours are stored under `blockdash.skin.v1`, your 20 block designs under `blockdash.blocks.v1`, and your 30 wave layouts under `blockdash.layouts.v1`.
 
 ## Debugging
 

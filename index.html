@@ -53,6 +53,7 @@ b{font-weight:800}
 @keyframes flash{0%{opacity:1}100%{opacity:0}}
 
 /* ---------- HUD ---------- */
+body.practice #chip-best{display:none}
 #hud{position:fixed;inset:0;z-index:10;pointer-events:none;opacity:0;transition:opacity .4s ease;touch-action:none}
 body[data-state=playing] #hud,body[data-state=paused] #hud,body[data-state=dying] #hud,body[data-state=countdown] #hud{opacity:1}
 .hud-left{position:absolute;top:calc(var(--sat) + 12px);left:calc(var(--sal) + 12px);display:flex;flex-direction:column;gap:8px;align-items:flex-start}
@@ -228,6 +229,38 @@ body.touch[data-state=playing] #touch,body.touch[data-state=countdown] #touch{di
 .skin-stage:active{cursor:grabbing}
 .drag-hint{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);padding:6px 14px;border-radius:999px;background:rgba(14,10,38,.55);border:1px solid var(--line);
   color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.14em;white-space:nowrap;pointer-events:none}
+/* ---------- Wave layout editor ---------- */
+.lt-panel{width:min(600px,100%);display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-content:start;
+  grid-template-areas:"title" "slots" "name" "editor" "tools" "status" "only" "hint" "actions"}
+.lt-panel h2{margin:0;grid-area:title}
+#lt-slots{grid-area:slots}.lt-name-row{grid-area:name}.lt-editor{grid-area:editor}.lt-tools-row{grid-area:tools}
+#lt-status{grid-area:status}.lt-only-row{grid-area:only}#lt-hint{grid-area:hint}.lt-panel .skin-actions{grid-area:actions}
+@media (min-width:900px) and (min-height:560px){
+  .lt-panel{width:min(960px,100%);grid-template-columns:minmax(0,1fr) auto;column-gap:22px;align-items:start;
+    grid-template-areas:"title title" "slots editor" "name editor" "status editor" "only editor" "hint tools" "actions tools"}
+}
+.lt-select{font:inherit;font-size:12px;font-weight:700;padding:7px 8px;border-radius:10px;border:1px solid var(--line);background:#2a2150;color:#fff}
+.lt-slots{display:grid;grid-template-columns:repeat(10,1fr);gap:5px}
+.lt-slot{position:relative;padding:3px;border-radius:8px;border:2px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);min-height:0;min-width:0}
+.lt-slot canvas{display:block;width:100%;aspect-ratio:1;image-rendering:pixelated;border-radius:3px}
+.lt-slot b{position:absolute;left:4px;top:3px;font-size:9px;line-height:1;color:#fff;text-shadow:0 1px 2px #000,0 0 3px #000}
+.lt-slot.on::after{content:"";position:absolute;right:3px;top:3px;width:8px;height:8px;border-radius:50%;background:#3ccf6d;box-shadow:0 0 0 2px #120d2e}
+.lt-slot.bad.on::after{background:#ff3b4f}
+.lt-slot[aria-selected=true]{border-color:var(--gold);box-shadow:0 0 12px rgba(255,210,63,.35)}
+.lt-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+.lt-row input[type=text]{flex:1;min-width:150px;font:inherit;font-size:14px;font-weight:700;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:#2a2150;color:#fff}
+.lt-editor{display:flex;gap:10px;align-items:flex-start;justify-content:center}
+.lt-gridwrap{display:flex;flex-direction:column;align-items:center;gap:4px}
+.lt-gridwrap small{font-size:10px;font-weight:800;letter-spacing:.12em;color:var(--muted)}
+#lt-canvas{width:min(296px,62vw);height:auto;aspect-ratio:1;border-radius:10px;border:2px solid rgba(255,255,255,.22);touch-action:none;cursor:crosshair;background:#2a2150}
+.lt-brushes{display:grid;gap:6px;min-width:96px}
+.lt-brush{display:flex;align-items:center;gap:7px;padding:7px 8px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.05);font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--muted);min-height:0;min-width:0}
+.lt-brush i{flex:none;width:16px;height:16px;border-radius:4px;background:var(--c);box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}
+.lt-brush.on{background:rgba(255,255,255,.16);color:#fff;border-color:#fff}
+.lt-status{margin:0;padding:8px 12px;border-radius:12px;font-size:13px;font-weight:700;text-align:center;line-height:1.35}
+.lt-status.ok{background:rgba(60,207,109,.14);color:#8ff0b0;border:1px solid rgba(60,207,109,.35)}
+.lt-status.bad{background:rgba(255,59,79,.14);color:#ffb3bd;border:1px solid rgba(255,59,79,.35)}
+.lt-status.empty{background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--line)}
 /* ---------- Block designer ---------- */
 .bd-panel{width:min(560px,56vw)}
 .bd-loadout{display:grid;grid-template-columns:repeat(10,1fr);gap:5px}
@@ -378,6 +411,8 @@ body.touch .kbd-hint{display:none}
   .tile{--s:clamp(34px,10.5vh,56px)}
   .menu-wrap{gap:9px}
   .btn{min-height:44px;padding:10px 18px}
+  .menu-row{gap:8px}
+  .menu-row .btn{min-width:0;padding:8px 14px;font-size:13px;min-height:40px}
   .btn.big{min-height:52px;padding:11px 40px}
   .best-card{padding:7px 16px}
   .best-card b{font-size:19px}
@@ -392,6 +427,10 @@ body.touch .kbd-hint{display:none}
   .swatch{width:26px;height:26px;flex:none}
   .skin-actions .btn{min-height:38px;padding:6px 10px}
   .bd-panel .skin-grid,.bd-hint{display:none}
+  .lt-panel{gap:7px}
+  .lt-panel h2,.lt-hint{display:none}
+  #lt-canvas{width:min(230px,52vh)}
+  .lt-brush{padding:5px 7px}
   #bd-canvas{width:min(190px,40vh)}
   .bd-tool{padding:5px 4px;font-size:10px}
   .bd-check{padding:4px 8px}
@@ -476,6 +515,7 @@ body.touch .kbd-hint{display:none}
     <div class="menu-row">
       <button class="btn" id="btn-skins">SKINS</button>
       <button class="btn" id="btn-blocks">BLOCKS</button>
+      <button class="btn" id="btn-waves">WAVES</button>
       <button class="btn" id="btn-howto">HOW TO PLAY</button>
       <button class="btn" id="btn-settings">SETTINGS</button>
     </div>
@@ -492,7 +532,7 @@ body.touch .kbd-hint{display:none}
       <div class="card">
         <h3>GOAL</h3>
         <p>The floor is a little slippery: you get up to speed fast but glide a short way when you let go. Walls of blocks sweep toward you in <b>waves</b> of eight rows. Get past all eight and <b>WAVE SURVIVED</b> goes up by one.</p>
-        <p>Pick your outfit and its colours under <b>SKINS</b>, and paint your own walls under <b>BLOCKS</b> on the main menu.</p>
+        <p>On the main menu, pick your outfit under <b>SKINS</b>, paint your own blocks under <b>BLOCKS</b>, and arrange your own walls under <b>WAVES</b>.</p>
         <p>Slip through the holes, jump the low parts, dive, or <b>jump on top</b> and ride. A wall that catches you <b>pushes you</b> toward the edge. Fall off the front or back edge, or touch a laser fence on the sides, and the run is over.</p>
       </div>
       <div class="card">
@@ -538,6 +578,40 @@ body.touch .kbd-hint{display:none}
       </div>
     </div>
     <div class="skin-stage" id="skin-stage"><span class="drag-hint">DRAG TO TURN</span></div>
+  </div>
+</section>
+
+<!-- ================= WAVE LAYOUT EDITOR ================= -->
+<section class="screen dim" id="screen-waves" aria-label="Wave layout editor">
+  <div class="panel lt-panel">
+    <h2>WAVES</h2>
+    <div class="lt-slots" id="lt-slots" role="listbox" aria-label="Your 30 wave layouts"></div>
+    <div class="lt-row lt-name-row">
+      <input type="text" id="lt-name" maxlength="18" aria-label="Layout name" autocomplete="off" spellcheck="false">
+      <label class="bd-check"><input type="checkbox" id="lt-on"> In game</label>
+    </div>
+    <div class="lt-editor">
+      <div class="lt-gridwrap">
+        <small>TOP ROW REACHES YOU FIRST</small>
+        <canvas id="lt-canvas" width="320" height="320" aria-label="Wave layout, 8 rows by 8 lanes"></canvas>
+      </div>
+      <div class="lt-brushes" id="lt-brushes" role="radiogroup" aria-label="Brush"></div>
+    </div>
+    <div class="lt-row lt-tools-row">
+      <button type="button" class="bd-tool" id="lt-mirror" aria-pressed="false">MIRROR</button>
+      <button type="button" class="bd-tool" id="lt-undo">UNDO</button>
+      <button type="button" class="bd-tool" id="lt-clear">CLEAR</button>
+      <select id="lt-template" class="lt-select" aria-label="Start from a built-in pattern"></select>
+    </div>
+    <p class="lt-status" id="lt-status" role="status"></p>
+    <div class="lt-row lt-only-row">
+      <label class="bd-check"><input type="checkbox" id="lt-only"> Only my layouts</label>
+    </div>
+    <p class="bd-hint lt-hint" id="lt-hint"></p>
+    <div class="skin-actions">
+      <button class="btn" id="lt-try">TRY IT</button>
+      <button class="btn primary" id="lt-done">DONE</button>
+    </div>
   </div>
 </section>
 
@@ -1190,7 +1264,10 @@ const LIB_BY_ID = Object.fromEntries(LIBRARY.map((p) => [p.id, p]));
 
 function choosePattern(index, demo, lastId) {
   if (debug.forcePattern && LIB_BY_ID[debug.forcePattern]) return LIB_BY_ID[debug.forcePattern];
-  if (!demo && level.opening && index < FIXED_OPENING.length && LIB_BY_ID[FIXED_OPENING[index]]) return LIB_BY_ID[FIXED_OPENING[index]];
+  if (!demo && run.practice !== null && layouts[run.practice].pattern) return layouts[run.practice].pattern;   // TRY IT
+  const mine = demo ? [] : layoutsInGame();
+  if (mine.length && layoutOpts.only) return mine[index % mine.length];   // only my layouts, in slot order
+  if (!demo && !mine.length && level.opening && index < FIXED_OPENING.length && LIB_BY_ID[FIXED_OPENING[index]]) return LIB_BY_ID[FIXED_OPENING[index]];
   const climbOk = level.climb > 0 && index >= level.climbFrom;
   const pool = LIBRARY.filter((p) => demo || (p.minWave <= index && p.rating <= level.maxRating && (!p.climb || climbOk)));
   const target = demo ? 2.6 : clamp(1.2 + index / 3.2 + level.shift, 1, 5);
@@ -1200,6 +1277,10 @@ function choosePattern(index, demo, lastId) {
       * (Math.exp(-((p.rating - target) ** 2) / 1.8) + 0.12);
     total += w; return w;
   });
+  for (const p of mine) {                                // your layouts join the mix
+    const w = p.id === lastId ? 0.07 : 2.4;
+    pool.push(p); weights.push(w); total += w;
+  }
   let r = Math.random() * total;
   for (let i = 0; i < pool.length; i++) { r -= weights[i]; if (r <= 0) return pool[i]; }
   return pool[pool.length - 1];
@@ -1247,6 +1328,47 @@ const bestKey = (n) => (n === 3 ? BEST_KEY : `${BEST_KEY}.${n}`);
 const loadBest = (n) => Math.max(0, parseInt(store.get(bestKey(n)) || '0', 10) || 0);
 let bestWave = loadBest(settings.difficulty);
 const saveBest = () => store.set(bestKey(level.n), String(bestWave));
+
+// ---------------------------------------------------------------------
+// 6b. Custom wave layouts: 30 slots of 8×8 cells made in the WAVES editor, in the same
+//     format as the built-in patterns, and checked by the same survivability solver.
+// ---------------------------------------------------------------------
+const LAYOUT_SLOTS = 30, LAYOUT_KEY = 'blockdash.layouts.v1', LAYOUT_CELLS = '.J#3SM';
+const layouts = Array.from({ length: LAYOUT_SLOTS }, (_, i) => ({
+  name: `Layout ${i + 1}`, rows: Array.from({ length: 8 }, () => Array(8).fill('.')), on: false, pattern: null, error: '',
+}));
+const layoutOpts = { only: false };
+function checkLayout(i) {                                // build a pattern from the cells and let the solver judge it
+  const L = layouts[i];
+  const p = { id: `custom-${i}`, name: L.name || `Layout ${i + 1}`, custom: true, slot: i, minWave: 0, rating: 3, wall: true,
+    climb: L.rows.some((r) => r.includes('S')), rows: L.rows.map((cells, k) => ({ rowNumber: 8 - k, cells: cells.slice() })) };
+  try { validatePattern(p); L.pattern = p; L.error = ''; } catch (err) { L.pattern = null; L.error = err.message; }
+}
+(() => {
+  let st = null;
+  try { st = JSON.parse(store.get(LAYOUT_KEY) || 'null'); } catch { st = null; }
+  if (st && typeof st === 'object') {
+    layoutOpts.only = !!st.only;
+    (Array.isArray(st.slots) ? st.slots : []).slice(0, LAYOUT_SLOTS).forEach((sl, i) => {
+      if (!sl) return;
+      const L = layouts[i];
+      if (typeof sl.name === 'string' && sl.name.trim()) L.name = sl.name.trim().slice(0, 18);
+      if (Array.isArray(sl.rows) && sl.rows.length === 8 && sl.rows.every((r) => typeof r === 'string' && r.length === 8 && [...r].every((c) => LAYOUT_CELLS.includes(c)))) {
+        L.rows = sl.rows.map((r) => [...r]);
+      }
+      L.on = !!sl.on;
+    });
+  }
+  layouts.forEach((L, i) => checkLayout(i));
+})();
+let layoutSaveT = 0;
+function saveLayouts() {
+  clearTimeout(layoutSaveT);
+  layoutSaveT = setTimeout(() => store.set(LAYOUT_KEY, JSON.stringify({
+    v: 1, only: layoutOpts.only, slots: layouts.map((L) => ({ name: L.name, rows: L.rows.map((r) => r.join('')), on: L.on ? 1 : 0 })),
+  })), 250);
+}
+const layoutsInGame = () => layouts.filter((L) => L.on && L.pattern).map((L) => L.pattern);
 function vibrate(pattern) {
   if (!settings.vibration || !CAN_VIBRATE) return;
   try { navigator.vibrate(pattern); } catch { /* ignored */ }
@@ -3377,6 +3499,8 @@ function unlockPointer() {
 }
 document.addEventListener('pointerlockchange', () => {
   const on = locked();
+  // A lock asked for when a run started can arrive after you already left it: give the cursor back.
+  if (on && state !== 'playing' && state !== 'countdown' && state !== 'dying') { unlockPointer(); return; }
   document.body.classList.toggle('locked', on);
   lockFresh = on;
   if (on) look.id = null;
@@ -3503,7 +3627,7 @@ const hud = {
 // ---------------------------------------------------------------------
 // 17. Menus & settings screens
 // ---------------------------------------------------------------------
-const SCREENS = ['menu', 'howto', 'settings', 'skins', 'blocks', 'pause', 'gameover'];
+const SCREENS = ['menu', 'howto', 'settings', 'skins', 'blocks', 'waves', 'pause', 'gameover'];
 let currentScreen = null, settingsReturn = 'menu';
 function showScreen(name) {
   const prev = currentScreen;
@@ -3512,6 +3636,7 @@ function showScreen(name) {
   if (name === 'skins' && prev !== 'skins') openSkins();
   if (prev === 'blocks' && name !== 'blocks') closeBlocks();
   if (name === 'blocks' && prev !== 'blocks') openBlocks();
+  if (name === 'waves') syncLayoutUI();
   for (const s of SCREENS) $('screen-' + s).classList.toggle('active', s === name);
   if (name) {
     const el = $('screen-' + name);
@@ -3622,6 +3747,174 @@ function closeSkins() {
   player.hide();
   if (state === 'menu') camCtl.mode = 'menu';
 }
+// ---- Wave layout editor ----
+const LT_BRUSHES = [
+  { c: '.', label: 'HOLE' }, { c: 'J', label: 'SINGLE' }, { c: '#', label: 'BLOCK' },
+  { c: '3', label: 'TALL' }, { c: 'S', label: 'CLIMB' }, { c: 'M', label: 'CRUSHER' },
+];
+const LT_COLORS = { '.': '#2a2150', J: '#ffa3ab', '#': '#ff4d5e', 3: '#b3122e', S: '#ffd0d5', M: '#b44dff' };
+const lt = { slot: 0, brush: '#', mirror: false, undo: [], painting: false, last: null };
+const ltLayout = () => layouts[lt.slot];
+function ltMessage(L) {
+  if (!L.error) return { cls: 'ok', text: '✓ There is always a way through. Ready to play.' };
+  if (/no obstacles/.test(L.error)) return { cls: 'empty', text: 'Paint some blocks to make a layout.' };
+  const row = L.error.match(/row (\d)/);
+  if (row) return { cls: 'bad', text: `✗ Row ${9 - +row[1]} from the top has no way through. Leave a hole, a single block or climb steps.` };
+  return { cls: 'bad', text: '✗ There is no safe path through these rows. Open up some holes.' };
+}
+function ltChanged(live) {
+  checkLayout(lt.slot);
+  drawLayoutThumb(lt.slot);
+  drawLayoutEditor();
+  if (!live) { saveLayouts(); syncLayoutUI(); }
+}
+function ltPushUndo() {
+  lt.undo.push({ slot: lt.slot, rows: ltLayout().rows.map((r) => r.slice()) });
+  if (lt.undo.length > 60) lt.undo.shift();
+}
+function ltPaint(x, y) {
+  const L = ltLayout();
+  L.rows[y][x] = lt.brush;
+  if (lt.mirror) L.rows[y][7 - x] = lt.brush;
+}
+function ltCell(e) {
+  const r = $('lt-canvas').getBoundingClientRect();
+  return { x: clamp(Math.floor(((e.clientX - r.left) / r.width) * 8), 0, 7), y: clamp(Math.floor(((e.clientY - r.top) / r.height) * 8), 0, 7) };
+}
+function drawLayoutCell(g, c, x, y, S) {
+  g.fillStyle = c === '.' ? ((x + y) % 2 ? '#2a2150' : '#30275c') : LT_COLORS[c];
+  g.fillRect(x * S, y * S, S, S);
+  if (c === '.') return;
+  g.fillStyle = 'rgba(255,255,255,.28)'; g.fillRect(x * S + 2, y * S + 2, S - 4, Math.max(2, S * 0.12));   // a little top highlight
+  if (S < 20) return;
+  if (c === 'S') {                                       // a tiny staircase
+    g.fillStyle = '#b3122e';
+    const u = S / 6;
+    g.fillRect(x * S + u, y * S + 4 * u, u * 1.4, u); g.fillRect(x * S + u * 2.4, y * S + 3 * u, u * 1.4, u * 2); g.fillRect(x * S + u * 3.8, y * S + 2 * u, u * 1.4, u * 3);
+    return;
+  }
+  g.fillStyle = c === 'J' ? '#7a1b2a' : '#ffffff';
+  g.font = `800 ${Math.round(S * 0.36)}px system-ui, sans-serif`;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText({ J: '1', '#': '2+', 3: '3', M: 'M' }[c], x * S + S / 2, y * S + S / 2 + 1);
+}
+function drawLayoutEditor() {
+  const cv = $('lt-canvas'), g = cv.getContext('2d'), S = cv.width / 8, L = ltLayout();
+  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) drawLayoutCell(g, L.rows[y][x], x, y, S);
+  g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1;
+  g.beginPath();
+  for (let k = 1; k < 8; k++) { const v = Math.round(k * S) + 0.5; g.moveTo(v, 0); g.lineTo(v, cv.height); g.moveTo(0, v); g.lineTo(cv.width, v); }
+  g.stroke();
+  if (lt.mirror) {
+    g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 2; g.setLineDash([6, 5]);
+    g.beginPath(); g.moveTo(cv.width / 2, 0); g.lineTo(cv.width / 2, cv.height); g.stroke();
+    g.setLineDash([]);
+  }
+}
+function drawLayoutThumb(i) {
+  const cv = $('lt-slots').children[i].querySelector('canvas'), g = cv.getContext('2d'), L = layouts[i];
+  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) drawLayoutCell(g, L.rows[y][x], x, y, cv.width / 8);
+}
+function syncLayoutUI() {
+  const L = ltLayout(), msg = ltMessage(L), inGame = layoutsInGame().length;
+  [...$('lt-slots').children].forEach((b, i) => {
+    b.setAttribute('aria-selected', String(i === lt.slot));
+    b.classList.toggle('on', layouts[i].on);
+    b.classList.toggle('bad', !layouts[i].pattern);
+  });
+  if (document.activeElement !== $('lt-name')) $('lt-name').value = L.name;
+  $('lt-on').checked = L.on;
+  $('lt-only').checked = layoutOpts.only;
+  for (const b of $('lt-brushes').children) { const on = b.dataset.c === lt.brush; b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on)); }
+  $('lt-mirror').setAttribute('aria-pressed', String(lt.mirror));
+  $('lt-undo').disabled = !lt.undo.length;
+  const st = $('lt-status');
+  st.className = 'lt-status ' + msg.cls; st.textContent = msg.text;
+  $('lt-try').disabled = !L.pattern;
+  $('lt-hint').textContent = !inGame ? 'Tick "In game" on a layout that is ready to mix it into your runs.'
+    : layoutOpts.only ? `Every wave is one of your ${inGame} layout${inGame === 1 ? '' : 's'}, in slot order.`
+      : `${inGame} of your layout${inGame === 1 ? '' : 's'} ${inGame === 1 ? 'is' : 'are'} mixed in with the built-in waves.`;
+  drawLayoutEditor();
+}
+function buildLayoutUI() {
+  const slots = $('lt-slots');
+  layouts.forEach((L, i) => {
+    const b = document.createElement('button'), cv = document.createElement('canvas'), num = document.createElement('b');
+    b.type = 'button'; b.className = 'lt-slot'; b.setAttribute('role', 'option'); b.setAttribute('aria-label', `Layout ${i + 1}`);
+    cv.width = cv.height = 64;
+    num.textContent = i + 1;
+    b.append(cv, num);
+    b.addEventListener('click', () => { lt.slot = i; syncLayoutUI(); audio.play('click'); });
+    slots.appendChild(b);
+  });
+  layouts.forEach((L, i) => drawLayoutThumb(i));
+  const brushes = $('lt-brushes');
+  for (const br of LT_BRUSHES) {
+    const b = document.createElement('button'), chip = document.createElement('i');
+    b.type = 'button'; b.className = 'lt-brush'; b.dataset.c = br.c; b.setAttribute('role', 'radio');
+    chip.style.setProperty('--c', br.c === '.' ? '#30275c' : LT_COLORS[br.c]);
+    b.append(chip, br.label);
+    b.addEventListener('click', () => { lt.brush = br.c; syncLayoutUI(); audio.play('click'); });
+    brushes.appendChild(b);
+  }
+  $('lt-name').addEventListener('input', (e) => {
+    ltLayout().name = e.target.value.trim().slice(0, 18) || `Layout ${lt.slot + 1}`;
+    checkLayout(lt.slot); saveLayouts();
+  });
+  $('lt-on').addEventListener('change', (e) => { ltLayout().on = e.target.checked; saveLayouts(); syncLayoutUI(); });
+  $('lt-only').addEventListener('change', (e) => { layoutOpts.only = e.target.checked; saveLayouts(); syncLayoutUI(); });
+  $('lt-mirror').addEventListener('click', () => { lt.mirror = !lt.mirror; syncLayoutUI(); audio.play('click'); });
+  $('lt-undo').addEventListener('click', () => {
+    const u = lt.undo.pop();
+    if (!u) return;
+    lt.slot = u.slot; ltLayout().rows = u.rows;
+    ltChanged(); audio.play('click');
+  });
+  $('lt-clear').addEventListener('click', () => { ltPushUndo(); ltLayout().rows.forEach((r) => r.fill('.')); ltChanged(); audio.play('click'); });
+  const sel = $('lt-template');
+  sel.append(new Option('Start from…', ''));
+  LIBRARY.forEach((p) => sel.append(new Option(p.name, p.id)));
+  sel.addEventListener('change', () => {
+    const p = LIB_BY_ID[sel.value];
+    sel.value = '';
+    if (!p) return;
+    ltPushUndo();
+    const L = ltLayout();
+    L.rows = p.rows.map((r) => r.cells.slice());
+    if (/^Layout \d+$/.test(L.name)) L.name = p.name.slice(0, 18);
+    ltChanged(); audio.play('click');
+  });
+  $('lt-try').addEventListener('click', () => { if (ltLayout().pattern) { audio.play('click'); game.start(lt.slot); } });
+  $('lt-done').addEventListener('click', () => { audio.play('click'); showScreen('menu'); });
+  // paint cells: click, or drag across them
+  const cv = $('lt-canvas');
+  cv.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    ltPushUndo();
+    const c = ltCell(e);
+    lt.painting = true; lt.last = c;
+    ltPaint(c.x, c.y);
+    ltChanged(true);
+    try { cv.setPointerCapture(e.pointerId); } catch { /* ignored */ }
+  });
+  cv.addEventListener('pointermove', (e) => {
+    if (!lt.painting) return;
+    const c = ltCell(e);
+    if (c.x === lt.last.x && c.y === lt.last.y) return;
+    let { x, y } = lt.last;                              // fill in the cells between, so fast drags leave no gaps
+    while (x !== c.x || y !== c.y) { x += Math.sign(c.x - x); y += Math.sign(c.y - y); ltPaint(x, y); }
+    lt.last = c;
+    ltChanged(true);
+  });
+  const end = () => { if (!lt.painting) return; lt.painting = false; ltChanged(); };
+  cv.addEventListener('pointerup', end);
+  cv.addEventListener('pointercancel', end);
+  cv.addEventListener('lostpointercapture', end);
+  window.addEventListener('keydown', (e) => {
+    if (currentScreen === 'waves' && (e.ctrlKey || e.metaKey) && e.code === 'KeyZ') { e.preventDefault(); $('lt-undo').click(); }
+  });
+}
+
 // ---- Block designer ----
 const BD_PALETTE = ['#ffffff', '#e6ecff', '#cfcae4', '#a29dc4', '#6b7a99', '#34364f', '#1b1530', '#000000',
   '#ff3b4f', '#ff8a5a', '#ff8a2a', '#ffd23f', '#fff1a8', '#a6e22e', '#3ccf6d', '#0f7d4a',
@@ -4002,7 +4295,7 @@ function bindSettingsUI() {
 // ---------------------------------------------------------------------
 let state = 'loading';
 let timeScale = 1, deathTimer = 0, countdownT = 0, countdownLast = 0, bgTime = 0;
-const run = { waves: 0, time: 0, bestAtStart: 0, newBest: false, cause: '', causeText: '', pipResetAt: 0 };
+const run = { waves: 0, time: 0, bestAtStart: 0, newBest: false, cause: '', causeText: '', pipResetAt: 0, practice: null };
 const debug = { timeScale: 1, manual: false, forcePattern: null };
 const OBSTACLE_NAME = { '#': 'block', J: 'low barrier', M: 'crusher' };
 const OBSTACLE_COLOR = { J: '#ffd23f', M: '#c46bff' };
@@ -4023,15 +4316,17 @@ function countUp(el, target) {
 }
 
 const game = {
-  start() {
+  start(practice = null) {                               // practice: a layout slot to try out (TRY IT)
     audio.unlock();
+    run.practice = practice;
+    document.body.classList.toggle('practice', practice !== null);
     showScreen(null);
     level = LEVELS[settings.difficulty - 1];                // the run keeps this level until it ends
     bestWave = loadBest(level.n);
     world.reset('game');
     particles.clear();
     player.reset();
-    Object.assign(run, { waves: 0, time: 0, bestAtStart: bestWave, newBest: false, cause: '', causeText: '', pipResetAt: 0 });
+    Object.assign(run, { waves: 0, time: 0, bestAtStart: bestWave, newBest: false, cause: '', causeText: '', pipResetAt: 0, practice });
     timeScale = 1; deathTimer = 0;
     Object.assign(camCtl, { mode: 'follow', yaw: 0, pitch: 0, shake: 0, ease: true });
     camCtl.pivot.set(player.x, 0, player.z);
@@ -4046,7 +4341,8 @@ const game = {
     setState('playing');
     audio.music('game');
     audio.play('go');
-    hud.showBanner('GET READY', 'SURVIVE THE INCOMING WAVES', '', 1.4);
+    if (practice !== null) hud.showBanner('PRACTICE', layouts[practice].name.toUpperCase(), '', 1.6);
+    else hud.showBanner('GET READY', 'SURVIVE THE INCOMING WAVES', '', 1.4);
     hud.busyUntil = performance.now() + 1300;
   },
   pause() {
@@ -4054,6 +4350,7 @@ const game = {
     setState('paused');
     unlockPointer();
     $('pause-waves').textContent = run.waves;
+    $('btn-pause-menu').textContent = run.practice !== null ? 'BACK TO EDITOR' : 'MAIN MENU';
     releaseJoystick();
     keys.clear();
     showScreen('pause');
@@ -4068,6 +4365,9 @@ const game = {
     countdownLast = 0;
   },
   toMenu() {
+    const back = run.practice;                           // a practice run goes back to the WAVES editor
+    run.practice = null;
+    document.body.classList.remove('practice');
     setState('menu');
     unlockPointer();
     world.setMode('demo');
@@ -4076,6 +4376,7 @@ const game = {
     timeScale = 1;
     updateMenuBest();
     showScreen('menu');
+    if (back !== null) { lt.slot = back; showScreen('waves'); }
     audio.music('menu');
   },
   die(cause, info) {
@@ -4130,11 +4431,12 @@ const game = {
     world.setMode('demo');
     if (camCtl.mode !== 'over') camCtl.ease = true;
     camCtl.mode = 'over';
-    const n = run.waves, isBest = n > run.bestAtStart;
-    if (n > bestWave) { bestWave = n; saveBest(); }
+    const practice = run.practice !== null, n = run.waves, isBest = !practice && n > run.bestAtStart;
+    if (!practice && n > bestWave) { bestWave = n; saveBest(); }
     $('go-cause').textContent = run.causeText;
-    $('go-best').textContent = bestWave;
-    $('go-best-lbl').textContent = `BEST ON ${level.name}`;
+    $('go-best').textContent = practice ? layouts[run.practice].name : bestWave;
+    $('go-best-lbl').textContent = practice ? 'PRACTICE' : `BEST ON ${level.name}`;
+    $('btn-go-menu').textContent = practice ? 'BACK TO EDITOR' : 'MAIN MENU';
     $('go-time').textContent = fmtTime(run.time);
     $('go-newbest').classList.toggle('show', isBest);
     showScreen('gameover');
@@ -4151,7 +4453,7 @@ const game = {
         if (state === 'playing' || state === 'countdown') this.pause();
         else if (currentScreen === 'settings') showScreen(settingsReturn);
         else if (state === 'paused') { if (performance.now() - lockLostAt > 500) this.resume(); }   // that Esc only freed the cursor
-        else if (currentScreen === 'howto' || currentScreen === 'skins' || currentScreen === 'blocks') showScreen('menu');
+        else if (['howto', 'skins', 'blocks', 'waves'].includes(currentScreen)) showScreen('menu');
         else if (state === 'gameover') this.toMenu();
         break;
       case 'KeyP':
@@ -4161,11 +4463,11 @@ const game = {
       case 'Enter': case 'NumpadEnter':
         if (onButton) break;
         if (state === 'menu' && currentScreen === 'menu') this.start();
-        else if (state === 'gameover') this.start();
+        else if (state === 'gameover') this.start(run.practice);
         else if (state === 'paused' && currentScreen === 'pause') this.resume();
         break;
       case 'KeyR':
-        if ((state === 'paused' && currentScreen === 'pause') || state === 'gameover') this.start();
+        if ((state === 'paused' && currentScreen === 'pause') || state === 'gameover') this.start(run.practice);
         break;
     }
   },
@@ -4204,6 +4506,7 @@ const game = {
       { speed: 6, up: 9, size: [0.1, 0.22], life: [0.8, 1.4], grav: 0.8, carry: 2 });
     audio.play('wave');
     vibrate(30);
+    if (run.practice !== null) return;                   // practice runs don't count for your best
     if (run.waves > bestWave) { bestWave = run.waves; saveBest(); }
     hud.setBest(bestWave, run.waves > run.bestAtStart);
     if (!run.newBest && run.bestAtStart > 0 && run.waves > run.bestAtStart) {
@@ -4390,14 +4693,15 @@ function wireButtons() {
   $('btn-howto').addEventListener('click', () => { audio.play('click'); showScreen('howto'); });
   $('btn-skins').addEventListener('click', () => { audio.play('click'); showScreen('skins'); });
   $('btn-blocks').addEventListener('click', () => { audio.play('click'); showScreen('blocks'); });
+  $('btn-waves').addEventListener('click', () => { audio.play('click'); showScreen('waves'); });
   $('btn-howto-back').addEventListener('click', () => { audio.play('click'); showScreen('menu'); });
   $('btn-settings').addEventListener('click', () => { audio.play('click'); settingsReturn = 'menu'; syncSettingsUI(); showScreen('settings'); });
   $('btn-pause').addEventListener('click', () => game.pause());
   $('btn-resume').addEventListener('click', () => game.resume());
-  $('btn-restart').addEventListener('click', () => game.start());
+  $('btn-restart').addEventListener('click', () => game.start(run.practice));
   $('btn-pause-settings').addEventListener('click', () => { audio.play('click'); settingsReturn = 'pause'; syncSettingsUI(); showScreen('settings'); });
   $('btn-pause-menu').addEventListener('click', () => { audio.play('click'); game.toMenu(); });
-  $('btn-again').addEventListener('click', () => game.start());
+  $('btn-again').addEventListener('click', () => game.start(run.practice));
   $('btn-go-menu').addEventListener('click', () => { audio.play('click'); game.toMenu(); });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
@@ -4419,6 +4723,7 @@ function init() {
   buildSkinUI();
   applyCurrentSkin();
   buildBlockUI();
+  buildLayoutUI();
   bindSettingsUI();
   wireButtons();
   setTouchMode(COARSE || (HAS_TOUCH && !matchMedia('(pointer: fine)').matches));
@@ -4442,7 +4747,8 @@ function init() {
       rowSafety, planWave, SAMPLES, LIBRARY, speedForWave, laneX, levelName: () => level.name,
       tick(dt) { update(dt); }, draw() { if (skinUI.thumbQueue.length) renderSkinThumbs(skinUI.thumbQueue.splice(0)); renderer.render(scene, camera); },
       skins: { SKINS, state: skinState, select: selectSkin },
-      designs, meshCounts: () => ({ hash: MESH['#'].count, ghost: MESH.ghost.count }),
+      designs, meshCounts: () => ({ hash: MESH['#'].count, ghost: MESH.ghost.count }), layouts, layoutOpts,
+      checkLayouts: () => layouts.forEach((L, i) => checkLayout(i)),
       info() { return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, pixelRatio: renderer.getPixelRatio() }; },
       consts: { P_START_Z, P_HALF_W, P_HALF_D, P_HEIGHT, ROW_HALF_D, BLOCK_H, BLOCK_W, BLOCK_D, HIT_HALF_D, JUMP_V, G_UP, G_DOWN, AIR_TIME, MOVE_SPEED, CRUSH_UP, LANES, Z_SPAWN, Z_NEAR, Z_FAR, FALL_HANG, HALF_W, ARENA_HALF, LASER_X },
     };
