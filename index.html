@@ -802,10 +802,9 @@ const fmtTime = (s) => { s = Math.max(0, Math.floor(s)); return String(Math.floo
 const LANES = 10, LANE_W = 2, HALF_W = (LANES * LANE_W) / 2, RIM = 0;
 // Runner hitbox: the runner stands about as tall as one block.
 const P_HALF_W = 0.46, P_HALF_D = 0.46, P_HEIGHT = 1.55;
-// A narrow flat strip runs between the outer lanes and the laser fences. The outermost wall
-// face sits at HALF_W - 0.1, so the gap to the laser is the runner's width (0.92) plus a
-// quarter of a 2-unit tile (0.5). Just enough to squeeze past a wall.
-const SHOULDER = 2 * P_HALF_W + 0.5 - 0.1, ARENA_HALF = HALF_W + SHOULDER;
+// The laser fences stand right beside the outer lanes, on a thin rim far too narrow for the runner,
+// so a wall that fills every lane reaches from fence to fence with no way around it.
+const SHOULDER = 0.2, ARENA_HALF = HALF_W + SHOULDER;
 // Height of the platform under (x, z), or null over the void.
 function floorAt(x, z) {
   if (z < Z_FAR || z > Z_NEAR || Math.abs(x) > ARENA_HALF) return null;
@@ -827,9 +826,6 @@ const STEP_UP = 0.3;                                      // land on any top thi
 
 // Laser fences along both long edges of the arena
 const LASER_X = ARENA_HALF, LASER_SEG = 8.2;
-// In your own wave layouts a block in an outer lane also fills the strip beside it, up to the laser
-// fence, so a row painted all the way across is a wall from fence to fence with no way around it.
-const EDGE_FILL_W = LASER_X - HALF_W - 0.14, EDGE_FILL_OX = (HALF_W + LASER_X) / 2 - laneX(LANES - 1);
 const LASER_BEAMS = [0.25, 0.95, 1.65, 2.35, 3.05];
 
 // Player (hitbox size is with the arena constants above)
@@ -2176,10 +2172,7 @@ const world = {
         const part = (oz, n) => ({ ox: 0, oz, w: BLOCK_W, d: BLOCK_D, y0: 0, h: n * BLOCK_H, units: n, color: tint, climb: c === 'S' });
         // 'S': steps in front of the wall, two blocks high and then one, to climb over it
         const parts = c === 'S' ? [part(0, 3), part(BLOCK_D, 2), part(2 * BLOCK_D, 1)] : [part(0, units)];
-        const edge = pattern.custom ? (lane === 0 ? -1 : lane === LANES - 1 ? 1 : 0) : 0;
-        if (edge) parts.push({ ...part(0, parts[0].units), ox: edge * EDGE_FILL_OX, w: EDGE_FILL_W });   // out to the laser fence
-        const ext = { x0: edge < 0 ? -EDGE_FILL_OX - EDGE_FILL_W / 2 : -BLOCK_W / 2, x1: edge > 0 ? EDGE_FILL_OX + EDGE_FILL_W / 2 : BLOCK_W / 2,
-          z0: -BLOCK_D / 2, z1: (c === 'S' ? 2.5 : 0.5) * BLOCK_D, h };
+        const ext = { x0: -BLOCK_W / 2, x1: BLOCK_W / 2, z0: -BLOCK_D / 2, z1: (c === 'S' ? 2.5 : 0.5) * BLOCK_D, h };
         row.blocks.push({ type: c, lane, x: laneX(lane), y: -(h + 0.3), vy: 0, units, riseH: h + 0.3, parts, ext,
           phase: (i * 0.23 + lane * 0.11) % 1, period, down: false, fy: 0, fvy: 0, rot: 0, rotV: 0, rotZ: 0 });
       }
@@ -3238,7 +3231,7 @@ function cameraParams(aspect) {
   return { t, dist: lerp(7, 12.5, t), height: lerp(4.5, 8, t), look: lerp(8, 10, t) };
 }
 // The skins screen shows the runner on a podium just beside the arena, facing a close-up camera.
-const SHOW = { x: ARENA_HALF + 3.4, z: -3, yaw: -Math.PI / 2 };
+const SHOW = { x: HALF_W + 4.72, z: -3, yaw: -Math.PI / 2 };   // the podium beside the arena
 const podium = (() => {
   const g = new THREE.Group();
   const top = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.45, 0.5, 40),
@@ -3279,7 +3272,7 @@ const layoutView = (() => {
   const g = new THREE.Group();
   g.visible = false;
   scene.add(g);
-  const BLOCK_CAP = LAYOUT_H * LANES * 6 + LAYOUT_H * 2 * 3, CRUSH_CAP = LAYOUT_H * (LANES + 2);   // a whole map of climbs, edge pieces too
+  const BLOCK_CAP = LAYOUT_H * LANES * 6, CRUSH_CAP = LAYOUT_H * LANES;   // room for a whole map of climbs
   const blocks = new THREE.InstancedMesh(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.block, roughness: 0.45, metalness: 0.05 }), BLOCK_CAP);
   const crushers = new THREE.InstancedMesh(UNIT_BOX, crushMat, CRUSH_CAP);
   for (const m of [blocks, crushers]) { m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false; m.count = 0; g.add(m); }
@@ -3310,11 +3303,9 @@ const layoutView = (() => {
         row.forEach((c, lane) => {
           if (c === '.') return;
           const x = laneX(lane), cell = { k, col: lane };
-          const edge = lane === 0 ? -1 : lane === LANES - 1 ? 1 : 0;   // outer lanes reach the laser fence
           if (c === 'M') {
             _m.makeScale(BLOCK_W, BLOCK_H, BLOCK_D).setPosition(x, 0, zc);
             crushers.setMatrixAt(nc, _m); crushCells[nc++] = cell;
-            if (edge) { _m.makeScale(EDGE_FILL_W, BLOCK_H, BLOCK_D).setPosition(x + edge * EDGE_FILL_OX, 0, zc); crushers.setMatrixAt(nc, _m); crushCells[nc++] = cell; }
             return;
           }
           const stack = [[0, HEIGHT[c], BLOCK_D, 0, BLOCK_W, cell]];
@@ -3322,7 +3313,6 @@ const layoutView = (() => {
             stack.push([BLOCK_D, 2, BLOCK_D, 0, BLOCK_W, k >= 1 ? { k: k - 1, col: lane } : cell],   // (clicking a step paints the square under it)
               [2 * BLOCK_D, 1, BLOCK_D, 0, BLOCK_W, k >= 2 ? { k: k - 2, col: lane } : cell]);
           }
-          if (edge) stack.push([0, HEIGHT[c], BLOCK_D, edge * EDGE_FILL_OX, EDGE_FILL_W, cell]);
           for (const [dz, n, d, dx, w, pick] of stack) {
             for (let u = 0; u < n; u++) {
               _m.makeScale(w, BLOCK_H, d).setPosition(x + dx, u * BLOCK_H, zc + dz);
@@ -3356,10 +3346,9 @@ function ltPick(e) {                                     // which layout cell is
   ltRay.setFromCamera(_ltNdc, camera);
   const hit = ltRay.intersectObjects(layoutView.meshes, false)[0];
   if (hit && hit.instanceId !== undefined) return layoutView.cellOf(hit.object, hit.instanceId);
-  if (!ltRay.ray.intersectPlane(LT_FLOOR, _ltHit) || Math.abs(_ltHit.x) > LASER_X) return null;
-  const lane = clamp(Math.floor((_ltHit.x + HALF_W) / LANE_W), 0, LANES - 1);   // the strip by the fence belongs to the outer lane
-  const k = Math.floor((Z_NEAR - _ltHit.z) / SQ);
-  if (k < 0 || k >= LAYOUT_H) return null;
+  if (!ltRay.ray.intersectPlane(LT_FLOOR, _ltHit)) return null;
+  const lane = Math.floor((_ltHit.x + HALF_W) / LANE_W), k = Math.floor((Z_NEAR - _ltHit.z) / SQ);   // only the squares themselves
+  if (lane < 0 || lane >= LANES || k < 0 || k >= LAYOUT_H) return null;
   return { k, col: lane };
 }
 const camCtl = {
