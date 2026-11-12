@@ -115,18 +115,32 @@ Paint your own blocks under **BLOCKS** on the main menu. You get a loadout of 20
 
 ## Wave layouts
 
-Arrange the walls yourself under **WAVES** on the main menu. You edit them from above: the camera flies up over the arena and the layout stands on it as real blocks. Your runner waits just off the near edge, and glowing arrows past the far edge show where the walls roll in from. The background walls pause while you edit. On a phone held upright the arena lies sideways so it fits above the panel.
+Build your own waves under **WAVES** on the main menu. The panel holds your 30 layout slots; press **BUILD** (or click the arena) to fly in and build. The background walls pause while you build, your runner waits just off the near edge, and glowing arrows past the far edge show where the walls roll in from.
 
-You get 30 layout slots. A layout covers the whole map: every square of the checkered floor is a cell, 12 lanes across and 20 squares from the near edge to the far one (240 in all), and each square holds one block or one stack. The wave arrives exactly as you built it. It is one formation, with the rows one square apart as on the map, so blocks you put next to each other stay together: thick walls, corridors, mazes, staircases. The row nearest your runner is the front of the wave and reaches you first. Empty rows before the first block and after the last one are left out, and the wave still starts at least 7 seconds after the last wall of the wave before it.
+A layout is a 3D grid on the whole map: 12 lanes across, 20 squares from the near edge to the far one, and up to 6 blocks high. You can stack blocks on top of each other, build out sideways from a block, and leave gaps underneath: towers, stairs, doorways and tunnels (a runner fits under a block that floats one block up). The wave arrives exactly as you built it, as one formation with the rows one square apart, so you set the spacing yourself: leave empty rows between walls to give yourself time. The row nearest your runner is the front of the wave and reaches you first. Empty rows before the first block and after the last one are left out, and the wave still starts at least 7 seconds after the last wall of the wave before it.
 
-Only the squares themselves can be built on; there is no space beside the outer lanes, because the laser fences stand right there. A row painted all the way across is a wall from fence to fence with no way around it. Built-in patterns copied in with **Start from…** and the oldest saved layouts have 8 rows. Their rows are spread over the map where the old editor showed them, two or three squares apart. Layouts saved when the map was 10 × 18 keep their rows, counted from the near edge, and the two new far rows start empty. Narrower rows are widened to all 12 lanes the way the game widens the built-in patterns: the outermost cell carries on to the edge.
+**Building**
 
-- Brushes: **HOLE**, **1 BLOCK**, **2 BLOCKS** and **3 BLOCKS** (a stack of exactly that many blocks; you can jump onto or over 1 block), **CLIMB** (a 3-high wall with steps on the two squares in front of it, 2 and 1 high), **CRUSHER**, **SPIKES 1×1** and **SPIKES 1×2** (one or two cubes high), **BAR** (two squares side by side; at the right edge it fills the last two), and **BREAK 1×1** and **BREAK 1×2** (breakable glass, one or two cubes high). Painting over either half of a bar removes the whole bar, and dragging the BAR brush lays bars two by two. Click or drag on the arena to paint; clicking a block paints its square, so you can paint on top of tall walls (clicking a climb step paints the square it stands on). A white tile shows the square you are about to paint. **MIRROR** paints both sides at once. **FILL** paints the whole touching area of the same kind with one click: on an empty layout that is the whole map. With **MIRROR** on it fills the mirror image as well. **FILL ALL** paints every square of the map with the current brush (with BAR, each row gets six bars; FILL lays bars two by two along each row of the area and leaves a lone square empty). There is **UNDO** (or Ctrl+Z) and **CLEAR**. **Start from…** copies any built-in pattern into the slot.
+| | Desktop | Touch |
+|---|---|---|
+| Fly | `W A S D` or arrow keys, `Space` up, `Shift` down (`E` and `Q` work too) | The pad on the left; **UP** and **DOWN** |
+| Look | Move the mouse (the cursor is hidden while you build) | Drag on the view |
+| Place a block | Left click: it goes against the face you point at, or on the floor | Tap where it should go |
+| Remove a block | Right click | Turn on **REMOVE**, then tap |
+| Pick the kind | `1`–`5` or the mouse wheel, or click the hotbar | Tap the hotbar |
+| Back to the panel | `Esc` | **MENU** |
+
+A crosshair shows where you aim, the block you point at gets a white outline, and a see-through block shows where the next one will go (red when it can't go there). If the browser won't hide the cursor, you look by dragging and place by clicking, the same as on a touch screen.
+
+The hotbar has five kinds of block: **BLOCK** (an ordinary block in the wave's colour), **SPIKES** (knocks you back), **GLASS** (breakable: dive through it), **BAR** (a low striped bar segment; bars side by side join into one long bar) and **CRUSHER** (rises and slams down). A crusher only goes on the floor, with two clear blocks of room above it, and nothing can be stacked on a crusher or a bar.
+
+- **MIRROR** builds on both sides of the arena at once, **UNDO** (or Ctrl+Z) takes back the last change, and **CLEAR** empties the slot. **Start from…** copies a built-in pattern into the slot, as blocks you can then change.
 - Give each layout a name; it shows in the wave banner when it comes up.
-- Nothing is checked or blocked. Any layout with at least one block is ready to play, even a completely filled map, and the status line counts the filled squares (out of 240). A full wall of 2 or 3 blocks can't be passed: it pushes you off the arena unless you climb it. A full wall of 1 block can be jumped. Since the wave arrives as built, you set the spacing yourself: leave empty rows between walls to give yourself time.
+- Nothing is checked or blocked. Any layout with at least one block is ready to play, and the status line counts the blocks. The laser fences stand right beside the outer lanes, so a row built all the way across is a wall from fence to fence with no way around it.
 - The 8 pips under the wave counter fill up as the rows of your wave go past.
 - **In game** mixes the layout in with the built-in waves. **Only my layouts** makes every wave one of yours, in slot order. The difficulty slider still sets the speed and reaction time.
 - **TRY IT** starts a practice run with only that layout. Practice runs don't count for your personal best, and when the run ends **BACK TO EDITOR** takes you straight back.
+- Layouts made with the earlier flat grid editor are turned into blocks when they load: each square becomes a stack of the same height and kind, and a climb lane becomes a 3-high stack with stairs (2 high, then 1) on the two squares in front of it.
 
 ## Settings and saved data
 
