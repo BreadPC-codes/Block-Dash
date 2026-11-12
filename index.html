@@ -416,6 +416,25 @@ input[type=range]:focus-visible{outline:2px solid var(--cyan);outline-offset:6px
 .go-stats{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;margin:12px 0 8px;color:var(--muted);font-weight:700;letter-spacing:.1em;font-size:13px}
 .go-stats b{color:#fff;font-family:var(--display);font-weight:400;font-size:17px;letter-spacing:.02em;margin-left:4px}
 .kbd-hint{color:var(--muted);font-size:12px;margin-top:12px;opacity:.85}
+.setting .ctl .btn.slim{min-width:0;min-height:40px;padding:9px 16px;font-size:12px}
+.keys-panel{width:min(620px,100%)}
+.keys-intro{margin:6px 0 0!important;font-size:14px!important}
+.keys-panel section{background:var(--panel-2);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:4px 16px;margin-top:12px}
+.keys-panel section h3{margin:12px 0 4px;font-size:13px;color:var(--muted)}
+.keyrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid rgba(255,255,255,.07)}
+.keyrow .klbl{font-weight:700;font-size:15px}
+.keyrow .klbl small{display:block;color:var(--muted);font-weight:400;font-size:12px;margin-top:2px;line-height:1.35}
+.keyrow.unbound .klbl{color:#ff8a9a}
+.kcaps{display:flex;gap:8px;flex:none}
+.keycap{appearance:none;-webkit-appearance:none;min-width:78px;min-height:40px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.3);border-bottom-width:3px;
+  background:rgba(255,255,255,.1);color:#fff;font-family:var(--display);font-size:13px;letter-spacing:.04em;cursor:pointer;transition:background .12s}
+.keycap:hover,.keycap:focus-visible{background:rgba(255,255,255,.2);outline:none}
+.keycap.empty{color:var(--muted);border-style:dashed;background:transparent}
+.keycap.listening{border-color:var(--gold);color:var(--gold);background:rgba(255,210,63,.12);animation:keypulse 1s ease-in-out infinite}
+@keyframes keypulse{50%{box-shadow:0 0 0 4px rgba(255,210,63,.25)}}
+.keys-note{min-height:1.4em;margin:12px 0 0!important;font-size:13px!important;color:var(--gold)!important;text-align:center}
+.keys-note.warn{color:#ff8a9a!important}
+@media (max-width:520px){.keycap{min-width:60px;font-size:12px}.keyrow .klbl{font-size:14px}.keyrow{gap:8px}}
 body.touch .kbd-hint{display:none}
 
 /* Loading */
@@ -533,7 +552,7 @@ body.touch .kbd-hint{display:none}
   <button class="jump-btn" id="jump-btn" aria-label="Jump"><span class="jump-ico">▲</span><span class="jump-txt">JUMP</span></button>
   <button class="punch-btn" id="punch-btn" aria-label="Punch"><span class="punch-ico">✸</span><span class="jump-txt">PUNCH</span></button>
 </div>
-<div class="punch-hud" id="punch-hud" aria-hidden="true"><span class="punch-key">F</span><span>PUNCH</span><i id="punch-fill"></i></div>
+<div class="punch-hud" id="punch-hud" aria-hidden="true"><span class="punch-key" id="punch-key">F</span><span>PUNCH</span><i id="punch-fill"></i></div>
 
 <!-- ================= MAIN MENU ================= -->
 <section class="screen" id="screen-menu" aria-label="Main menu">
@@ -588,10 +607,11 @@ body.touch .kbd-hint{display:none}
       </div>
       <div class="card">
         <h3>CONTROLS</h3>
-        <div class="ctrl"><span class="k">W A S D</span><span class="k">← ↑ → ↓</span> Move</div>
-        <div class="ctrl"><span class="k">SPACE</span> Jump · press again in the air to <b>&nbsp;dive</b></div>
-        <div class="ctrl"><span class="k">F</span><span class="k">CLICK</span> Punch, the way you run (or look, standing still) · during a dive: <b>&nbsp;Super Punch</b></div>
-        <div class="ctrl"><span class="k">ESC</span><span class="k">P</span> Pause</div>
+        <div class="ctrl"><span class="k" id="hk-move">W A S D</span><span class="k" id="hk-move2">↑ ← ↓ →</span> Move</div>
+        <div class="ctrl"><span class="k" id="hk-jump">SPACE</span> Jump · press again in the air to <b>&nbsp;dive</b></div>
+        <div class="ctrl"><span class="k" id="hk-punch">F</span><span class="k">CLICK</span> Punch, the way you run (or look, standing still) · during a dive: <b>&nbsp;Super Punch</b></div>
+        <div class="ctrl"><span class="k">ESC</span><span class="k" id="hk-pause">P</span> Pause</div>
+        <div class="ctrl"><span class="k">⚙</span> Change any of these keys in Settings → <b>&nbsp;CHANGE KEYS</b></div>
         <div class="ctrl"><span class="k">MOUSE</span> Turn the camera 360° around you. The cursor hides while you play, and <span class="k">ESC</span> frees it. You always run the way the camera faces.</div>
         <div class="ctrl"><span class="k">TOUCH</span> Joystick (bottom-left) moves · <span class="k">JUMP</span> (bottom-right), tap again in the air to dive · <span class="k">PUNCH</span> beside it · drag anywhere else to turn the camera</div>
       </div>
@@ -744,6 +764,10 @@ body.touch .kbd-hint{display:none}
     <section>
       <h3>CONTROLS</h3>
       <div class="setting">
+        <div class="lbl">Keyboard controls<small id="keys-summary">Choose your own keys to move, jump and punch.</small></div>
+        <div class="ctl"><button class="btn slim" id="btn-keys">CHANGE KEYS</button></div>
+      </div>
+      <div class="setting">
         <div class="lbl"><label for="set-mouse">Mouse sensitivity</label><small>How fast the mouse turns the camera.</small></div>
         <div class="ctl"><input type="range" id="set-mouse" min="0.2" max="4" step="0.1"><span class="val" id="val-mouse"></span></div>
       </div>
@@ -799,7 +823,21 @@ body.touch .kbd-hint{display:none}
     <button class="btn" id="btn-restart">RESTART</button>
     <button class="btn" id="btn-pause-settings">SETTINGS</button>
     <button class="btn danger" id="btn-pause-menu">MAIN MENU</button>
-    <div class="kbd-hint">Esc / P to resume · R to restart</div>
+    <div class="kbd-hint" id="pause-hint">Esc / P to resume · R to restart</div>
+  </div>
+</section>
+
+<!-- ================= KEY BINDINGS ================= -->
+<section class="screen dim" id="screen-keys" aria-label="Keyboard controls">
+  <div class="panel keys-panel">
+    <h2>KEYBOARD CONTROLS</h2>
+    <p class="keys-intro">Click a key, then press the new one. <b>Esc</b> cancels and <b>Backspace</b> takes the key off. Each action can have two keys.</p>
+    <div id="keys-list"></div>
+    <p class="keys-note" id="keys-note" role="status" aria-live="polite"></p>
+    <div class="actions">
+      <button class="btn" id="btn-keys-reset">RESET KEYS</button>
+      <button class="btn primary" id="btn-keys-back">DONE</button>
+    </div>
   </div>
 </section>
 
@@ -921,11 +959,14 @@ const BAR_H = 0.8, BAR_D = 0.8;                           // a bar lies on the f
 // Punch: a jab straight ahead, the same for every runner. Times in seconds from the button press; the hit
 // lands during `active`; reach and halfWidth shape the hitbox in front of the body (low/high: its height).
 const PUNCH = { buffer: 0.12, cooldown: 0.55, duration: 0.32, active: [0.06, 0.2], reach: 1.2, halfWidth: 0.55, low: 0.35, high: 1.45,
-  knockback: 8.5, lift: 4.2, stun: 0.32 };
+  knockback: 8.5, lift: 4.2, stun: 0.32, down: 1.1 };
 // Super Punch: the punch button while diving (or belly-sliding after a dive). The dive keeps all of its momentum
 // and the fist rides along in front of you; the knockback grows with how fast you are moving into the hit.
 const SUPER_PUNCH = { cooldown: 0.75, duration: 0.42, active: [0.03, 0.32], reach: 1.55, halfWidth: 0.62, low: -0.5, high: 1.1,
-  knockback: 11, momentum: 0.42, maxKnockback: 20, lift: 6, stun: 0.5 };
+  knockback: 11, momentum: 0.42, maxKnockback: 20, lift: 6, stun: 0.5, down: 1.6 };
+// Knocked down by a punch: you fly, land, and lie on your back for `down` seconds (the last GETUP of them getting
+// back up), then can't be punched for GUARD more. Nobody can punch you while you're down, so there's no stun-lock.
+const KNOCKDOWN = { getUp: 0.35, guard: 0.45 };
 const SPIKE_PAD = 0.3;                                    // the spikes reach this far out of the cube's faces before they knock you
 const JUMP_APEX = JUMP_V ** 2 / (2 * G_UP);
 const AIR_TIME = JUMP_V / G_UP + Math.sqrt((2 * JUMP_APEX) / G_DOWN);
@@ -3235,6 +3276,16 @@ function createRunner(opts = {}) {
       add(g, new THREE.BoxGeometry(0.1, 0.24, 0.04), M.cap, 0.08, 0.36, 0.23).rotation.z = 0.2;
     }],
   };
+  const stars = new THREE.Group();                       // dizzy stars, shown while knocked down
+  stars.visible = false;
+  root.add(stars);
+  const starMat = new THREE.MeshBasicMaterial({ color: 0xffe066, toneMapped: false });
+  for (let i = 0; i < 3; i++) {
+    const st = new THREE.Mesh(new THREE.OctahedronGeometry(0.12), starMat), a = (i * Math.PI * 2) / 3;
+    st.position.set(Math.cos(a) * 0.42, 0, Math.sin(a) * 0.42);
+    st.scale.y = 1.5;
+    stars.add(st);
+  }
   const accs = {};                                       // built items, by id
   let worn = [];                                         // items of the current skin
   const animSt = { t: 0, k: 0, air: false };
@@ -3245,11 +3296,14 @@ function createRunner(opts = {}) {
     grounded: true, coyote: 0, jumpBuf: 0, platform: null, carry: 0,
     punchT: -1, punchCd: 0, punchBuf: 0, punchSuper: false, punchDirX: 0, punchDirZ: -1, punchHits: new Set(), punchPrev: null,
     punchedT: 9, lastHitBy: null, lastHitSuper: false, windup: 0,
+    downed: false, downStarted: false, downFor: 0, guardT: 0, downBlend: 0, hitFace: 0, knockYaw: 0,
     diving: false, dived: false, slideT: 0, stunT: 0, pushT: 9, knockT: 9, spinX: 0, diveBlend: 0, diveBroke: new Set(),
     squash: 0, lean: 0, yaw: 0, punchTurn: 0, runPhase: 0, blinkT: 2, blink: 0, t: 0, ko: null, flicker: 0,
     showYaw: null,                                       // set while the runner poses on the skins podium
     get visible() { return root.visible; },
-    get height() { return this.diving || this.slideT > 0 ? P_HEIGHT_FLAT : P_HEIGHT; },
+    get height() { return this.diving || this.slideT > 0 || this.lyingDown ? P_HEIGHT_FLAT : P_HEIGHT; },
+    get lyingDown() { return this.downStarted && this.stunT > KNOCKDOWN.getUp; },   // flat on the ground after a punch
+    get untouchable() { return (this.downed && this.stunT > 0) || this.guardT > 0; },  // knocked down (or just up): can't be punched
 
     applySkin(def, colors) {
       M.skin.color.set(colors.skin); M.shirt.color.set(colors.top); M.shorts.color.set(colors.bottom);
@@ -3292,6 +3346,7 @@ function createRunner(opts = {}) {
       this.ko = null; this.flicker = 0;
       this.punchT = -1; this.punchCd = 0; this.punchBuf = 0; this.punchSuper = false; this.punchHits.clear(); this.punchPrev = null;
       this.punchedT = 9; this.lastHitBy = null; this.lastHitSuper = false;
+      this.downed = this.downStarted = false; this.downFor = this.guardT = this.downBlend = this.hitFace = 0;
       botCtl.moveX = botCtl.moveZ = botCtl.aimX = botCtl.aimZ = 0; this.windup = 0;
       visual.rotation.set(0, 0, 0);
       visual.position.set(0, 0, 0);
@@ -3347,9 +3402,11 @@ function createRunner(opts = {}) {
         z0: Math.min(box.z0, prev.z0), z1: Math.max(box.z1, prev.z1) };
     },
     bodyBox() { return { x0: this.x - P_HALF_W, x1: this.x + P_HALF_W, y0: this.y, y1: this.y + this.height, z0: this.z - P_HALF_D, z1: this.z + P_HALF_D }; },
-    // Punched: thrown along the punch with a little lift and a short tumble.
+    // Punched: thrown along the punch with a little lift and a tumble, then knocked down when you land.
     takeHit(from, vx, vy, vz, stunTime, sup) {
       this.stun(stunTime, vx, vy, vz);
+      this.downed = true; this.downFor = sup ? SUPER_PUNCH.down : PUNCH.down;
+      this.knockYaw = Math.atan2(vx, vz);                   // (you end up on your back, facing whoever hit you)
       this.punchedT = 0; this.lastHitBy = from; this.lastHitSuper = sup; this.knockT = 0;
       this.punchT = -1; this.punchBuf = 0;                  // a punch you were throwing is lost
       this.squash = 0.5;
@@ -3370,11 +3427,12 @@ function createRunner(opts = {}) {
     touchDown(impact) {
       this.dived = false;
       if (this.diving) { this.diving = false; this.slideT = DIVE_SLIDE; }   // belly-slide after a dive
+      if (this.downed && !this.downStarted && this.stunT > 0) { this.downStarted = true; this.stunT = this.downFor; }   // punched: down you go
       if (local) game.onLand(impact); else this.squash = 0.3 + clamp(impact / 12, 0, 0.6);
     },
     // Knocked about by a crusher: no control for a moment, tumbling through the air.
     stun(time, vx, vy, vz) {
-      this.stunT = time;
+      this.stunT = time; this.downed = this.downStarted = false;
       this.vx = vx; this.vy = vy; this.vz = vz;
       this.grounded = false; this.platform = null; this.carry = 0;
       this.diving = false; this.slideT = 0; this.dived = true;
@@ -3384,6 +3442,8 @@ function createRunner(opts = {}) {
       this.pushT += h; this.knockT += h; this.punchedT += h;
       const stunned = this.stunT > 0;
       if (stunned) this.stunT -= h;
+      if (this.guardT > 0) this.guardT -= h;
+      if (this.downed && this.stunT <= 0) { this.downed = this.downStarted = false; this.guardT = KNOCKDOWN.guard; }   // back on your feet
       // Punching never touches the movement: a punch works standing, running and jumping, and a Super Punch
       // keeps the dive's momentum. Only the cooldown and being knocked about stop you throwing one.
       if (this.punchCd > 0) this.punchCd -= h;
@@ -3497,12 +3557,29 @@ function createRunner(opts = {}) {
       const flat = this.diving || this.slideT > 0;
       this.diveBlend = damp(this.diveBlend, flat ? 1 : 0, flat ? 18 : 9, dt);
       this.lean = damp(this.lean, this.grounded ? -0.2 * k : 0.05, 10, dt);
-      // Tumble while stunned in the air, then roll back upright.
+      // Tumble while stunned in the air, then roll back upright, or (punched) lie flat on your back for a while.
       if (this.stunT > 0 && !this.grounded) this.spinX += 11 * dt;
       else this.spinX = damp(this.spinX, Math.round(this.spinX / (Math.PI * 2)) * Math.PI * 2, 10, dt);
-      visual.rotation.set(lerp(this.lean, -1.42, this.diveBlend) + this.spinX, this.yaw + this.punchTurn, 0);
-      visual.position.y = 0.4 * this.diveBlend;
-      if (this.diveBlend > 0.5) {                        // superhero dive: arms forward, legs straight back
+      const lying = this.lyingDown && (this.grounded || this.downBlend > 0.5);
+      this.downBlend = damp(this.downBlend, lying ? 1 : 0, lying ? 16 : 9, dt);
+      this.hitFace = damp(this.hitFace, this.downed && this.stunT > 0 ? 1 : 0, 12, dt);
+      const baseYaw = this.yaw + this.punchTurn, turnBack = Math.round(this.spinX / (Math.PI * 2)) * Math.PI * 2;
+      visual.rotation.set(lerp(lerp(this.lean, -1.42, this.diveBlend) + this.spinX, 1.45 + turnBack, this.downBlend),
+        baseYaw + wrap(this.knockYaw - baseYaw) * this.hitFace, 0);
+      visual.position.y = 0.4 * this.diveBlend + 0.33 * this.downBlend;
+      stars.visible = this.downed && this.stunT > 0 && root.visible;
+      if (stars.visible) {                               // dizzy stars round the head
+        head.getWorldPosition(_fist); root.worldToLocal(_fist);
+        stars.position.set(_fist.x, _fist.y + 0.5 - 0.15 * this.downBlend + Math.sin(this.t * 6) * 0.05, _fist.z);
+        stars.rotation.y += 5 * dt;
+        for (const st of stars.children) st.rotation.y += 9 * dt;
+      }
+      if (this.downBlend > 0.5) {                        // knocked down: flat on your back, arms and legs out
+        const f = Math.sin(this.t * 7) * 0.08;
+        pose(arms, [0.35 + f, 0.35 - f], [1.35, 1.35]);
+        pose(legs, [0.3, -0.12]);
+        hips.position.y = 0.42;
+      } else if (this.diveBlend > 0.5) {                 // superhero dive: arms forward, legs straight back
         pose(arms, [2.95, 2.95], [0.2, 0.2]);
         pose(legs, [-0.2, -0.05]);
         hips.position.y = 0.42;
@@ -3747,7 +3824,7 @@ const combat = {
       const box = a.punchSweep();
       if (!box) continue;
       for (const b of rs) {
-        if (b === a || a.punchHits.has(b.id)) continue;
+        if (b === a || a.punchHits.has(b.id) || b.untouchable) continue;   // (nobody gets punched while they're down)
         const bb = b.bodyBox();
         if (box.x1 < bb.x0 || box.x0 > bb.x1 || box.y1 < bb.y0 || box.y0 > bb.y1 || box.z1 < bb.z0 || box.z0 > bb.z1) continue;
         const fy = a.y + Math.min(1, a.height * 0.6);    // the fist's height, and the nearest part of the body at that height
@@ -3912,15 +3989,15 @@ function rivalBrain(r, h) {
   // Fighting.
   let f = ai.fight;
   r.windup = 0;
-  if (f && (eta < 1.4 || !f.target.visible || f.target.ko || ai.t - f.since > 3.5 || (f.done && !r.punching && ai.t - f.doneAt > 0.2))) {
+  if (f && (eta < 1.4 || r.downed || !f.target.visible || f.target.ko || ai.t - f.since > 3.5 || (f.done && !r.punching && ai.t - f.doneAt > 0.2))) {
     ai.fight = f = null; ai.fightCd = fightGap();
-  }
+  } else if (f && !f.done && f.target.untouchable) { ai.fight = f = null; ai.fightCd = rand(0.8, 1.6); }   // someone else knocked them down
   if (!f && ai.fightCd <= 0) {
     ai.fightCd = 0.5;                                     // (looks again in a moment if there's nobody to fight)
     if (eta > 2.4 && r.grounded && !r.platform && ai.t - ai.glassAt > 1.2) {
       let best = null, bd = 7.5;
       for (const o of combat.runners()) {
-        if (o === r || Math.abs(o.y - r.y) > 1 || rivals.list.some((q) => q !== r && q.alive && q.ai.fight && q.ai.fight.target === o)) continue;
+        if (o === r || o.untouchable || Math.abs(o.y - r.y) > 1 || rivals.list.some((q) => q !== r && q.alive && q.ai.fight && q.ai.fight.target === o)) continue;
         const d = Math.hypot(o.x - r.x, o.z - r.z) + (o === player ? 1.5 : 0);   // (they'd rather fight each other than you)
         if (d < bd) { bd = d; best = o; }
       }
@@ -4209,12 +4286,69 @@ const input = { moveX: 0, moveZ: 0 };
 const keys = new Set();
 const joy = { id: null, x: 0, y: 0, cx: 0, cy: 0 };
 const debugOverride = { active: false, x: 0, z: 0 };
-const KEY_LEFT = ['KeyA', 'ArrowLeft'], KEY_RIGHT = ['KeyD', 'ArrowRight'], KEY_UP = ['KeyW', 'ArrowUp'], KEY_DOWN = ['KeyS', 'ArrowDown'];
-const MOVE_KEYS = new Set([...KEY_LEFT, ...KEY_RIGHT, ...KEY_UP, ...KEY_DOWN]);
-const anyKey = (list) => list.some((k) => keys.has(k));
+// Key bindings: every keyboard control can be changed under Settings → CHANGE KEYS, two keys per action. They are
+// kept by physical key (KeyboardEvent.code), so they stay in the same place whatever the keyboard layout. Esc is
+// fixed (pause, back). `ctx` says when an action is in use, so one key can mean one thing in play and another
+// while building waves, but never two things at once.
+const KEYS_KEY = 'blockdash.keys.v1';
+const KEY_ACTIONS = [
+  { id: 'up', group: 'MOVE', ctx: 'both', label: 'Run forward', note: 'Away from the camera. Flies forward while building.', def: ['KeyW', 'ArrowUp'] },
+  { id: 'down', group: 'MOVE', ctx: 'both', label: 'Run back', def: ['KeyS', 'ArrowDown'] },
+  { id: 'left', group: 'MOVE', ctx: 'both', label: 'Run left', def: ['KeyA', 'ArrowLeft'] },
+  { id: 'right', group: 'MOVE', ctx: 'both', label: 'Run right', def: ['KeyD', 'ArrowRight'] },
+  { id: 'jump', group: 'ACTIONS', ctx: 'game', label: 'Jump', note: 'Press again in the air to dive.', def: ['Space', ''] },
+  { id: 'punch', group: 'ACTIONS', ctx: 'game', label: 'Punch', note: 'During a dive: Super Punch. A left click punches too.', def: ['KeyF', ''] },
+  { id: 'pause', group: 'ACTIONS', ctx: 'game', label: 'Pause', note: 'Esc always pauses as well.', def: ['KeyP', ''] },
+  { id: 'restart', group: 'ACTIONS', ctx: 'game', label: 'Restart', note: 'On the pause and game-over screens.', def: ['KeyR', ''] },
+  { id: 'flyUp', group: 'BUILDING WAVES', ctx: 'build', label: 'Fly up', def: ['Space', 'KeyE'] },
+  { id: 'flyDown', group: 'BUILDING WAVES', ctx: 'build', label: 'Fly down', def: ['ShiftLeft', 'KeyQ'] },
+];
+const KEY_BY_ID = Object.fromEntries(KEY_ACTIONS.map((a) => [a.id, a]));
+const SAME_KEY = { ShiftRight: 'ShiftLeft', ControlRight: 'ControlLeft', AltRight: 'AltLeft', MetaRight: 'MetaLeft' };   // either one will do
+const normCode = (c) => SAME_KEY[c] || c || '';
+const keymap = (() => {                                  // action id → [main key, second key] ('' for none)
+  let saved = {};
+  try { saved = JSON.parse(store.get(KEYS_KEY) || '{}') || {}; } catch { saved = {}; }
+  const m = {};
+  for (const a of KEY_ACTIONS) {
+    const sv = saved[a.id], ok = (c) => typeof c === 'string' && /^[A-Za-z0-9]{1,32}$/.test(c) && c !== 'Escape';
+    m[a.id] = Array.isArray(sv) ? [0, 1].map((i) => (ok(sv[i]) ? normCode(sv[i]) : '')) : a.def.slice();
+  }
+  return m;
+})();
+const saveKeys = () => store.set(KEYS_KEY, JSON.stringify(keymap));
+const bound = (id, code) => !!code && keymap[id].includes(normCode(code));
+const anyKey = (id) => keymap[id].some((c) => c && keys.has(c));
+const MOVE_IDS = ['up', 'down', 'left', 'right'];
+const isMoveKey = (code) => MOVE_IDS.some((id) => bound(id, code));
+const keyCapture = { active: false, id: null, slot: 0 };   // the bindings screen waiting for a new key
+let layoutMap = null;                                    // the keyboard's own key labels, where the browser shares them
+const KEY_NAMES = { Space: 'SPACE', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', ShiftLeft: 'SHIFT', ControlLeft: 'CTRL',
+  AltLeft: 'ALT', MetaLeft: 'META', Enter: 'ENTER', NumpadEnter: 'NUM ENTER', Tab: 'TAB', CapsLock: 'CAPS', Backspace: 'BACKSPACE', Delete: 'DEL',
+  Insert: 'INS', Home: 'HOME', End: 'END', PageUp: 'PG UP', PageDown: 'PG DN', ContextMenu: 'MENU', Backquote: '`', Minus: '-', Equal: '=',
+  BracketLeft: '[', BracketRight: ']', Backslash: '\\', IntlBackslash: '\\', Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/' };
+function keyName(code) {
+  if (!code) return '';
+  if (layoutMap && /^(Key|Digit|Backquote|Minus|Equal|Bracket|Backslash|IntlBackslash|Semicolon|Quote|Comma|Period|Slash)/.test(code)) {
+    const k = layoutMap.get(code);
+    if (k && k.trim()) return k.toUpperCase();
+  }
+  if (KEY_NAMES[code]) return KEY_NAMES[code];
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3);
+  if (/^Digit\d$/.test(code)) return code.slice(5);
+  if (/^Numpad/.test(code)) return 'NUM ' + code.slice(6).replace('Add', '+').replace('Subtract', '-').replace('Multiply', '*').replace('Divide', '/').replace('Decimal', '.');
+  return code.replace(/(Left|Right)$/, '').toUpperCase();
+}
+const keyLabel = (id, sep = ' / ') => keymap[id].filter(Boolean).map(keyName).join(sep);
+// The four move keys in W A S D order ('' unless all four have a key in that slot).
+const moveKeysLabel = (slot, sep) => { const ks = ['up', 'left', 'down', 'right'].map((id) => keymap[id][slot]); return ks.every(Boolean) ? ks.map(keyName).join(sep) : ''; };
+const escHtml = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+try {                                                    // Z for KeyW on AZERTY, and so on
+  if (navigator.keyboard && navigator.keyboard.getLayoutMap) navigator.keyboard.getLayoutMap().then((m) => { layoutMap = m; refreshKeyHints(); }).catch(() => {});
+} catch { /* not shared */ }
 function readMove() {
-  let x = (anyKey(KEY_RIGHT) ? 1 : 0) - (anyKey(KEY_LEFT) ? 1 : 0);
-  let z = (anyKey(KEY_DOWN) ? 1 : 0) - (anyKey(KEY_UP) ? 1 : 0);
+  let x = (anyKey('right') ? 1 : 0) - (anyKey('left') ? 1 : 0);
+  let z = (anyKey('down') ? 1 : 0) - (anyKey('up') ? 1 : 0);
   const kl = Math.hypot(x, z);
   if (kl > 1) { x /= kl; z /= kl; }
   x += joy.x; z += joy.y;
@@ -4238,23 +4372,26 @@ function setTouchMode(on) {
 function updateMenuHint() {
   const el = $('menu-hint');
   if (!el) return;
+  const k = (t) => `<kbd>${escHtml(t || '—')}</kbd>`;
   el.innerHTML = touchMode
     ? 'Left thumb: <kbd>JOYSTICK</kbd> to move · Right thumb: <kbd>JUMP</kbd>, tap again to dive · <kbd>PUNCH</kbd> · drag to turn the camera'
-    : '<kbd>WASD</kbd> move · <kbd>MOUSE</kbd> camera · <kbd>SPACE</kbd> jump, again to dive · <kbd>F</kbd> / <kbd>CLICK</kbd> punch · <kbd>ESC</kbd> pause';
+    : `${k(moveKeysLabel(0, '') || moveKeysLabel(1, ''))} move · <kbd>MOUSE</kbd> camera · ${k(keyName(keymap.jump[0]))} jump, again to dive · ${k(keyName(keymap.punch[0]))} / <kbd>CLICK</kbd> punch · <kbd>ESC</kbd> pause`;
 }
 
 window.addEventListener('keydown', (e) => {
-  const code = e.code;
+  if (keyCapture.active) return;                         // (the key bindings screen is waiting for a new key)
+  const code = normCode(e.code);
   const inGame = state === 'playing' || state === 'countdown';
   lastInputKeyboard = true;
-  if ((MOVE_KEYS.has(code) || code === 'Space') && inGame) e.preventDefault();
-  if (MOVE_KEYS.has(code) && !COARSE) setTouchMode(false);
+  const move = isMoveKey(code);
+  if ((move || bound('jump', code) || bound('punch', code)) && inGame) e.preventDefault();
+  if (move && !COARSE) setTouchMode(false);
   audio.unlock();
-  if (MOVE_KEYS.has(code)) keys.add(code);
-  if (code === 'Space' && state === 'playing' && !e.repeat) player.requestJump();
+  if (move) keys.add(code);
+  if (bound('jump', code) && state === 'playing' && !e.repeat) player.requestJump();
   if (!e.repeat) game.onKey(code, e);
 });
-window.addEventListener('keyup', (e) => keys.delete(e.code));
+window.addEventListener('keyup', (e) => keys.delete(normCode(e.code)));
 window.addEventListener('blur', () => {
   keys.clear();
   if (state === 'playing' || state === 'countdown') game.pause();
@@ -4535,7 +4672,7 @@ const hud = {
 // ---------------------------------------------------------------------
 // 17. Menus & settings screens
 // ---------------------------------------------------------------------
-const SCREENS = ['menu', 'howto', 'settings', 'skins', 'blocks', 'waves', 'pause', 'gameover'];
+const SCREENS = ['menu', 'howto', 'settings', 'keys', 'skins', 'blocks', 'waves', 'pause', 'gameover'];
 let currentScreen = null, settingsReturn = 'menu';
 function showScreen(name) {
   const prev = currentScreen;
@@ -4546,6 +4683,7 @@ function showScreen(name) {
   if (name === 'blocks' && prev !== 'blocks') openBlocks();
   if (prev === 'waves' && name !== 'waves') closeWaves();
   if (name === 'waves' && prev !== 'waves') openWaves();
+  if (prev === 'keys' && name !== 'keys') keyCapture.active = false;
   for (const s of SCREENS) $('screen-' + s).classList.toggle('active', s === name);
   if (name) {
     const el = $('screen-' + name);
@@ -4752,9 +4890,10 @@ function buildUpdate(dt) {
   const typing = document.activeElement && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName);
   let mx = buildPad.x, mz = buildPad.z, my = buildPad.y;
   if (!typing) {
-    mx += (anyKey(KEY_RIGHT) ? 1 : 0) - (anyKey(KEY_LEFT) ? 1 : 0);
-    mz += (anyKey(KEY_UP) ? 1 : 0) - (anyKey(KEY_DOWN) ? 1 : 0);
-    my += (bkeys.has('Space') || bkeys.has('KeyE') ? 1 : 0) - (bkeys.has('ShiftLeft') || bkeys.has('ShiftRight') || bkeys.has('KeyQ') ? 1 : 0);
+    mx += (anyKey('right') ? 1 : 0) - (anyKey('left') ? 1 : 0);
+    mz += (anyKey('up') ? 1 : 0) - (anyKey('down') ? 1 : 0);
+    const held = (id) => keymap[id].some((c) => c && bkeys.has(c));
+    my += (held('flyUp') ? 1 : 0) - (held('flyDown') ? 1 : 0);
   }
   const sp = 13, sy = Math.sin(build.yaw), cy = Math.cos(build.yaw);
   const tx = (-sy * mz + cy * mx) * sp, tz = (-cy * mz - sy * mx) * sp, ty = clamp(my, -1, 1) * sp * 0.75;
@@ -4769,9 +4908,10 @@ function syncBuildHud() {
   [...$('bld-bar').children].forEach((b, i) => { b.classList.toggle('on', i === build.tool); b.setAttribute('aria-checked', String(i === build.tool)); });
   $('bld-remove').setAttribute('aria-pressed', String(build.removeMode));
   document.body.classList.toggle('bld-cursor', cursorBuild());
+  const fly = `${moveKeysLabel(0, '') || moveKeysLabel(1, '') || 'MOVE KEYS'} FLY · ${keyLabel('flyUp') || '—'} UP · ${keyLabel('flyDown') || '—'} DOWN`;
   $('bld-help').textContent = touchMode ? 'DRAG TO LOOK · PAD TO FLY · TAP TO PLACE (OR TO REMOVE, WITH REMOVE ON)'
-    : cursorBuild() ? 'DRAG TO LOOK · WASD FLY · SPACE UP · SHIFT DOWN · CLICK PLACE · RIGHT-CLICK REMOVE · 1–5 BLOCK · ESC MENU'
-      : 'WASD FLY · SPACE UP · SHIFT DOWN · LEFT CLICK PLACE · RIGHT CLICK REMOVE · 1–5 OR WHEEL: BLOCK · ESC MENU';
+    : cursorBuild() ? `DRAG TO LOOK · ${fly} · CLICK PLACE · RIGHT-CLICK REMOVE · 1–5 BLOCK · ESC MENU`
+      : `${fly} · LEFT CLICK PLACE · RIGHT CLICK REMOVE · 1–5 OR WHEEL: BLOCK · ESC MENU`;
 }
 function drawLayoutThumb(i) {                          // seen from above: the top block of each square, taller is lighter
   const cv = $('lt-slots').children[i].querySelector('canvas'), g = cv.getContext('2d'), L = layouts[i], S = cv.width / LAYOUT_W;
@@ -4932,12 +5072,14 @@ function buildLayoutUI() {
   window.addEventListener('keydown', (e) => {
     if (currentScreen !== 'waves' || state !== 'menu') return;
     if (document.activeElement && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
-    if (['Space', 'ShiftLeft', 'ShiftRight', 'KeyE', 'KeyQ'].includes(e.code)) { bkeys.add(e.code); if (build.flying || e.code === 'Space') e.preventDefault(); }
-    if (MOVE_KEYS.has(e.code)) e.preventDefault();
+    if (keyCapture.active) return;
+    const c = normCode(e.code);
+    if (bound('flyUp', c) || bound('flyDown', c)) { bkeys.add(c); if (build.flying || c === 'Space') e.preventDefault(); }
+    if (isMoveKey(c)) e.preventDefault();
     if (/^Digit[1-5]$/.test(e.code)) buildTool(+e.code.slice(5) - 1);
     if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') { e.preventDefault(); $('lt-undo').click(); }
   });
-  window.addEventListener('keyup', (e) => bkeys.delete(e.code));
+  window.addEventListener('keyup', (e) => bkeys.delete(normCode(e.code)));
   window.addEventListener('blur', () => bkeys.clear());
   // the touch pad, remove toggle and menu button
   for (const b of document.querySelectorAll('#bld-touch [data-mv]')) {
@@ -5279,6 +5421,127 @@ function applySettings() {
   audio.applySettings();
   layoutJoystick();
 }
+// ---------------------------------------------------------------------
+// Key bindings screen (Settings → CHANGE KEYS), and every hint that names a key
+// ---------------------------------------------------------------------
+function refreshKeyHints() {
+  updateMenuHint();
+  const set = (id, t) => { const el = $(id); if (el) { el.textContent = t; el.style.display = t ? '' : 'none'; } };
+  set('hk-move', moveKeysLabel(0, ' '));
+  set('hk-move2', moveKeysLabel(1, ' '));
+  set('hk-jump', keyLabel('jump'));
+  set('hk-punch', keyLabel('punch'));
+  set('hk-pause', keyLabel('pause'));
+  $('punch-key').textContent = keyName(keymap.punch[0]) || '—';
+  const pk = keyLabel('pause'), rk = keyLabel('restart');
+  $('pause-hint').textContent = `Esc${pk ? ' / ' + pk : ''} to resume${rk ? ` · ${rk} to restart` : ''}`;
+  $('keys-summary').textContent = `Move ${moveKeysLabel(0, '') || moveKeysLabel(1, '') || '—'} · Jump ${keyName(keymap.jump[0]) || '—'} · Punch ${keyName(keymap.punch[0]) || '—'}`;
+  if (currentScreen === 'waves') syncBuildHud();
+}
+function keysNote(text, warn = false) {
+  const el = $('keys-note');
+  el.textContent = text;
+  el.classList.toggle('warn', warn);
+}
+function renderKeys() {
+  const list = $('keys-list');
+  list.replaceChildren();
+  let sec = null, group = null;
+  for (const a of KEY_ACTIONS) {
+    if (a.group !== group) {
+      group = a.group;
+      sec = document.createElement('section');
+      const h = document.createElement('h3');
+      h.textContent = group;
+      sec.appendChild(h);
+      list.appendChild(sec);
+    }
+    const row = document.createElement('div');
+    row.className = 'keyrow' + (keymap[a.id].some(Boolean) ? '' : ' unbound');
+    const lbl = document.createElement('div');
+    lbl.className = 'klbl';
+    lbl.textContent = a.label;
+    if (a.note || !keymap[a.id].some(Boolean)) {
+      const sm = document.createElement('small');
+      sm.textContent = keymap[a.id].some(Boolean) ? a.note : 'No key: this does nothing until you give it one.';
+      lbl.appendChild(sm);
+    }
+    const caps = document.createElement('div');
+    caps.className = 'kcaps';
+    for (let i = 0; i < 2; i++) {
+      const code = keymap[a.id][i], b = document.createElement('button');
+      const listening = keyCapture.active && keyCapture.id === a.id && keyCapture.slot === i;
+      b.className = 'keycap' + (code ? '' : ' empty') + (listening ? ' listening' : '');
+      b.dataset.a = a.id; b.dataset.i = i;
+      b.textContent = listening ? 'PRESS A KEY' : code ? keyName(code) : i ? '+' : 'NONE';
+      b.setAttribute('aria-label', `${a.label}, key ${i + 1}: ${code ? keyName(code) : 'none'}. Press to change it.`);
+      b.addEventListener('click', () => startKeyCapture(a.id, i));
+      caps.appendChild(b);
+    }
+    row.append(lbl, caps);
+    sec.appendChild(row);
+  }
+}
+function startKeyCapture(id, slot) {
+  Object.assign(keyCapture, { active: true, id, slot });
+  renderKeys();
+  keysNote(`Press the new key for “${KEY_BY_ID[id].label}”. Esc cancels, Backspace takes the key off.`);
+  const b = $('keys-list').querySelector(`.keycap[data-a="${id}"][data-i="${slot}"]`);
+  if (b) b.focus({ preventScroll: true });
+}
+function stopKeyCapture() { keyCapture.active = false; renderKeys(); }
+// Put a key on an action (or take it off, with ''). A key does one thing at a time: if something else that's in
+// use at the same time had it, it comes off there.
+function setKey(id, slot, code) {
+  const a = KEY_BY_ID[id], took = [];
+  code = normCode(code);
+  if (code) {
+    for (const b of KEY_ACTIONS) {
+      if (b === a || !(a.ctx === 'both' || b.ctx === 'both' || a.ctx === b.ctx)) continue;
+      for (let i = 0; i < 2; i++) if (keymap[b.id][i] === code) { keymap[b.id][i] = ''; took.push(b.label); }
+    }
+    if (keymap[id][1 - slot] === code) keymap[id][1 - slot] = '';
+  }
+  keymap[id][slot] = code;
+  for (const b of KEY_ACTIONS) if (!keymap[b.id][0] && keymap[b.id][1]) { keymap[b.id][0] = keymap[b.id][1]; keymap[b.id][1] = ''; }   // main key first
+  keys.clear(); bkeys.clear();
+  saveKeys();
+  refreshKeyHints();
+  const empty = KEY_ACTIONS.filter((b) => !keymap[b.id].some(Boolean)).map((b) => b.label);
+  if (took.length) keysNote(`${keyName(code)} is now “${a.label}”. It was on “${took.join('” and “')}”, so it came off there.`, !!empty.length);
+  else keysNote(code ? `“${a.label}”: ${keyLabel(id)}` : `Took the key off “${a.label}”.`, !!empty.length);
+  if (empty.length) keysNote(`${$('keys-note').textContent} No key on: ${empty.join(', ')}.`, true);
+}
+function resetKeys() {
+  for (const a of KEY_ACTIONS) keymap[a.id] = a.def.slice();
+  keys.clear(); bkeys.clear();
+  saveKeys();
+  refreshKeyHints();
+  keyCapture.active = false;
+  renderKeys();
+  keysNote('Back to the default keys.');
+}
+function bindKeysUI() {
+  $('btn-keys').addEventListener('click', () => { audio.play('click'); keyCapture.active = false; renderKeys(); keysNote(''); showScreen('keys'); });
+  $('btn-keys-back').addEventListener('click', () => { audio.play('click'); keyCapture.active = false; showScreen('settings'); });
+  $('btn-keys-reset').addEventListener('click', () => { audio.play('click'); resetKeys(); });
+  // While a key is wanted, the next key press is the answer, and nothing else in the game sees it.
+  window.addEventListener('keydown', (e) => {
+    if (!keyCapture.active) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (e.repeat) return;
+    const code = normCode(e.code);
+    if (!code || code === 'Escape') { stopKeyCapture(); keysNote(''); return; }
+    setKey(keyCapture.id, keyCapture.slot, code === 'Backspace' || code === 'Delete' ? '' : code);
+    stopKeyCapture();
+    audio.play('click');
+  }, true);
+  // a click anywhere but on a key cancels
+  document.addEventListener('pointerdown', (e) => {
+    if (keyCapture.active && !(e.target.closest && e.target.closest('.keycap'))) { stopKeyCapture(); keysNote(''); }
+  }, true);
+}
 function bindSettingsUI() {
   for (const b of document.querySelectorAll('#set-quality button')) {
     b.addEventListener('click', () => {
@@ -5536,6 +5799,7 @@ const game = {
     switch (code) {
       case 'Escape':
         if (state === 'playing' || state === 'countdown') this.pause();
+        else if (currentScreen === 'keys') showScreen('settings');
         else if (currentScreen === 'settings') showScreen(settingsReturn);
         else if (state === 'paused') { if (performance.now() - lockLostAt > 500) this.resume(); }   // that Esc only freed the cursor
         else if (currentScreen === 'waves' && build.flying) leaveBuild();   // building: back to the panel
@@ -5543,22 +5807,21 @@ const game = {
         else if (['howto', 'skins', 'blocks', 'waves'].includes(currentScreen)) showScreen('menu');
         else if (state === 'gameover') this.toMenu();
         break;
-      case 'KeyP':
-        if (state === 'playing' || state === 'countdown') this.pause();
-        else if (state === 'paused' && currentScreen === 'pause') this.resume();
-        break;
       case 'Enter': case 'NumpadEnter':
         if (onButton) break;
-        if (state === 'menu' && currentScreen === 'menu') this.start();
-        else if (state === 'gameover') this.start(run.practice);
-        else if (state === 'paused' && currentScreen === 'pause') this.resume();
+        if (state === 'menu' && currentScreen === 'menu') { this.start(); return; }
+        if (state === 'gameover') { this.start(run.practice); return; }
+        if (state === 'paused' && currentScreen === 'pause') { this.resume(); return; }
         break;
-      case 'KeyR':
-        if ((state === 'paused' && currentScreen === 'pause') || state === 'gameover') this.start(run.practice);
-        break;
-      case 'KeyF':
-        if (state === 'playing') player.requestPunch();
-        break;
+    }
+    // the keys you can change (Settings → CHANGE KEYS); a key does at most one of these
+    if (bound('pause', code)) {
+      if (state === 'playing' || state === 'countdown') this.pause();
+      else if (state === 'paused' && currentScreen === 'pause') this.resume();
+    } else if (bound('restart', code)) {
+      if ((state === 'paused' && currentScreen === 'pause') || state === 'gameover') this.start(run.practice);
+    } else if (bound('punch', code)) {
+      if (state === 'playing') player.requestPunch();
     }
   },
   onJump() {
@@ -5822,9 +6085,10 @@ function init() {
   buildBlockUI();
   buildLayoutUI();
   bindSettingsUI();
+  bindKeysUI();
   wireButtons();
   setTouchMode(COARSE || (HAS_TOUCH && !matchMedia('(pointer: fine)').matches));
-  updateMenuHint();
+  refreshKeyHints();
   createRenderer();
   applySettings();
   syncSettingsUI();
@@ -5847,7 +6111,7 @@ function init() {
       designs, meshCounts: () => ({ hash: MESH['#'].count, ghost: MESH.ghost.count, spikes: MESH.spikes.count, bars: MESH.bar.count, breakables: MESH.brk.count }), layouts, layoutOpts,
       checkLayouts: () => layouts.forEach((L, i) => checkLayout(i)),
       layoutBlockCount: () => layoutView.meshes.map((m) => m.count),
-      rivals, combat, createRunner, PUNCH, SUPER_PUNCH, blockedBetween,
+      rivals, combat, createRunner, PUNCH, SUPER_PUNCH, blockedBetween, keymap, setKey, resetKeys, keyName, keyCapture, heldKeys: () => ({ keys: [...keys], bkeys: [...bkeys] }),
       build, voxAt, voxRay, buildPlace, buildRemove, buildAim, buildAimRay, buildDir, enterBuild, leaveBuild, buildTool, VOX_H,
       setLayoutCells: (i, rows) => { layouts[i].vox = cellsToVox(rows.map((r) => (typeof r === 'string' ? [...r] : r))); checkLayout(i); },
       fogNear: () => scene.fog.near,
