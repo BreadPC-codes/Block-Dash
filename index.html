@@ -236,7 +236,6 @@ body.touch[data-state=playing] #touch,body.touch[data-state=countdown] #touch{di
 .lt-slot canvas{display:block;width:100%;aspect-ratio:5/4;image-rendering:pixelated;border-radius:3px}
 .lt-slot b{position:absolute;left:4px;top:3px;font-size:9px;line-height:1;color:#fff;text-shadow:0 1px 2px #000,0 0 3px #000}
 .lt-slot.on::after{content:"";position:absolute;right:3px;top:3px;width:8px;height:8px;border-radius:50%;background:#3ccf6d;box-shadow:0 0 0 2px #120d2e}
-.lt-slot.warn.on::after{background:#ffb02e}
 .lt-slot[aria-selected=true]{border-color:var(--gold);box-shadow:0 0 12px rgba(255,210,63,.35)}
 .lt-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
 .lt-row input[type=text]{flex:1;min-width:140px;font:inherit;font-size:14px;font-weight:700;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:#2a2150;color:#fff}
@@ -246,7 +245,6 @@ body.touch[data-state=playing] #touch,body.touch[data-state=countdown] #touch{di
 .lt-brush.on{background:rgba(255,255,255,.16);color:#fff;border-color:#fff}
 .lt-status{margin:0;padding:8px 12px;border-radius:12px;font-size:13px;font-weight:700;text-align:center;line-height:1.35}
 .lt-status.ok{background:rgba(60,207,109,.14);color:#8ff0b0;border:1px solid rgba(60,207,109,.35)}
-.lt-status.warn{background:rgba(255,176,46,.14);color:#ffd79a;border:1px solid rgba(255,176,46,.4)}
 .lt-status.empty{background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--line)}
 .lt-select{font:inherit;font-size:12px;font-weight:700;padding:7px 8px;border-radius:10px;border:1px solid var(--line);background:#2a2150;color:#fff}
 .lt-stage{cursor:crosshair}
@@ -584,6 +582,7 @@ body.touch .kbd-hint{display:none}
       <div class="lt-row lt-tools-row">
         <button type="button" class="bd-tool" id="lt-mirror" aria-pressed="false">MIRROR</button>
         <button type="button" class="bd-tool" id="lt-fill" aria-pressed="false">FILL</button>
+        <button type="button" class="bd-tool" id="lt-all">FILL ALL</button>
         <button type="button" class="bd-tool" id="lt-undo">UNDO</button>
         <button type="button" class="bd-tool" id="lt-clear">CLEAR</button>
         <select id="lt-template" class="lt-select" aria-label="Start from a built-in pattern"></select>
@@ -828,6 +827,9 @@ const STEP_UP = 0.3;                                      // land on any top thi
 
 // Laser fences along both long edges of the arena
 const LASER_X = ARENA_HALF, LASER_SEG = 8.2;
+// In your own wave layouts a block in an outer lane also fills the strip beside it, up to the laser
+// fence, so a row painted all the way across is a wall from fence to fence with no way around it.
+const EDGE_FILL_W = LASER_X - HALF_W - 0.14, EDGE_FILL_OX = (HALF_W + LASER_X) / 2 - laneX(LANES - 1);
 const LASER_BEAMS = [0.25, 0.95, 1.65, 2.35, 3.05];
 
 // Player (hitbox size is with the arena constants above)
@@ -1322,16 +1324,14 @@ const saveBest = () => store.set(bestKey(level.n), String(bestWave));
 // ---------------------------------------------------------------------
 const LAYOUT_SLOTS = 30, LAYOUT_KEY = 'blockdash.layouts.v1', LAYOUT_CELLS = '.J#3SM', LAYOUT_W = LANES;   // every lane of the arena
 const layouts = Array.from({ length: LAYOUT_SLOTS }, (_, i) => ({
-  name: `Layout ${i + 1}`, rows: Array.from({ length: 8 }, () => Array(LAYOUT_W).fill('.')), on: false, pattern: null, error: '',
+  name: `Layout ${i + 1}`, rows: Array.from({ length: 8 }, () => Array(LAYOUT_W).fill('.')), on: false, pattern: null,
 }));
 const layoutOpts = { only: false };
-function checkLayout(i) {                                // build a pattern from the cells and let the solver judge it
+function checkLayout(i) {                                // any layout with at least one block is a wave: nothing is checked or blocked
   const L = layouts[i];
-  if (L.rows.every((r) => r.every((c) => c === '.'))) { L.pattern = null; L.error = 'empty'; return; }
+  if (L.rows.every((r) => r.every((c) => c === '.'))) { L.pattern = null; return; }
   L.pattern = { id: `custom-${i}`, name: L.name || `Layout ${i + 1}`, custom: true, full: true, slot: i, minWave: 0, rating: 3, wall: true,
     climb: L.rows.some((r) => r.includes('S')), rows: L.rows.map((cells, k) => ({ rowNumber: 8 - k, cells: cells.slice() })) };
-  // Any layout with blocks is a wave, even a fully filled one; the solver's verdict is only a warning.
-  try { validatePattern(L.pattern); L.error = ''; } catch (err) { L.error = err.message; }
 }
 (() => {
   let st = null;
@@ -2149,12 +2149,16 @@ const world = {
       for (let lane = 0; lane < LANES; lane++) {
         const c = cells[lane];
         if (c === '.') continue;
-        const units = c === '3' || c === 'S' ? 3 : c === '#' ? (Math.random() < 0.25 ? 3 : 2) : 1;     // stacks of whole blocks
+        // stacks of whole blocks; '#' in the built-in patterns is 2 or 3 high, in your own layouts exactly 2
+        const units = c === '3' || c === 'S' ? 3 : c === '#' ? (pattern.custom ? 2 : Math.random() < 0.25 ? 3 : 2) : 1;
         const h = units * BLOCK_H, tint = c === 'M' ? WHITE : c === 'S' ? stepColor : color;
         const part = (oz, n) => ({ ox: 0, oz, w: BLOCK_W, d: BLOCK_D, y0: 0, h: n * BLOCK_H, units: n, color: tint, climb: c === 'S' });
         // 'S': steps in front of the wall, two blocks high and then one, to climb over it
         const parts = c === 'S' ? [part(0, 3), part(BLOCK_D, 2), part(2 * BLOCK_D, 1)] : [part(0, units)];
-        const ext = { x0: -BLOCK_W / 2, x1: BLOCK_W / 2, z0: -BLOCK_D / 2, z1: (c === 'S' ? 2.5 : 0.5) * BLOCK_D, h };
+        const edge = pattern.custom ? (lane === 0 ? -1 : lane === LANES - 1 ? 1 : 0) : 0;
+        if (edge) parts.push({ ...part(0, parts[0].units), ox: edge * EDGE_FILL_OX, w: EDGE_FILL_W });   // out to the laser fence
+        const ext = { x0: edge < 0 ? -EDGE_FILL_OX - EDGE_FILL_W / 2 : -BLOCK_W / 2, x1: edge > 0 ? EDGE_FILL_OX + EDGE_FILL_W / 2 : BLOCK_W / 2,
+          z0: -BLOCK_D / 2, z1: (c === 'S' ? 2.5 : 0.5) * BLOCK_D, h };
         row.blocks.push({ type: c, lane, x: laneX(lane), y: -(h + 0.3), vy: 0, units, riseH: h + 0.3, parts, ext,
           phase: (i * 0.23 + lane * 0.11) % 1, period, down: false, fy: 0, fvy: 0, rot: 0, rotV: 0, rotZ: 0 });
       }
@@ -2403,7 +2407,7 @@ const world = {
             const i = n.get(mesh) || 0;
             if (i >= mesh.instanceMatrix.count) break;
             n.set(mesh, i + 1);
-            _mp.makeScale(BLOCK_W, BLOCK_H, BLOCK_D);
+            _mp.makeScale(part.w, BLOCK_H, part.d);
             if (row.falling) {
               _mp.setPosition(part.ox, part.y0 + u * BLOCK_H, part.oz);
               _m4.multiplyMatrices(_mb, _mp);
@@ -3255,10 +3259,10 @@ const layoutView = (() => {
   const g = new THREE.Group();
   g.visible = false;
   scene.add(g);
-  const blocks = new THREE.InstancedMesh(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.block, roughness: 0.45, metalness: 0.05 }), 520);
-  const crushers = new THREE.InstancedMesh(UNIT_BOX, crushMat, 80);
+  const blocks = new THREE.InstancedMesh(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.block, roughness: 0.45, metalness: 0.05 }), 600);
+  const crushers = new THREE.InstancedMesh(UNIT_BOX, crushMat, 96);
   for (const m of [blocks, crushers]) { m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false; m.count = 0; g.add(m); }
-  for (let i = 0; i < 520; i++) blocks.setColorAt(i, WHITE);
+  for (let i = 0; i < 600; i++) blocks.setColorAt(i, WHITE);
   const pts = [], zFar = LT_NEAR - LT_BAND * 8;            // floor grid: 10 lanes × 8 bands
   for (let l = 0; l <= LANES; l++) { const x = -HALF_W + l * LANE_W; pts.push(x, 0.04, zFar, x, 0.04, LT_NEAR); }
   for (let k = 0; k <= 8; k++) { const z = LT_NEAR - LT_BAND * k; pts.push(-HALF_W, 0.04, z, HALF_W, 0.04, z); }
@@ -3285,16 +3289,19 @@ const layoutView = (() => {
         row.forEach((c, lane) => {
           if (c === '.') return;
           const x = laneX(lane), cell = { k, col: lane };
+          const edge = lane === 0 ? -1 : lane === LANES - 1 ? 1 : 0;   // outer lanes reach the laser fence
           if (c === 'M') {
             _m.makeScale(BLOCK_W, BLOCK_H, BLOCK_D).setPosition(x, 0, zc);
             crushers.setMatrixAt(nc, _m); crushCells[nc++] = cell;
+            if (edge) { _m.makeScale(EDGE_FILL_W, BLOCK_H, BLOCK_D).setPosition(x + edge * EDGE_FILL_OX, 0, zc); crushers.setMatrixAt(nc, _m); crushCells[nc++] = cell; }
             return;
           }
-          const stack = [[0, HEIGHT[c], BLOCK_D]];
-          if (c === 'S') stack.push([0.93 + 0.4, 2, 0.8], [0.93 + 1.2, 1, 0.8]);   // steps, drawn shallow so every row fits
-          for (const [dz, n, d] of stack) {
+          const stack = [[0, HEIGHT[c], BLOCK_D, 0, BLOCK_W]];
+          if (c === 'S') stack.push([0.93 + 0.4, 2, 0.8, 0, BLOCK_W], [0.93 + 1.2, 1, 0.8, 0, BLOCK_W]);   // steps, drawn shallow so every row fits
+          if (edge) stack.push([0, HEIGHT[c], BLOCK_D, edge * EDGE_FILL_OX, EDGE_FILL_W]);
+          for (const [dz, n, d, dx, w] of stack) {
             for (let u = 0; u < n; u++) {
-              _m.makeScale(BLOCK_W, BLOCK_H, d).setPosition(x, u * BLOCK_H, zc + dz);
+              _m.makeScale(w, BLOCK_H, d).setPosition(x + dx, u * BLOCK_H, zc + dz);
               blocks.setMatrixAt(nb, _m); blocks.setColorAt(nb, _col.set(LT_COLORS[c])); blockCells[nb++] = cell;
             }
           }
@@ -3325,9 +3332,10 @@ function ltPick(e) {                                     // which layout cell is
   ltRay.setFromCamera(_ltNdc, camera);
   const hit = ltRay.intersectObjects(layoutView.meshes, false)[0];
   if (hit && hit.instanceId !== undefined) return layoutView.cellOf(hit.object, hit.instanceId);
-  if (!ltRay.ray.intersectPlane(LT_FLOOR, _ltHit)) return null;
-  const lane = Math.floor((_ltHit.x + HALF_W) / LANE_W), k = Math.floor((LT_NEAR - _ltHit.z) / LT_BAND);
-  if (lane < 0 || lane >= LANES || k < 0 || k > 7) return null;
+  if (!ltRay.ray.intersectPlane(LT_FLOOR, _ltHit) || Math.abs(_ltHit.x) > LASER_X) return null;
+  const lane = clamp(Math.floor((_ltHit.x + HALF_W) / LANE_W), 0, LANES - 1);   // the strip by the fence belongs to the outer lane
+  const k = Math.floor((LT_NEAR - _ltHit.z) / LT_BAND);
+  if (k < 0 || k > 7) return null;
   return { k, col: lane };
 }
 const camCtl = {
@@ -3836,18 +3844,16 @@ function closeSkins() {
 }
 // ---- Wave layout editor ----
 const LT_BRUSHES = [
-  { c: '.', label: 'HOLE' }, { c: 'J', label: 'SINGLE' }, { c: '#', label: 'BLOCK' },
-  { c: '3', label: 'TALL' }, { c: 'S', label: 'CLIMB' }, { c: 'M', label: 'CRUSHER' },
+  { c: '.', label: 'HOLE' }, { c: 'J', label: '1 BLOCK' }, { c: '#', label: '2 BLOCKS' },   // stacks of exactly 1, 2 or 3 blocks
+  { c: '3', label: '3 BLOCKS' }, { c: 'S', label: 'CLIMB' }, { c: 'M', label: 'CRUSHER' },
 ];
 const LT_COLORS = { '.': '#2a2150', J: '#ffa3ab', '#': '#ff4d5e', 3: '#b3122e', S: '#ffd0d5', M: '#b44dff' };
 const lt = { slot: 0, brush: '#', mirror: false, fill: false, undo: [], painting: false, last: null };
 const ltLayout = () => layouts[lt.slot];
 function ltMessage(L) {
   if (!L.pattern) return { cls: 'empty', text: 'Paint some blocks to make a layout.' };
-  if (!L.error) return { cls: 'ok', text: '✓ There is always a way through. Ready to play.' };
-  const row = L.error.match(/row (\d)/);
-  if (row) return { cls: 'warn', text: `⚠ Row ${9 - +row[1]} (counting from your runner) has no gap between its blocks. Only the narrow strips by the lasers get you past. You can still play it.` };
-  return { cls: 'warn', text: '⚠ There is no sure way between these blocks. Only the narrow strips by the lasers get you past. You can still play it.' };
+  const n = L.rows.reduce((sum, r) => sum + r.filter((c) => c !== '.').length, 0);
+  return { cls: 'ok', text: `✓ Ready to play · ${n} of ${8 * LAYOUT_W} squares filled` };
 }
 function ltChanged(live) {
   checkLayout(lt.slot);
@@ -3899,7 +3905,7 @@ function drawLayoutCell(g, c, x, y, S) {
   g.fillStyle = c === 'J' ? '#7a1b2a' : '#ffffff';
   g.font = `800 ${Math.round(S * 0.36)}px system-ui, sans-serif`;
   g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText({ J: '1', '#': '2+', 3: '3', M: 'M' }[c], x * S + S / 2, y * S + S / 2 + 1);
+  g.fillText({ J: '1', '#': '2', 3: '3', M: 'M' }[c], x * S + S / 2, y * S + S / 2 + 1);
 }
 function drawLayoutThumb(i) {
   const cv = $('lt-slots').children[i].querySelector('canvas'), g = cv.getContext('2d'), L = layouts[i];
@@ -3910,7 +3916,6 @@ function syncLayoutUI() {
   [...$('lt-slots').children].forEach((b, i) => {
     b.setAttribute('aria-selected', String(i === lt.slot));
     b.classList.toggle('on', layouts[i].on);
-    b.classList.toggle('warn', !!(layouts[i].pattern && layouts[i].error));
   });
   if (document.activeElement !== $('lt-name')) $('lt-name').value = L.name;
   $('lt-on').checked = L.on;
@@ -3977,6 +3982,11 @@ function buildLayoutUI() {
   $('lt-only').addEventListener('change', (e) => { layoutOpts.only = e.target.checked; saveLayouts(); syncLayoutUI(); });
   $('lt-mirror').addEventListener('click', () => { lt.mirror = !lt.mirror; syncLayoutUI(); audio.play('click'); });
   $('lt-fill').addEventListener('click', () => { lt.fill = !lt.fill; syncLayoutUI(); audio.play('click'); });
+  $('lt-all').addEventListener('click', () => {         // every square of the grid in the current brush
+    const L = ltLayout();
+    if (L.rows.every((r) => r.every((c) => c === lt.brush))) return;
+    ltPushUndo(); L.rows.forEach((r) => r.fill(lt.brush)); ltChanged(); audio.play('click');
+  });
   $('lt-undo').addEventListener('click', () => {
     const u = lt.undo.pop();
     if (!u) return;
@@ -4874,6 +4884,7 @@ function init() {
       designs, meshCounts: () => ({ hash: MESH['#'].count, ghost: MESH.ghost.count }), layouts, layoutOpts,
       checkLayouts: () => layouts.forEach((L, i) => checkLayout(i)),
       layoutHoverCount: () => layoutView.g.children.find((o) => o.isInstancedMesh && o.material.opacity === 0.3).count,
+      layoutBlockCount: () => layoutView.meshes.map((m) => m.count),
       fogNear: () => scene.fog.near,
       ltCellScreen: (k, col, top = 0) => {                // where a layout cell is on screen in the WAVES editor
         const v = new THREE.Vector3(laneX(col), top, ltBandZ(k)).project(camera), r = renderer.domElement.getBoundingClientRect();
