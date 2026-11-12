@@ -577,7 +577,7 @@ body.touch .kbd-hint{display:none}
       <div class="leg"><span class="sw climb"></span><div><b>Climb wall</b><small>Three blocks high with no hole (Normal and harder). Its lighter lane has steps in front: jump onto the low step, then the middle one, then over the top, and drop down behind it.</small></div></div>
       <div class="leg"><span class="sw move"></span><div><b>Crusher</b><small>Rises and slams down. Get caught underneath and you're bonked away.</small></div></div>
       <div class="leg"><span class="sw spike"></span><div><b>Spikes</b><small>A block covered in spikes, one or two high. You can't stand on it, and touching it from any side knocks you backwards with a tumble.</small></div></div>
-      <div class="leg"><span class="sw brk"></span><div><b>Breakable block</b><small>Cracked glass. Run, jump or dive into it and it shatters, but you can still land on top of it and stand there. Each block breaks on its own: smash the bottom one of a stack and the one above stays where it is.</small></div></div>
+      <div class="leg"><span class="sw brk"></span><div><b>Breakable block</b><small>Cracked glass, solid like any block. Dive into it (or belly-slide into it) and it shatters, however little of it you hit. One dive smashes one block of a stack: break the bottom one and the one above stays where it is.</small></div></div>
       <div class="leg"><span class="sw bar"></span><div><b>Bar</b><small>A low striped bar lying across two squares. Hop over it: touch it and you're knocked backwards.</small></div></div>
       <div class="leg"><span class="sw laser"></span><div><b>Laser fences</b><small>They stand right beside the outer lanes, so there is no way around a wall at the sides. Touch one and the run is over.</small></div></div>
     </div>
@@ -2265,7 +2265,7 @@ const _p = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1), _c = new THRE
 
 const world = {
   mode: 'demo', rows: [], waves: [], nextIndex: 0,
-  lastRowZ: null, lastSolidZ: null, prev: null, lastPatternId: null,
+  lastRowZ: null, lastSolidZ: null, prev: null, lastPatternId: null, rowSeq: 0,
   speed: DEMO_SPEED, targetSpeed: DEMO_SPEED, time: 0, firstZ: -14, emergeDelay: 0, flash: 0, demoColor: 0, demoDesign: 0, lastWave: null,
   paused: false,                                         // the WAVES editor stops and hides the background walls
 
@@ -2394,7 +2394,7 @@ const world = {
     for (let i = 0; i < cellRows.length; i++) {
       const cells = cellRows[i];
       const row = {
-        wave, idx: i, pip: Math.min(7, Math.floor((i * 8) / cellRows.length)), rowNumber: rowNumbers[i], cells, z: zs[i], empty: empty[i], blocks: [],
+        wave, idx: i, uid: ++this.rowSeq, pip: Math.min(7, Math.floor((i * 8) / cellRows.length)), rowNumber: rowNumbers[i], cells, z: zs[i], empty: empty[i], blocks: [],
         emerged: false, emergeT: 0, stagger: zs[i] >= Z_SPAWN ? i * 0.07 : 0,
         passed: false, falling: false, fallT: 0, fallSpeed: 0, sinking: false, sinkT: 0, remove: false,
       };
@@ -2546,18 +2546,19 @@ const world = {
     const overlaps = (c) => c.x1 > p.x - P_HALF_W && c.x0 < p.x + P_HALF_W && c.z1 > p.z - P_HALF_D && c.z0 < p.z + P_HALF_D
       && c.y1 > p.y + 1e-4 && c.y0 < p.y + ph;
     let event = null, knock = null;
-    // 0) Running, jumping or diving into a breakable block shatters it, and you carry straight on. In a
-    //    stack of glass only the block you're mostly in breaks; the ones above or below stay put. Landing
-    //    on top only dips your feet in, so you can still stand on glass.
-    {
+    // 0) Diving into a breakable block (or belly-sliding into it after a dive) always shatters it, however
+    //    little of it you hit, and you carry straight on. One dive smashes one block per stack: the block
+    //    you're mostly in. The ones above or below it stay put, even if the same dive brushes them.
+    if (p.diving || p.slideT > 0) {
       const pick = new Map();
       for (const c of boxes) {
         if (!c.part.breakable || c.b.broken || !overlaps(c)) continue;
-        const key = `${c.cx.toFixed(2)}|${c.cz.toFixed(2)}`, inside = Math.min(c.y1, p.y + ph) - Math.max(c.y0, p.y);
-        if (inside < 0.3) continue;                         // only grazing it: a bump, not a break
+        const key = `${c.row.uid}:${c.b.lane}`, inside = Math.min(c.y1, p.y + ph) - Math.max(c.y0, p.y);
+        if (p.diveBroke.has(key)) continue;                 // this dive already smashed a block of that stack
         if (!pick.has(key) || inside > pick.get(key).inside) pick.set(key, { c, inside });
       }
-      for (const { c } of pick.values()) {
+      for (const [key, { c }] of pick) {
+        p.diveBroke.add(key);
         c.b.broken = true;
         c.row.blocks = c.row.blocks.filter((bk) => bk !== c.b);
         event = { kind: 'break', row: c.row, block: c.b, x: c.cx, y: c.y0, z: c.cz, h: c.y1 - c.y0 };
@@ -3175,7 +3176,7 @@ const player = (() => {
   return {
     root, x: P_START_X, y: 0, z: P_START_Z, vx: 0, vy: 0, vz: 0,
     grounded: true, coyote: 0, jumpBuf: 0, platform: null, carry: 0,
-    diving: false, dived: false, slideT: 0, stunT: 0, pushT: 9, knockT: 9, spinX: 0, diveBlend: 0,
+    diving: false, dived: false, slideT: 0, stunT: 0, pushT: 9, knockT: 9, spinX: 0, diveBlend: 0, diveBroke: new Set(),
     squash: 0, lean: 0, yaw: 0, runPhase: 0, blinkT: 2, blink: 0, t: 0, ko: null, flicker: 0,
     showYaw: null,                                       // set while the runner poses on the skins podium
     get visible() { return root.visible; },
@@ -3217,7 +3218,7 @@ const player = (() => {
       this.vx = this.vz = this.vy = 0;
       this.grounded = false; this.coyote = 0; this.jumpBuf = 0;
       this.platform = null; this.carry = 0;
-      this.diving = false; this.dived = false; this.slideT = 0; this.stunT = 0; this.pushT = 9; this.knockT = 9; this.spinX = 0; this.diveBlend = 0;
+      this.diving = false; this.dived = false; this.slideT = 0; this.stunT = 0; this.pushT = 9; this.knockT = 9; this.spinX = 0; this.diveBlend = 0; this.diveBroke.clear();
       this.squash = 0; this.lean = 0; this.yaw = 0; this.showYaw = null;
       this.ko = null; this.flicker = 0;
       visual.rotation.set(0, 0, 0);
@@ -3288,7 +3289,7 @@ const player = (() => {
           if (l < 0.25) { dx = -Math.sin(this.yaw); dz = -Math.cos(this.yaw); } else { dx /= l; dz /= l; }
           this.vx = dx * DIVE_SPEED; this.vz = dz * DIVE_SPEED;
           this.vy = Math.max(this.vy, DIVE_UP);
-          this.diving = true; this.dived = true; this.jumpBuf = 0;
+          this.diving = true; this.dived = true; this.jumpBuf = 0; this.diveBroke.clear();   // a new dive can smash again
           game.onDive();
         }
       }
