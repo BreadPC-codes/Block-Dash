@@ -327,6 +327,8 @@ input[type=range]:focus-visible{outline:2px solid var(--cyan);outline-offset:6px
 .sw.low{height:22px;background:linear-gradient(180deg,#ff6b78,#ff4d5e);box-shadow:inset 0 2px 0 rgba(255,255,255,.35),0 3px 0 rgba(0,0,0,.35)}
 .sw.climb{background:linear-gradient(180deg,#ffd0d5,#ff8f9b);clip-path:polygon(0 100%,0 67%,33% 67%,33% 34%,66% 34%,66% 0,100% 0,100% 100%);border-radius:3px}
 .sw.spike{background:linear-gradient(180deg,#f1eeff,#8f88bb);clip-path:polygon(0 100%,0 34%,12% 0,25% 34%,37% 0,50% 34%,62% 0,75% 34%,87% 0,100% 34%,100% 100%)}
+.sw.brk{background:linear-gradient(135deg,#d9fbff,#79d3ec);box-shadow:inset 0 0 0 2px rgba(255,255,255,.6),0 3px 0 rgba(0,0,0,.35);
+  background-image:linear-gradient(118deg,transparent 46%,#2b6f8f 47% 50%,transparent 51%),linear-gradient(135deg,#d9fbff,#79d3ec)}
 .sw.bar{height:14px;border-radius:7px;background:repeating-linear-gradient(135deg,#ffc93c 0 6px,#2b1d4a 6px 12px);box-shadow:0 3px 0 rgba(0,0,0,.35)}
 .sw.move{background:linear-gradient(160deg,#d08bff,#8a2be2);box-shadow:0 0 14px rgba(196,107,255,.65),0 3px 0 #4b1585}
 .sw.laser{background:repeating-linear-gradient(180deg,transparent 0 6px,#ff3b4f 6px 8px),linear-gradient(90deg,#2a2450 0 4px,transparent 4px calc(100% - 4px),#2a2450 calc(100% - 4px));
@@ -337,7 +339,8 @@ input[type=range]:focus-visible{outline:2px solid var(--cyan);outline-offset:6px
 .pmeta{font-size:11px;color:var(--muted);margin-bottom:8px}
 .pgrid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px}
 .pgrid .c{aspect-ratio:1;border-radius:2px;background:rgba(255,255,255,.07)}
-.pgrid .c.x{background:#d8d4f2;box-shadow:inset 0 0 0 2px #6b6396}.pgrid .c.bar{background:#ffc93c;transform:scaleY(.55)}
+.pgrid .c.x{background:#d8d4f2;box-shadow:inset 0 0 0 2px #6b6396}.pgrid .c.x2{background:#bdb6e3;box-shadow:inset 0 0 0 3px #4b4170}
+.pgrid .c.k{background:#bff3ff;box-shadow:inset 0 0 0 2px #2b6f8f}.pgrid .c.k2{background:#79d3ec;box-shadow:inset 0 0 0 3px #2b6f8f}.pgrid .c.bar{background:#ffc93c;transform:scaleY(.55)}
 .pgrid .c.s{background:#ff4d5e}.pgrid .c.s3{background:#c22a3d}.pgrid .c.st{background:#ffc2c8}.pgrid .c.j{background:#ffa3ab}.pgrid .c.m{background:#b44dff;box-shadow:0 0 5px rgba(180,77,255,.7)}
 
 /* Pause / Game over */
@@ -540,7 +543,8 @@ body.touch .kbd-hint{display:none}
       <div class="leg"><span class="sw low"></span><div><b>Single block</b><small>One cube. A jump gets you on top, and a running jump or a dive clears it. Ride it, hop off, or climb from it onto a stack.</small></div></div>
       <div class="leg"><span class="sw climb"></span><div><b>Climb wall</b><small>Three blocks high with no hole (Normal and harder). Its lighter lane has steps in front: jump onto the low step, then the middle one, then over the top, and drop down behind it.</small></div></div>
       <div class="leg"><span class="sw move"></span><div><b>Crusher</b><small>Rises and slams down. Get caught underneath and you're bonked away.</small></div></div>
-      <div class="leg"><span class="sw spike"></span><div><b>Spikes</b><small>A block covered in spikes. You can't stand on it, and touching it from any side knocks you backwards with a tumble.</small></div></div>
+      <div class="leg"><span class="sw spike"></span><div><b>Spikes</b><small>A block covered in spikes, one or two high. You can't stand on it, and touching it from any side knocks you backwards with a tumble.</small></div></div>
+      <div class="leg"><span class="sw brk"></span><div><b>Breakable block</b><small>Cracked glass, one or two high. Solid like any block, but dive into it (or belly-slide into it) and it shatters.</small></div></div>
       <div class="leg"><span class="sw bar"></span><div><b>Bar</b><small>A low striped bar lying across two squares. Hop over it: touch it and you're knocked backwards.</small></div></div>
       <div class="leg"><span class="sw laser"></span><div><b>Laser fences</b><small>They stand right beside the outer lanes, so there is no way around a wall at the sides. Touch one and the run is over.</small></div></div>
     </div>
@@ -1097,6 +1101,36 @@ const PATTERN_DEFS = [
   3 | . . . . . . . . |
   2 | X . . . . X . . |
   1 | . B b . . . . X |` },
+  { id: 'glassgarden', name: 'Glass Garden', minWave: 2, rating: 2, ascii: `
+      A B C D E F G H
+  8 | . K . . G . . K |
+  7 | . . . . . . . . |
+  6 | G . . K . . G . |
+  5 | . . . . . . . . |
+  4 | . . G . . K . . |
+  3 | . . . . . . . . |
+  2 | K . . . G . . . |
+  1 | . . K . . . K . |` },
+  { id: 'smashwall', name: 'Smash Through', minWave: 3, rating: 3, wall: true, ascii: `
+      A B C D E F G H
+  8 | 3 3 3 G G 3 3 3 |
+  7 | . . . . . . . . |
+  6 | 3 G 3 3 3 3 G 3 |
+  5 | . . . . . . . . |
+  4 | # # K K # # . . |
+  3 | . . . . . . . . |
+  2 | 3 3 3 3 G 3 3 3 |
+  1 | . . . . . . . . |` },
+  { id: 'spiketowers', name: 'Spike Towers', minWave: 4, rating: 3, wall: true, ascii: `
+      A B C D E F G H
+  8 | # Y Y . . Y Y # |
+  7 | . . . . . . . . |
+  6 | Y . . Y Y . . Y |
+  5 | . . . . . . . . |
+  4 | 3 3 Y . . Y 3 3 |
+  3 | . . . . . . . . |
+  2 | Y Y . . Y Y . . |
+  1 | . . . . . . . . |` },
   { id: 'gauntlet', name: 'The Gauntlet', minWave: 10, rating: 5, ascii: `
       A B C D E F G H
   8 | # . . # # . . # |
@@ -1152,7 +1186,7 @@ const PATTERN_DEFS = [
 const FIXED_OPENING = ['wallrush', 'corridor', 'hopwall'];   // gentle introduction for waves 1-3
 
 // --- Parser: ASCII grid → { rows: [{ rowNumber, cells[8] }] } in arrival order (8 → 1)
-const SYMBOLS = new Set(['#', '.', 'J', 'M', '3', 'S', 'X', 'B', 'b']);   // X spikes, B b a bar's left and right half
+const SYMBOLS = new Set(['#', '.', 'J', 'M', '3', 'S', 'X', 'Y', 'B', 'b', 'K', 'G']);   // X/Y spikes 1/2 high, B b a bar, K/G breakable 1/2 high
 function parsePattern(def) {
   const byRow = {};
   for (const line of def.ascii.split('\n')) {
@@ -1201,7 +1235,7 @@ function rowSafety(cells) {            // 0 = blocked, 1 = free, 2 = needs a jum
       const c = cells[i];
       if (c === '.' || Math.abs(x - laneX(i)) >= CLEARANCE) continue;
       if (c === 'S') t = 3;
-      else if (c === 'J' || c === 'B' || c === 'b') { if (t === 1) t = 2; }   // a single block or a low bar: jump it
+      else if (c === 'J' || c === 'B' || c === 'b' || c === 'K' || c === 'G') { if (t === 1) t = 2; }   // jump it (a block or a bar), or dive through it (breakable)
       else { t = 0; break; }
     }
     out[s] = t;
@@ -1368,7 +1402,7 @@ const saveBest = () => store.set(bestKey(level.n), String(bestWave));
 // 6b. Custom wave layouts: 30 slots made in the WAVES editor. A layout covers the whole map, one cell
 //     per square of the checkered floor (12 lanes × 20 squares), and the wave arrives exactly as built.
 // ---------------------------------------------------------------------
-const LAYOUT_SLOTS = 30, LAYOUT_KEY = 'blockdash.layouts.v1', LAYOUT_CELLS = '.J#3SMXBb', LAYOUT_W = LANES;   // every lane of the arena
+const LAYOUT_SLOTS = 30, LAYOUT_KEY = 'blockdash.layouts.v1', LAYOUT_CELLS = '.J#3SMXYBbKG', LAYOUT_W = LANES;   // every lane of the arena
 const SQ = LANE_W, LAYOUT_H = Math.round(ARENA_LEN / SQ);   // the floor's squares, one block each: 20 from the near edge to the far one
 const OLD_ROW_AT = [1, 3, 6, 8, 10, 12, 14, 16];         // where 8-row layouts (older saves, built-in patterns) land on the map
 const emptyMap = () => Array.from({ length: LAYOUT_H }, () => Array(LAYOUT_W).fill('.'));
@@ -1554,6 +1588,13 @@ const audio = {
       case 'dive':
         this.noise({ dur: 0.26, vol: 0.12, f0: 700, f1: 2600, type: 'bandpass', q: 1.4 });
         this.tone({ f0: 420, f1: 880, dur: 0.16, type: 'triangle', vol: 0.06 });
+        break;
+      case 'shatter':                                     // breaking glass: a bright crash and a few tinkles
+        this.noise({ dur: 0.38, vol: 0.26, f0: 5200, f1: 900, type: 'bandpass', q: 0.9 });
+        this.noise({ dur: 0.1, vol: 0.2, f0: 600, type: 'lowpass' });
+        this.tone({ f0: 2100, f1: 1200, dur: 0.12, type: 'triangle', vol: 0.05 });
+        this.tone({ f0: 2900, f1: 1700, dur: 0.1, type: 'triangle', vol: 0.04, delay: 0.05 });
+        this.tone({ f0: 2400, f1: 1500, dur: 0.09, type: 'triangle', vol: 0.03, delay: 0.11 });
         break;
       case 'bonk':
         this.tone({ f0: 620, f1: 160, dur: 0.22, type: 'sine', vol: 0.2 });
@@ -1746,6 +1787,16 @@ TEX.floor = canvasTex(1024, 512, (g, w, h) => {
   g.fillStyle = 'rgba(190,180,255,.42)';                                   // grid lines, front-to-back and side-to-side
   for (let k = 0; k <= LANES; k++) g.fillRect((RIM + k * LANE_W) * ux - 1.5, 0, 3, h);
   for (let j = 0; j <= 4; j++) g.fillRect(RIM * ux, j * 2 * uz - 1.5, LANES * LANE_W * ux, 3);
+});
+TEX.crack = canvasTex(128, 128, (g, w) => {              // breakable: pale glass with cracks running through it
+  const gr = g.createLinearGradient(0, 0, w, w);
+  gr.addColorStop(0, '#d9fbff'); gr.addColorStop(1, '#79d3ec');
+  g.fillStyle = gr; g.fillRect(0, 0, w, w);
+  g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 6; g.strokeRect(5, 5, w - 10, w - 10);
+  const crack = (pts, width, col) => { g.strokeStyle = col; g.lineWidth = width; g.lineJoin = 'round'; g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); };
+  const lines = [[[64, 58], [40, 30], [30, 8]], [[64, 58], [96, 40], [122, 34]], [[64, 58], [70, 92], [56, 122]], [[64, 58], [24, 74], [6, 70]], [[70, 92], [96, 104], [110, 124]]];
+  for (const l of lines) crack(l.map(([x, y]) => [x + 1.5, y + 1.5]), 3, 'rgba(255,255,255,.8)');
+  for (const l of lines) crack(l, 2.5, '#2b6f8f');
 });
 TEX.bar = canvasTex(128, 128, (g, w, h) => {              // hazard stripes, wound round the bar
   g.fillStyle = '#2b1d4a'; g.fillRect(0, 0, w, h);
@@ -1975,6 +2026,7 @@ const MESH = {
     transparent: true, opacity: 0.28, depthWrite: false }), 400),
   spikes: makeInstanced(SPIKE_GEO, new THREE.MeshStandardMaterial({ color: 0xf1eeff, roughness: 0.25, metalness: 0.55, emissive: 0x2a1450 }), 420),
   bar: makeInstanced(BAR_GEO, new THREE.MeshStandardMaterial({ map: TEX.bar, roughness: 0.4, metalness: 0.1, emissive: 0x1c1000 }), 260),
+  brk: makeInstanced(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.crack, roughness: 0.22, metalness: 0.05, emissive: 0x0d3a4a, emissiveIntensity: 0.7 }), 700),
   mk: makeInstanced(new THREE.PlaneGeometry(BLOCK_W, BLOCK_D).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({ map: TEX.marker, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
       polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }), 400, false),
@@ -2259,13 +2311,16 @@ const world = {
           continue;
         }
         // stacks of whole blocks; '#' in the built-in patterns is 2 or 3 high, in your own layouts exactly 2
-        const units = c === '3' || c === 'S' ? 3 : c === '#' ? (pattern.custom ? 2 : Math.random() < 0.25 ? 3 : 2) : 1;
-        const h = units * BLOCK_H + (c === 'X' ? 0.6 : 0), tint = c === 'M' ? WHITE : c === 'S' ? stepColor : c === 'X' ? SPIKE_BASE : color;
+        const units = c === '3' || c === 'S' ? 3 : c === '#' ? (pattern.custom ? 2 : Math.random() < 0.25 ? 3 : 2) : c === 'Y' || c === 'G' ? 2 : 1;
+        const spiked = c === 'X' || c === 'Y', breakable = c === 'K' || c === 'G';
+        const h = units * BLOCK_H + (spiked ? 0.6 : 0), tint = c === 'M' || breakable ? WHITE : c === 'S' ? stepColor : spiked ? SPIKE_BASE : color;
         const part = (oz, n) => ({ ox: 0, oz, w: BLOCK_W, d: BLOCK_D, y0: 0, h: n * BLOCK_H, units: n, color: tint, climb: c === 'S' });
-        // 'S': steps in front of the wall, two blocks high and then one, to climb over it. 'X': a cube of spikes.
+        // 'S': steps in front of the wall, two blocks high and then one, to climb over it. 'X'/'Y': spiked cubes,
+        // 'K'/'G': breakable ones (dive into them), one or two high.
         const parts = c === 'S' ? [part(0, 3), part(BLOCK_D, 2), part(2 * BLOCK_D, 1)]
-          : c === 'X' ? [{ ...part(0, 1), w: BLOCK_W + 2 * SPIKE_PAD, d: BLOCK_D + 2 * SPIKE_PAD, h: BLOCK_H + SPIKE_PAD, hazard: 'spike' }]
-            : [part(0, units)];
+          : spiked ? [{ ...part(0, units), w: BLOCK_W + 2 * SPIKE_PAD, d: BLOCK_D + 2 * SPIKE_PAD, h: units * BLOCK_H + SPIKE_PAD, hazard: 'spike' }]
+            : breakable ? [{ ...part(0, units), breakable: true }]
+              : [part(0, units)];
         const hw = parts[0].w / 2;
         const ext = { x0: -hw, x1: hw, z0: -parts[0].d / 2, z1: c === 'S' ? 2.5 * BLOCK_D : parts[0].d / 2, h };
         row.blocks.push({ type: c, lane, x: laneX(lane), y: -(h + 0.3), vy: 0, units, riseH: h + 0.3, parts, ext,
@@ -2385,6 +2440,16 @@ const world = {
     const overlaps = (c) => c.x1 > p.x - P_HALF_W && c.x0 < p.x + P_HALF_W && c.z1 > p.z - P_HALF_D && c.z0 < p.z + P_HALF_D
       && c.y1 > p.y + 1e-4 && c.y0 < p.y + ph;
     let event = null, knock = null;
+    // 0) Diving (or belly-sliding) into a breakable block shatters it, and you carry straight on.
+    if (p.diving || p.slideT > 0) {
+      for (const c of boxes) {
+        if (!c.part.breakable || c.b.broken || !overlaps(c)) continue;
+        c.b.broken = true;
+        c.row.blocks = c.row.blocks.filter((bk) => bk !== c.b);
+        event = { kind: 'break', row: c.row, block: c.b, x: c.cx, y: c.y0, z: c.cz, h: c.y1 - c.y0 };
+      }
+      if (event) for (let i = boxes.length - 1; i >= 0; i--) if (boxes[i].b.broken) boxes.splice(i, 1);
+    }
     // 1) Leading faces of an incoming row move the player out in front of them first, so sliding
     //    sideways along a wall never snags on the next block of that same wall.
     if (sweeping) {
@@ -2536,8 +2601,8 @@ const world = {
             ghost = dx * dx + dy * dy + dz * dz < CAM_CLEAR * CAM_CLEAR
               || SIGHT.some((sg) => sg.hits(x0 - m, y0, z0 - m, x1 + m, y1, z1 + m));
           }
-          const di = row.wave.design, dsg = di >= 0 && b.type !== 'M' && !part.hazard ? designs[di] : null;
-          const mesh = ghost ? MESH.ghost : b.type === 'M' ? MESH.M : dsg ? designMesh(di) : MESH['#'];
+          const di = row.wave.design, dsg = di >= 0 && b.type !== 'M' && !part.hazard && !part.breakable ? designs[di] : null;
+          const mesh = ghost ? MESH.ghost : b.type === 'M' ? MESH.M : part.breakable ? MESH.brk : dsg ? designMesh(di) : MESH['#'];
           const color = !dsg || dsg.tint || ghost ? part.color : part.climb ? CLIMB_BRIGHT : WHITE;
           for (let u = 0; u < part.units; u++) {             // a stack is drawn as whole blocks
             const i = n.get(mesh) || 0;
@@ -3409,9 +3474,10 @@ const layoutView = (() => {
   const BLOCK_CAP = LAYOUT_H * LANES * 6, CRUSH_CAP = LAYOUT_H * LANES;   // room for a whole map of climbs
   const blocks = new THREE.InstancedMesh(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.block, roughness: 0.45, metalness: 0.05 }), BLOCK_CAP);
   const crushers = new THREE.InstancedMesh(UNIT_BOX, crushMat, CRUSH_CAP);
-  const spikes = new THREE.InstancedMesh(SPIKE_GEO, MESH.spikes.material, LAYOUT_H * LANES);
+  const spikes = new THREE.InstancedMesh(SPIKE_GEO, MESH.spikes.material, LAYOUT_H * LANES * 2);
+  const breaks = new THREE.InstancedMesh(UNIT_BOX, MESH.brk.material, LAYOUT_H * LANES * 2);
   const bars = new THREE.InstancedMesh(BAR_GEO, MESH.bar.material, LAYOUT_H * LANES);
-  for (const m of [blocks, crushers, spikes, bars]) { m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false; m.count = 0; g.add(m); }
+  for (const m of [blocks, crushers, spikes, bars, breaks]) { m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false; m.count = 0; g.add(m); }
   for (let i = 0; i < BLOCK_CAP; i++) blocks.setColorAt(i, WHITE);
   const pts = [];                                          // the floor's squares: 12 lanes × 20 rows
   for (let l = 0; l <= LANES; l++) { const x = -HALF_W + l * LANE_W; pts.push(x, 0.04, Z_FAR, x, 0.04, Z_NEAR); }
@@ -3428,12 +3494,12 @@ const layoutView = (() => {
   const arrowGeo = new THREE.ShapeGeometry(arrow).rotateX(-Math.PI / 2);
   const arrowMat = new THREE.MeshBasicMaterial({ color: 0x44f0ff, toneMapped: false, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
   for (const x of [-HALF_W / 2, 0, HALF_W / 2]) for (const z of [Z_FAR - 1.4, Z_FAR - 3.4]) { const a = new THREE.Mesh(arrowGeo, arrowMat); a.position.set(x, 0.05, z); g.add(a); }
-  const blockCells = [], crushCells = [], spikeCells = [], barCells = [], _m = new THREE.Matrix4(), _col = new THREE.Color();
-  const HEIGHT = { J: 1, '#': 2, 3: 3, S: 3, M: 1, X: 1, B: BAR_H / BLOCK_H, b: BAR_H / BLOCK_H, '.': 0 };
+  const blockCells = [], crushCells = [], spikeCells = [], barCells = [], breakCells = [], _m = new THREE.Matrix4(), _col = new THREE.Color();
+  const HEIGHT = { J: 1, '#': 2, 3: 3, S: 3, M: 1, X: 1, Y: 2, K: 1, G: 2, B: BAR_H / BLOCK_H, b: BAR_H / BLOCK_H, '.': 0 };
   return {
     g,
     draw(L) {
-      let nb = 0, nc = 0, ns = 0, nr = 0;
+      let nb = 0, nc = 0, ns = 0, nr = 0, nk = 0;
       L.rows.forEach((row, k) => {
         const zc = ltRowZ(k);
         row.forEach((c, lane) => {
@@ -3446,10 +3512,19 @@ const layoutView = (() => {
             bars.setMatrixAt(nr, _m); barCells[nr++] = cell;
             return;
           }
-          if (c === 'X') {                                 // a dark cube with spikes all over
-            _m.makeScale(BLOCK_W, BLOCK_H, BLOCK_D).setPosition(x, 0, zc);
-            blocks.setMatrixAt(nb, _m); blocks.setColorAt(nb, SPIKE_BASE); blockCells[nb++] = cell;
-            spikes.setMatrixAt(ns, _m); spikeCells[ns++] = cell;
+          if (c === 'X' || c === 'Y') {                    // dark cubes with spikes all over, one or two high
+            for (let u = 0; u < HEIGHT[c]; u++) {
+              _m.makeScale(BLOCK_W, BLOCK_H, BLOCK_D).setPosition(x, u * BLOCK_H, zc);
+              blocks.setMatrixAt(nb, _m); blocks.setColorAt(nb, SPIKE_BASE); blockCells[nb++] = cell;
+              spikes.setMatrixAt(ns, _m); spikeCells[ns++] = cell;
+            }
+            return;
+          }
+          if (c === 'K' || c === 'G') {                    // breakable glass cubes, one or two high
+            for (let u = 0; u < HEIGHT[c]; u++) {
+              _m.makeScale(BLOCK_W, BLOCK_H, BLOCK_D).setPosition(x, u * BLOCK_H, zc);
+              breaks.setMatrixAt(nk, _m); breakCells[nk++] = cell;
+            }
             return;
           }
           if (c === 'M') {
@@ -3470,12 +3545,12 @@ const layoutView = (() => {
           }
         });
       });
-      blocks.count = nb; crushers.count = nc; spikes.count = ns; bars.count = nr;
-      for (const m of [blocks, crushers, spikes, bars]) { m.instanceMatrix.needsUpdate = true; m.computeBoundingSphere(); }
+      blocks.count = nb; crushers.count = nc; spikes.count = ns; bars.count = nr; breaks.count = nk;
+      for (const m of [blocks, crushers, spikes, bars, breaks]) { m.instanceMatrix.needsUpdate = true; m.computeBoundingSphere(); }
       blocks.instanceColor.needsUpdate = true;
     },
-    cellOf(mesh, i) { return (mesh === crushers ? crushCells : mesh === spikes ? spikeCells : mesh === bars ? barCells : blockCells)[i] || null; },
-    meshes: [blocks, crushers, spikes, bars], barMesh: bars,
+    cellOf(mesh, i) { return (mesh === crushers ? crushCells : mesh === spikes ? spikeCells : mesh === bars ? barCells : mesh === breaks ? breakCells : blockCells)[i] || null; },
+    meshes: [blocks, crushers, spikes, bars, breaks], barMesh: bars,
     setHover(cells, L) {                                 // highlight the cells about to be painted, on top of what is there
       let n = 0;
       for (const c of cells) {                           // one tile per lane
@@ -4012,9 +4087,10 @@ function closeSkins() {
 const LT_BRUSHES = [
   { c: '.', label: 'HOLE' }, { c: 'J', label: '1 BLOCK' }, { c: '#', label: '2 BLOCKS' },   // stacks of exactly 1, 2 or 3 blocks
   { c: '3', label: '3 BLOCKS' }, { c: 'S', label: 'CLIMB' }, { c: 'M', label: 'CRUSHER' },
-  { c: 'X', label: 'SPIKES' }, { c: 'B', label: 'BAR' },                // these two knock you back; a bar spans two squares
+  { c: 'X', label: 'SPIKES 1×1' }, { c: 'Y', label: 'SPIKES 1×2' }, { c: 'B', label: 'BAR' },   // these knock you back; a bar spans two squares
+  { c: 'K', label: 'BREAK 1×1' }, { c: 'G', label: 'BREAK 1×2' },       // dive into these and they shatter; ×2 = two high
 ];
-const LT_COLORS = { '.': '#2a2150', J: '#ffa3ab', '#': '#ff4d5e', 3: '#b3122e', S: '#ffd0d5', M: '#b44dff', X: '#d8d4f2', B: '#ffc93c', b: '#ffc93c' };
+const LT_COLORS = { '.': '#2a2150', J: '#ffa3ab', '#': '#ff4d5e', 3: '#b3122e', S: '#ffd0d5', M: '#b44dff', X: '#d8d4f2', Y: '#bdb6e3', B: '#ffc93c', b: '#ffc93c', K: '#bff3ff', G: '#79d3ec' };
 const lt = { slot: 0, brush: '#', mirror: false, fill: false, undo: [], painting: false, last: null };
 const ltLayout = () => layouts[lt.slot];
 function ltMessage(L) {
@@ -4112,7 +4188,7 @@ function drawLayoutCell(g, c, x, y, S) {
   g.fillStyle = c === 'J' ? '#7a1b2a' : '#ffffff';
   g.font = `800 ${Math.round(S * 0.36)}px system-ui, sans-serif`;
   g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText({ J: '1', '#': '2', 3: '3', M: 'M', X: '✱', B: '=', b: '=' }[c], x * S + S / 2, y * S + S / 2 + 1);
+  g.fillText({ J: '1', '#': '2', 3: '3', M: 'M', X: '✱', Y: '✱', B: '=', b: '=', K: '◇', G: '◇' }[c], x * S + S / 2, y * S + S / 2 + 1);
 }
 function drawLayoutThumb(i) {
   const cv = $('lt-slots').children[i].querySelector('canvas'), g = cv.getContext('2d'), L = layouts[i];
@@ -4525,7 +4601,7 @@ function updateMenuBest() {
 function renderPatternLibrary() {
   const wrap = $('pattern-lib');
   wrap.replaceChildren();
-  const cls = { '#': 'c s', J: 'c j', M: 'c m', '.': 'c', 3: 'c s3', S: 'c st', X: 'c x', B: 'c bar', b: 'c bar' };
+  const cls = { '#': 'c s', J: 'c j', M: 'c m', '.': 'c', 3: 'c s3', S: 'c st', X: 'c x', Y: 'c x2', B: 'c bar', b: 'c bar', K: 'c k', G: 'c k2' };
   for (const p of LIBRARY) {
     const card = document.createElement('div');
     card.className = 'pcard';
@@ -4760,6 +4836,12 @@ const game = {
       particles.burst(player.x, player.y + 1.75, player.z, 12, ['#ffd23f', '#ffffff', '#c46bff'], { speed: 3.5, up: 4, size: [0.08, 0.16], life: [0.5, 0.9], grav: 0.5 });
     } else if (c.kind === 'bump') {
       audio.play('push');
+    } else if (c.kind === 'break') {                  // shattered: shards fly, the run carries on
+      audio.play('shatter');
+      vibrate(25);
+      camCtl.shake = Math.max(camCtl.shake, 0.25);
+      particles.burst(c.x, c.y + c.h / 2, c.z, 18 + Math.round(c.h * 6), ['#d9fbff', '#79d3ec', '#ffffff', '#b9a6ff'],
+        { speed: 6, up: 5, size: [0.12, 0.3], life: [0.6, 1.1], grav: 1.1, carry: world.speed });
     } else if (c.kind === 'knock') {
       audio.play('bonk');
       vibrate([20, 15, 40]);
@@ -4888,7 +4970,7 @@ function applyQualityScene() {
   decor.setCount(q.decor);
   dust.setCount(q.dust);
   stars.setCount(q.stars);
-  for (const key of ['#', 'M', 'spikes', 'bar']) { MESH[key].castShadow = q.shadows; MESH[key].receiveShadow = q.shadows; }
+  for (const key of ['#', 'M', 'spikes', 'bar', 'brk']) { MESH[key].castShadow = q.shadows; MESH[key].receiveShadow = q.shadows; }
   MESH.ghost.castShadow = q.shadows; MESH.ghost.receiveShadow = false;
   for (const d of designs) if (d.mesh) { d.mesh.castShadow = q.shadows; d.mesh.receiveShadow = q.shadows; }
 }
@@ -5095,7 +5177,7 @@ function init() {
       rowSafety, planWave, SAMPLES, LIBRARY, speedForWave, laneX, levelName: () => level.name,
       tick(dt) { update(dt); }, draw() { if (skinUI.thumbQueue.length) renderSkinThumbs(skinUI.thumbQueue.splice(0)); renderer.render(scene, camera); },
       skins: { SKINS, state: skinState, select: selectSkin },
-      designs, meshCounts: () => ({ hash: MESH['#'].count, ghost: MESH.ghost.count, spikes: MESH.spikes.count, bars: MESH.bar.count }), layouts, layoutOpts,
+      designs, meshCounts: () => ({ hash: MESH['#'].count, ghost: MESH.ghost.count, spikes: MESH.spikes.count, bars: MESH.bar.count, breakables: MESH.brk.count }), layouts, layoutOpts,
       checkLayouts: () => layouts.forEach((L, i) => checkLayout(i)),
       layoutHoverCount: () => layoutView.g.children.find((o) => o.isInstancedMesh && o.material.opacity === 0.3).count,
       layoutBlockCount: () => layoutView.meshes.map((m) => m.count),
