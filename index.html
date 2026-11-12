@@ -144,6 +144,26 @@ body.touch[data-state=playing] #touch,body.touch[data-state=countdown] #touch{di
   font-family:var(--display);font-size:calc(17px * var(--joy-scale));letter-spacing:.04em;opacity:.92;
   box-shadow:0 6px 0 rgba(140,50,0,.6),0 10px 26px rgba(0,0,0,.35);transition:transform .08s,box-shadow .08s}
 .jump-ico{font-size:.85em;line-height:1}
+.punch-btn{position:absolute;right:calc(var(--sar) + 36px + 116px * var(--joy-scale));bottom:calc(var(--sab) + 40px);width:calc(84px * var(--joy-scale));height:calc(84px * var(--joy-scale));
+  border-radius:50%;pointer-events:auto;touch-action:none;border:2px solid rgba(255,255,255,.55);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  background:radial-gradient(circle at 35% 28%,rgba(255,170,190,.95),rgba(255,77,94,.9) 55%,rgba(170,30,60,.9));color:#fff;font-family:var(--display);font-size:calc(13px * var(--joy-scale));
+  letter-spacing:.04em;opacity:.92;box-shadow:0 5px 0 rgba(110,10,40,.6),0 8px 20px rgba(0,0,0,.35);transition:transform .08s}
+.punch-btn::after{content:"";position:absolute;inset:-2px;border-radius:50%;background:conic-gradient(rgba(16,8,40,.62) calc(var(--cd,0) * 360deg),transparent 0);pointer-events:none}
+.punch-ico{font-size:1.25em;line-height:1}
+.punch-btn.pressed{transform:translateY(3px) scale(.93)}
+.punch-hud{display:none;position:fixed;right:calc(var(--sar) + 18px);bottom:calc(var(--sab) + 18px);z-index:8;align-items:center;gap:7px;overflow:hidden;
+  padding:6px 12px 8px;border-radius:10px;background:rgba(14,10,38,.6);border:1px solid var(--line);color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.12em}
+.punch-hud .punch-key{display:grid;place-items:center;width:18px;height:18px;border-radius:5px;background:rgba(255,255,255,.14);color:#fff;font-size:10px}
+.punch-hud i{position:absolute;left:0;bottom:0;height:3px;width:calc(var(--ready,1) * 100%);background:var(--gold)}
+.punch-hud.ready{color:#fff}
+body[data-state=playing]:not(.touch) .punch-hud{display:flex}
+.chip-rivals{display:none}.chip-rivals.on{display:flex}
+.chip-rivals .chip-ico{color:#ff7a8a}
+.feed{position:absolute;top:calc(var(--sat) + 132px);left:calc(var(--sal) + 12px);display:flex;flex-direction:column;gap:5px;align-items:flex-start}
+.feed-item{padding:4px 10px;border-radius:8px;background:rgba(14,10,38,.6);border:1px solid var(--line);font-size:12px;font-weight:800;letter-spacing:.04em;color:#ece8ff;
+  white-space:nowrap;animation:feed 3.2s ease forwards}
+.feed-item.gold{color:var(--gold);border-color:rgba(255,210,63,.55)}
+@keyframes feed{0%{opacity:0;transform:translateX(-10px)}8%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
 .jump-btn.pressed{transform:translateY(4px) scale(.93);box-shadow:0 2px 0 rgba(140,50,0,.6),0 4px 12px rgba(0,0,0,.35)}
 .jump-btn .ripple{position:absolute;inset:-2px;border-radius:50%;border:3px solid rgba(255,230,140,.9);animation:ripple .45s ease-out forwards;pointer-events:none}
 @keyframes ripple{0%{transform:scale(1);opacity:.9}100%{transform:scale(1.45);opacity:0}}
@@ -483,6 +503,7 @@ body.touch .kbd-hint{display:none}
 <div id="hud">
   <div class="hud-left">
     <div class="chip chip-best" id="chip-best" title="Personal best"><span class="chip-ico">★</span><span class="chip-lbl">BEST</span><b id="hud-best">0</b></div>
+    <div class="chip chip-rivals" id="chip-rivals" title="Rival runners still in"><span class="chip-ico">✸</span><span class="chip-lbl">RIVALS</span><b id="hud-rivals">0</b></div>
     <div class="chip chip-diff" id="chip-diff" title="Current difficulty"><span class="diff-dot"></span><span id="hud-diff">EASY</span><span class="chip-sub" id="hud-speed">SPD 1.0×</span></div>
   </div>
   <div class="hud-center">
@@ -495,6 +516,7 @@ body.touch .kbd-hint{display:none}
     <div class="wave-pips" id="wave-pips" title="Rows of the current wave"></div>
     <div class="hud-time">TIME <span id="hud-time">00:00</span></div>
   </div>
+  <div class="feed" id="feed" aria-live="polite"></div>
   <div class="hud-right">
     <button class="icon-btn" id="btn-pause" aria-label="Pause game" title="Pause (Esc)"><span class="pause-ico"></span></button>
   </div>
@@ -509,7 +531,9 @@ body.touch .kbd-hint{display:none}
     <div class="joy-base" id="joy-base"><div class="joy-arrows"></div><div class="joy-knob" id="joy-knob"></div></div>
   </div>
   <button class="jump-btn" id="jump-btn" aria-label="Jump"><span class="jump-ico">▲</span><span class="jump-txt">JUMP</span></button>
+  <button class="punch-btn" id="punch-btn" aria-label="Punch"><span class="punch-ico">✸</span><span class="jump-txt">PUNCH</span></button>
 </div>
+<div class="punch-hud" id="punch-hud" aria-hidden="true"><span class="punch-key">F</span><span>PUNCH</span><i id="punch-fill"></i></div>
 
 <!-- ================= MAIN MENU ================= -->
 <section class="screen" id="screen-menu" aria-label="Main menu">
@@ -560,14 +584,16 @@ body.touch .kbd-hint{display:none}
         <p>The floor is a little slippery: you get up to speed fast but glide a short way when you let go. Walls of blocks sweep toward you in <b>waves</b> of eight rows. Get past all eight and <b>WAVE SURVIVED</b> goes up by one.</p>
         <p>On the main menu, pick your outfit under <b>SKINS</b>, paint your own blocks under <b>BLOCKS</b>, and build your own waves under <b>WAVES</b>: fly over the arena and stack the blocks yourself.</p>
         <p>Slip through the holes, jump the low parts, dive, or <b>jump on top</b> and ride. A wall that catches you <b>pushes you</b> toward the edge. Fall off the front or back edge, or touch a laser fence on the sides, and the run is over.</p>
+        <p><b>Rival runners</b> (set how many in Settings) dodge the same walls and pick fights. <b>Punch</b> them off the arena or into a laser before they do it to you. Punch in the middle of a dive for a <b>Super Punch</b>: you keep all your speed and hit much harder.</p>
       </div>
       <div class="card">
         <h3>CONTROLS</h3>
         <div class="ctrl"><span class="k">W A S D</span><span class="k">← ↑ → ↓</span> Move</div>
         <div class="ctrl"><span class="k">SPACE</span> Jump · press again in the air to <b>&nbsp;dive</b></div>
+        <div class="ctrl"><span class="k">F</span><span class="k">CLICK</span> Punch, the way you run (or look, standing still) · during a dive: <b>&nbsp;Super Punch</b></div>
         <div class="ctrl"><span class="k">ESC</span><span class="k">P</span> Pause</div>
         <div class="ctrl"><span class="k">MOUSE</span> Turn the camera 360° around you. The cursor hides while you play, and <span class="k">ESC</span> frees it. You always run the way the camera faces.</div>
-        <div class="ctrl"><span class="k">TOUCH</span> Joystick (bottom-left) moves · <span class="k">JUMP</span> (bottom-right), tap again in the air to dive · drag anywhere else to turn the camera</div>
+        <div class="ctrl"><span class="k">TOUCH</span> Joystick (bottom-left) moves · <span class="k">JUMP</span> (bottom-right), tap again in the air to dive · <span class="k">PUNCH</span> beside it · drag anywhere else to turn the camera</div>
       </div>
     </div>
     <h3>OBSTACLES</h3>
@@ -730,8 +756,12 @@ body.touch .kbd-hint{display:none}
         <div class="ctl"><input type="range" id="set-touch" min="0.5" max="3" step="0.1"><span class="val" id="val-touch"></span></div>
       </div>
       <div class="setting">
-        <div class="lbl"><label for="set-joy">Joystick size</label><small>Scales the joystick and JUMP button.</small></div>
+        <div class="lbl"><label for="set-joy">Joystick size</label><small>Scales the joystick and the JUMP and PUNCH buttons.</small></div>
         <div class="ctl"><input type="range" id="set-joy" min="0.7" max="1.4" step="0.05"><span class="val" id="val-joy"></span></div>
+      </div>
+      <div class="setting">
+        <div class="lbl"><label for="set-rivals">Rival runners</label><small>Computer players on the walls with you. They dodge, dive and punch.</small></div>
+        <div class="ctl"><input type="range" id="set-rivals" min="0" max="5" step="1"><span class="val" id="val-rivals"></span></div>
       </div>
     </section>
     <section>
@@ -888,6 +918,14 @@ const G_UP = 34, G_DOWN = 50, JUMP_V = 12.6;           // apex ≈ 2.33: lands o
 // Spikes and bars knock you backwards: a short tumble away from them (toward the near edge if they're coming at you).
 const KNOCK_BACK = 6.5, KNOCK_UP = 6.5, KNOCK_STUN = 0.45, KNOCK_COOLDOWN = 0.35;
 const BAR_H = 0.8, BAR_D = 0.8;                           // a bar lies on the floor across two squares: hop over it
+// Punch: a jab straight ahead, the same for every runner. Times in seconds from the button press; the hit
+// lands during `active`; reach and halfWidth shape the hitbox in front of the body (low/high: its height).
+const PUNCH = { buffer: 0.12, cooldown: 0.55, duration: 0.32, active: [0.06, 0.2], reach: 1.2, halfWidth: 0.55, low: 0.35, high: 1.45,
+  knockback: 8.5, lift: 4.2, stun: 0.32 };
+// Super Punch: the punch button while diving (or belly-sliding after a dive). The dive keeps all of its momentum
+// and the fist rides along in front of you; the knockback grows with how fast you are moving into the hit.
+const SUPER_PUNCH = { cooldown: 0.75, duration: 0.42, active: [0.03, 0.32], reach: 1.55, halfWidth: 0.62, low: -0.5, high: 1.1,
+  knockback: 11, momentum: 0.42, maxKnockback: 20, lift: 6, stun: 0.5 };
 const SPIKE_PAD = 0.3;                                    // the spikes reach this far out of the cube's faces before they knock you
 const JUMP_APEX = JUMP_V ** 2 / (2 * G_UP);
 const AIR_TIME = JUMP_V / G_UP + Math.sqrt((2 * JUMP_APEX) / G_DOWN);
@@ -1413,7 +1451,7 @@ function defaultQuality() {
   if (COARSE) return mem <= 3 || cores <= 4 ? 'low' : 'medium';
   return 'high';
 }
-const DEFAULTS = Object.freeze({ quality: defaultQuality(), difficulty: 3, fov: 70, camX: 0, camY: 0, mouseSens: 1, cameraSens: 1, touchSens: 1, joySize: 1, volume: 0.7, sfx: true, music: true, vibration: true });
+const DEFAULTS = Object.freeze({ quality: defaultQuality(), difficulty: 3, fov: 70, camX: 0, camY: 0, mouseSens: 1, cameraSens: 1, touchSens: 1, joySize: 1, rivals: 3, volume: 0.7, sfx: true, music: true, vibration: true });
 function sanitizeSettings(s) {
   const num = (v, lo, hi, d) => (Number.isFinite(+v) ? clamp(+v, lo, hi) : d);
   return {
@@ -1421,7 +1459,7 @@ function sanitizeSettings(s) {
     difficulty: Math.round(num(s.difficulty, 1, LEVELS.length, 3)),
     fov: num(s.fov, 45, 100, DEFAULTS.fov), camX: num(s.camX, -6, 6, 0), camY: num(s.camY, -4, 8, 0),
     mouseSens: num(s.mouseSens, 0.2, 4, 1), cameraSens: num(s.cameraSens, 0.3, 2, 1),
-    touchSens: num(s.touchSens, 0.5, 3, 1), joySize: num(s.joySize, 0.7, 1.4, 1),
+    touchSens: num(s.touchSens, 0.5, 3, 1), joySize: num(s.joySize, 0.7, 1.4, 1), rivals: Math.round(num(s.rivals, 0, 5, 3)),
     volume: num(s.volume, 0, 1, 0.7), sfx: s.sfx !== false, music: s.music !== false, vibration: s.vibration !== false,
     view2: true,
   };
@@ -1650,6 +1688,26 @@ const audio = {
       case 'dive':
         this.noise({ dur: 0.26, vol: 0.12, f0: 700, f1: 2600, type: 'bandpass', q: 1.4 });
         this.tone({ f0: 420, f1: 880, dur: 0.16, type: 'triangle', vol: 0.06 });
+        break;
+      case 'ko':                                          // you knocked a rival out: a bright two-note sting
+        this.tone({ f0: 660, f1: 660, dur: 0.1, type: 'square', vol: 0.06, lp: 2600 });
+        this.tone({ f0: 990, f1: 990, dur: 0.18, type: 'square', vol: 0.06, lp: 2600, delay: 0.09 });
+        break;
+      case 'swing':                                       // a punch thrown: a short whoosh
+        this.noise({ dur: 0.12, vol: 0.1 * (opt || 1), f0: 900, f1: 2400, type: 'bandpass', q: 1.2 });
+        break;
+      case 'superswing':
+        this.noise({ dur: 0.22, vol: 0.14 * (opt || 1), f0: 700, f1: 3200, type: 'bandpass', q: 1.4 });
+        this.tone({ f0: 300, f1: 900, dur: 0.18, type: 'sawtooth', vol: 0.04 * (opt || 1), lp: 2200 });
+        break;
+      case 'punch':                                       // it lands: a meaty thump
+        this.tone({ f0: 180, f1: 70, dur: 0.14, type: 'sine', vol: 0.3 * (opt || 1) });
+        this.noise({ dur: 0.08, vol: 0.22 * (opt || 1), f0: 1400, type: 'lowpass' });
+        break;
+      case 'superpunch':                                  // a bigger thump with a crack on top
+        this.tone({ f0: 240, f1: 50, dur: 0.3, type: 'sine', vol: 0.38 * (opt || 1) });
+        this.noise({ dur: 0.18, vol: 0.3 * (opt || 1), f0: 3000, f1: 600, type: 'bandpass', q: 0.8 });
+        this.tone({ f0: 900, f1: 1800, dur: 0.12, type: 'square', vol: 0.05 * (opt || 1), lp: 3000, delay: 0.02 });
         break;
       case 'shatter':                                     // breaking glass: a bright crash and a few tinkles
         this.noise({ dur: 0.38, vol: 0.26, f0: 5200, f1: 900, type: 'bandpass', q: 0.9 });
@@ -2865,9 +2923,11 @@ const saveSkins = () => store.set(SKIN_KEY, JSON.stringify(skinState));
 const skinColors = (id) => ({ ...SKIN_BY_ID[id].colors, ...(skinState.colors[id] || {}) });
 
 // ---------------------------------------------------------------------
-// 12. Player: a chunky little party-game runner (original design)
+// 12. Runners: a chunky little party-game runner (original design). The player is one; rivals are more
+//     of the same, with their own outfit and their own controls (the player's come from the input).
 // ---------------------------------------------------------------------
-const player = (() => {
+function createRunner(opts = {}) {
+  const local = !!opts.local, botCtl = { moveX: 0, moveZ: 0, aimX: 0, aimZ: 0 };
   const root = new THREE.Group();
   const visual = new THREE.Group();
   visual.rotation.order = 'YXZ';
@@ -2915,11 +2975,17 @@ const player = (() => {
     const shoulder = new THREE.Group();
     shoulder.position.set(s * 0.25, 0.43, 0);
     hips.add(shoulder);
-    add(shoulder, new THREE.CapsuleGeometry(0.07, 0.15, 4, 10), M.shirt, 0, -0.12, 0);
-    add(shoulder, new THREE.SphereGeometry(0.085, 12, 10), M.skin, 0, -0.29, 0);
-    shoulder.userData.s = s;
+    const sleeve = add(shoulder, new THREE.CapsuleGeometry(0.07, 0.15, 4, 10), M.shirt, 0, -0.12, 0);
+    const hand = add(shoulder, new THREE.SphereGeometry(0.085, 12, 10), M.skin, 0, -0.29, 0);
+    shoulder.userData = { s, sleeve, hand };
     return shoulder;
   });
+  // The punching fist glows during a Super Punch.
+  const fistGlow = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10),
+    new THREE.MeshBasicMaterial({ color: 0xffe066, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+  fistGlow.visible = false;
+  arms[1].userData.hand.add(fistGlow);
+  const _fist = new THREE.Vector3();
   const legs = [-1, 1].map((s) => {
     const hip = new THREE.Group();
     hip.position.set(s * 0.11, 0, 0);
@@ -3174,10 +3240,13 @@ const player = (() => {
   const animSt = { t: 0, k: 0, air: false };
 
   return {
-    root, x: P_START_X, y: 0, z: P_START_Z, vx: 0, vy: 0, vz: 0,
+    root, local, id: opts.id || 0, name: opts.name || 'YOU', x: P_START_X, y: 0, z: P_START_Z, vx: 0, vy: 0, vz: 0,
+    get ctl() { return local ? input : botCtl; },          // where this runner's steering comes from
     grounded: true, coyote: 0, jumpBuf: 0, platform: null, carry: 0,
+    punchT: -1, punchCd: 0, punchBuf: 0, punchSuper: false, punchDirX: 0, punchDirZ: -1, punchHits: new Set(), punchPrev: null,
+    punchedT: 9, lastHitBy: null, lastHitSuper: false, windup: 0,
     diving: false, dived: false, slideT: 0, stunT: 0, pushT: 9, knockT: 9, spinX: 0, diveBlend: 0, diveBroke: new Set(),
-    squash: 0, lean: 0, yaw: 0, runPhase: 0, blinkT: 2, blink: 0, t: 0, ko: null, flicker: 0,
+    squash: 0, lean: 0, yaw: 0, punchTurn: 0, runPhase: 0, blinkT: 2, blink: 0, t: 0, ko: null, flicker: 0,
     showYaw: null,                                       // set while the runner poses on the skins podium
     get visible() { return root.visible; },
     get height() { return this.diving || this.slideT > 0 ? P_HEIGHT_FLAT : P_HEIGHT; },
@@ -3219,8 +3288,11 @@ const player = (() => {
       this.grounded = false; this.coyote = 0; this.jumpBuf = 0;
       this.platform = null; this.carry = 0;
       this.diving = false; this.dived = false; this.slideT = 0; this.stunT = 0; this.pushT = 9; this.knockT = 9; this.spinX = 0; this.diveBlend = 0; this.diveBroke.clear();
-      this.squash = 0; this.lean = 0; this.yaw = 0; this.showYaw = null;
+      this.squash = 0; this.lean = 0; this.yaw = 0; this.punchTurn = 0; this.showYaw = null;
       this.ko = null; this.flicker = 0;
+      this.punchT = -1; this.punchCd = 0; this.punchBuf = 0; this.punchSuper = false; this.punchHits.clear(); this.punchPrev = null;
+      this.punchedT = 9; this.lastHitBy = null; this.lastHitSuper = false;
+      botCtl.moveX = botCtl.moveZ = botCtl.aimX = botCtl.aimZ = 0; this.windup = 0;
       visual.rotation.set(0, 0, 0);
       visual.position.set(0, 0, 0);
       visual.scale.set(1, 1, 1);
@@ -3229,6 +3301,59 @@ const player = (() => {
     },
     hide() { root.visible = false; },
     requestJump() { this.jumpBuf = JUMP_BUFFER; },
+    requestPunch() { this.punchBuf = PUNCH.buffer; },
+    get punching() { return this.punchT >= 0; },
+    // Start a punch. In a dive (or the belly-slide after one) it is a Super Punch: nothing about the movement
+    // changes, so the dive carries on at full speed with the fist out in front.
+    startPunch() {
+      const sup = this.diving || this.slideT > 0;
+      this.punchSuper = sup; this.punchT = 0; this.punchBuf = 0;
+      this.punchCd = sup ? SUPER_PUNCH.cooldown : PUNCH.cooldown;
+      this.punchHits.clear(); this.punchPrev = null;
+      let dx = -Math.sin(this.yaw), dz = -Math.cos(this.yaw);           // the way the runner faces
+      const vz = this.vz + this.carry, sp = Math.hypot(this.vx, vz);
+      if (sup && sp > 2) { dx = this.vx / sp; dz = vz / sp; }          // a Super Punch goes the way the dive goes
+      else if (Math.hypot(this.ctl.moveX, this.ctl.moveZ) < 0.1) {                                     // standing: where you look
+        if (local) { dx = -Math.sin(camCtl.yaw); dz = -Math.cos(camCtl.yaw); }
+        else if (botCtl.aimX || botCtl.aimZ) { const l = Math.hypot(botCtl.aimX, botCtl.aimZ); dx = botCtl.aimX / l; dz = botCtl.aimZ / l; }
+      }
+      this.punchDirX = dx; this.punchDirZ = dz;
+      if (local) game.onPunch(sup); else game.onRivalPunch(this, sup);
+    },
+    // The fist's reach right now, as a box (null outside the striking frames). A Super Punch's reach turns
+    // with the dive, so it stays out in front of you however you move.
+    punchBox() {
+      if (this.punchT < 0) return null;
+      const P = this.punchSuper ? SUPER_PUNCH : PUNCH;
+      if (this.punchT < P.active[0] || this.punchT > P.active[1]) return null;
+      if (this.punchSuper) {
+        const vz = this.vz + this.carry, sp = Math.hypot(this.vx, vz);
+        if (sp > 2) { this.punchDirX = this.vx / sp; this.punchDirZ = vz / sp; }
+      }
+      const dx = this.punchDirX, dz = this.punchDirZ, near = P_HALF_D * 0.5, far = P_HALF_D + P.reach, w = P.halfWidth;
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (const along of [near, far]) for (const side of [-w, w]) {
+        const x = this.x + dx * along - dz * side, z = this.z + dz * along + dx * side;
+        x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z);
+      }
+      return { x0, x1, y0: this.y + P.low, y1: this.y + P.high, z0, z1 };
+    },
+    // The reach swept since the last physics step, so a fast punch never skips over a body.
+    punchSweep() {
+      const box = this.punchBox(), prev = this.punchPrev;
+      this.punchPrev = box;
+      if (!box || !prev) return box;
+      return { x0: Math.min(box.x0, prev.x0), x1: Math.max(box.x1, prev.x1), y0: Math.min(box.y0, prev.y0), y1: Math.max(box.y1, prev.y1),
+        z0: Math.min(box.z0, prev.z0), z1: Math.max(box.z1, prev.z1) };
+    },
+    bodyBox() { return { x0: this.x - P_HALF_W, x1: this.x + P_HALF_W, y0: this.y, y1: this.y + this.height, z0: this.z - P_HALF_D, z1: this.z + P_HALF_D }; },
+    // Punched: thrown along the punch with a little lift and a short tumble.
+    takeHit(from, vx, vy, vz, stunTime, sup) {
+      this.stun(stunTime, vx, vy, vz);
+      this.punchedT = 0; this.lastHitBy = from; this.lastHitSuper = sup; this.knockT = 0;
+      this.punchT = -1; this.punchBuf = 0;                  // a punch you were throwing is lost
+      this.squash = 0.5;
+    },
     knock(side, vz) {                                    // spikes or a bar: thrown back with a little tumble
       this.stun(KNOCK_STUN, side * 4, KNOCK_UP, vz);
       this.knockT = 0;
@@ -3245,7 +3370,7 @@ const player = (() => {
     touchDown(impact) {
       this.dived = false;
       if (this.diving) { this.diving = false; this.slideT = DIVE_SLIDE; }   // belly-slide after a dive
-      game.onLand(impact);
+      if (local) game.onLand(impact); else this.squash = 0.3 + clamp(impact / 12, 0, 0.6);
     },
     // Knocked about by a crusher: no control for a moment, tumbling through the air.
     stun(time, vx, vy, vz) {
@@ -3256,9 +3381,18 @@ const player = (() => {
     },
 
     step(h, control) {
-      this.pushT += h; this.knockT += h;
+      this.pushT += h; this.knockT += h; this.punchedT += h;
       const stunned = this.stunT > 0;
       if (stunned) this.stunT -= h;
+      // Punching never touches the movement: a punch works standing, running and jumping, and a Super Punch
+      // keeps the dive's momentum. Only the cooldown and being knocked about stop you throwing one.
+      if (this.punchCd > 0) this.punchCd -= h;
+      this.punchBuf = Math.max(0, this.punchBuf - h);
+      if (this.punchT >= 0) {
+        this.punchT += h;
+        if (this.punchT >= (this.punchSuper ? SUPER_PUNCH.duration : PUNCH.duration)) this.punchT = -1;
+      }
+      if (control && !stunned && this.punchBuf > 0 && this.punchCd <= 0 && this.punchT < 0) this.startPunch();
       if (this.diving || stunned) {
         const drag = Math.max(0, 1 - (stunned && this.grounded ? 8 : this.diving ? 0.8 : 1.2) * h);   // keep the momentum
         this.vx *= drag; this.vz *= drag;
@@ -3268,7 +3402,7 @@ const player = (() => {
         this.vx *= f; this.vz *= f;
       } else {
         // Responsive: full speed in about 0.13 s, quick turns, and a short glide when you let go.
-        const ix = control ? input.moveX : 0, iz = control ? input.moveZ : 0;
+        const ix = control ? this.ctl.moveX : 0, iz = control ? this.ctl.moveZ : 0;
         const tvx = ix * MOVE_SPEED, tvz = iz * MOVE_SPEED;
         const a = !this.grounded ? AIR_ACCEL : !(ix || iz) ? FRICTION : this.vx * tvx + this.vz * tvz < 0 ? BRAKE : ACCEL;
         let dx = tvx - this.vx, dz = tvz - this.vz;
@@ -3281,16 +3415,16 @@ const player = (() => {
       if (control && !stunned && this.slideT <= 0 && this.jumpBuf > 0) {
         if (this.coyote > 0 && this.y > -0.05) {           // jump
           this.vy = JUMP_V; this.grounded = false; this.platform = null; this.coyote = 0; this.jumpBuf = 0; this.dived = false;
-          game.onJump();
+          if (local) game.onJump(); else this.squash = -0.9;
         } else if (!this.grounded && !this.dived && !(this.vy < 0 && this.y > -0.05 && this.y < 0.35)) {
           // second press in the air: dive forward (or in the steering direction)
-          let dx = input.moveX, dz = input.moveZ;
+          let dx = this.ctl.moveX, dz = this.ctl.moveZ;
           const l = Math.hypot(dx, dz);
           if (l < 0.25) { dx = -Math.sin(this.yaw); dz = -Math.cos(this.yaw); } else { dx /= l; dz /= l; }
           this.vx = dx * DIVE_SPEED; this.vz = dz * DIVE_SPEED;
           this.vy = Math.max(this.vy, DIVE_UP);
           this.diving = true; this.dived = true; this.jumpBuf = 0; this.diveBroke.clear();   // a new dive can smash again
-          game.onDive();
+          if (local) game.onDive();
         }
       }
       if (this.platform) this.carry = world.speed;
@@ -3348,22 +3482,25 @@ const player = (() => {
       // Animate only what the runner does itself: being shoved by a wall, or gliding after letting
       // go, leaves it standing idle. While steering it faces the way you steer; next to a pushing wall
       // only movement relative to that wall counts as running.
-      const steering = state === 'playing' && Math.hypot(input.moveX, input.moveZ) > 0.1;
+      const steering = state === 'playing' && Math.hypot(this.ctl.moveX, this.ctl.moveZ) > 0.1;
       const ownVz = this.pushT < 0.2 && !this.platform ? this.vz - (world.speed - this.carry) : this.vz;
       const sp = steering ? Math.hypot(this.vx, ownVz) : 0, k = Math.min(1, sp / MOVE_SPEED);
       const showing = this.showYaw !== null;               // on the skins podium: turn to show off the outfit
       const targetYaw = showing ? this.showYaw + Math.sin(this.t * 0.6) * 0.35
-        : steering ? Math.atan2(-input.moveX, -input.moveZ) : 0;   // idle: face the blocks
-      let dyaw = targetYaw - this.yaw;
-      dyaw = ((((dyaw + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) - Math.PI;
-      this.yaw += dyaw * (1 - Math.exp(-(steering || showing ? 30 : 8) * dt));
+        : steering ? Math.atan2(-this.ctl.moveX, -this.ctl.moveZ) : 0;   // idle: face the blocks
+      const wrap = (a) => ((((a + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) - Math.PI;
+      this.yaw += wrap(targetYaw - this.yaw) * (1 - Math.exp(-(steering || showing ? 30 : 8) * dt));
+      // A punch turns the body toward it, on top of the yaw: only the look changes, never where a dive goes.
+      const punchFace = this.punchT >= 0 && !this.punchSuper;
+      const turn = punchFace ? wrap(Math.atan2(-this.punchDirX, -this.punchDirZ) - this.yaw) : 0;
+      this.punchTurn += (turn - this.punchTurn) * (1 - Math.exp(-(punchFace ? 30 : 12) * dt));
       const flat = this.diving || this.slideT > 0;
       this.diveBlend = damp(this.diveBlend, flat ? 1 : 0, flat ? 18 : 9, dt);
       this.lean = damp(this.lean, this.grounded ? -0.2 * k : 0.05, 10, dt);
       // Tumble while stunned in the air, then roll back upright.
       if (this.stunT > 0 && !this.grounded) this.spinX += 11 * dt;
       else this.spinX = damp(this.spinX, Math.round(this.spinX / (Math.PI * 2)) * Math.PI * 2, 10, dt);
-      visual.rotation.set(lerp(this.lean, -1.42, this.diveBlend) + this.spinX, this.yaw, 0);
+      visual.rotation.set(lerp(this.lean, -1.42, this.diveBlend) + this.spinX, this.yaw + this.punchTurn, 0);
       visual.position.y = 0.4 * this.diveBlend;
       if (this.diveBlend > 0.5) {                        // superhero dive: arms forward, legs straight back
         pose(arms, [2.95, 2.95], [0.2, 0.2]);
@@ -3391,6 +3528,38 @@ const player = (() => {
         pose(legs, [Math.sin(f) * 0.5, -Math.sin(f) * 0.5]);
         hips.position.y = 0.42;
       }
+      // Punch, on top of whatever the body is doing: the right arm pulls back, shoots out (longer for a
+      // Super Punch, with the other arm tucked in) and comes back; the hips twist into it.
+      const R = arms[1], Lf = arms[0], rd = R.userData;
+      let ext = 0;
+      if (this.punchT >= 0) {
+        const P = this.punchSuper ? SUPER_PUNCH : PUNCH, t = this.punchT, a0 = P.active[0], a1 = P.active[1];
+        ext = t < a0 ? -0.35 * (t / a0) : t < a0 + 0.05 ? -0.35 + 1.35 * ((t - a0) / 0.05) : t < a1 ? 1 : Math.max(0, 1 - (t - a1) / (P.duration - a1));
+        const e = Math.max(0, ext);
+        if (this.punchSuper) {
+          R.rotation.set(2.95, 0, 0);
+          Lf.rotation.set(0.5, 0, 0.45 * Lf.userData.s);
+        } else {
+          R.rotation.set(lerp(R.rotation.x, 1.62, Math.min(1, Math.abs(ext) * 1.4)) - (ext < 0 ? 0.4 * -ext : 0), 0, 0.05);
+          Lf.rotation.x = lerp(Lf.rotation.x, -0.6, Math.min(1, e * 1.2));
+          hips.rotation.y = 0.32 * ext;
+        }
+        rd.hand.position.y = -0.29 - (this.punchSuper ? 0.28 : 0.2) * e;
+        rd.sleeve.scale.y = 1 + (this.punchSuper ? 1.25 : 0.9) * e;
+        rd.sleeve.position.y = -0.12 - (this.punchSuper ? 0.13 : 0.09) * e;
+        fistGlow.visible = this.punchSuper && t >= a0 && t <= a1;
+        if (fistGlow.visible) {
+          fistGlow.scale.setScalar(1 + 0.25 * Math.sin(this.t * 40));
+          rd.hand.getWorldPosition(_fist);
+          if (Math.random() < 0.7) particles.burst(_fist.x, _fist.y, _fist.z, 1, ['#ffe066', '#ffffff', '#44f0ff'], { speed: 0.6, up: 0.2, size: [0.05, 0.1], life: [0.15, 0.3], grav: 0, bounce: 0 });
+        }
+      }
+      if (this.punchT < 0) {
+        rd.hand.position.y = -0.29; rd.sleeve.scale.y = 1; rd.sleeve.position.y = -0.12;
+        hips.rotation.y = damp(hips.rotation.y, this.windup ? -0.3 * this.windup : 0, 14, dt);
+        if (this.windup > 0) R.rotation.set(lerp(R.rotation.x, -0.75, this.windup), 0, 0.15 * this.windup);   // winding up: the arm pulls back
+        fistGlow.visible = false;
+      }
       animSt.t = this.t; animSt.k = k; animSt.air = !this.grounded;
       for (const a of worn) if (a.tick) a.tick(dt, animSt);
       this.blinkT -= dt;
@@ -3399,7 +3568,8 @@ const player = (() => {
       eyes.scale.y = this.blink > 0 || this.stunT > 0 ? 0.15 : 1;
     },
   };
-})();
+}
+const player = createRunner({ local: true });
 
 // ---------------------------------------------------------------------
 // 13. Particles (pooled instanced cubes) and one-shot effects
@@ -3534,6 +3704,279 @@ function updatePlayerExtras() {
     blobShadow.scale.setScalar(0.6 + 0.4 * k);
     blobShadow.material.opacity = 0.55 * k;
   }
+}
+
+// ---------------------------------------------------------------------
+// 13b. Punching. Every runner's punches are settled here, once per physics step, for all runners together
+//      (the one place a networked version would run on its server). A hit needs the fist's hitbox (swept
+//      since the last step, so speed never lets it skip a body) to touch the body with no block in between;
+//      a punch hits each runner once.
+// ---------------------------------------------------------------------
+function segHitsBox(ax, ay, az, bx, by, bz, x0, y0, z0, x1, y1, z1) {   // does the segment a→b cross the box?
+  let t0 = 0, t1 = 1;
+  for (const [a, b, lo, hi] of [[ax, bx, x0, x1], [ay, by, y0, y1], [az, bz, z0, z1]]) {
+    const d = b - a;
+    if (Math.abs(d) < 1e-9) { if (a < lo || a > hi) return false; continue; }
+    let u = (lo - a) / d, v = (hi - a) / d;
+    if (u > v) [u, v] = [v, u];
+    t0 = Math.max(t0, u); t1 = Math.min(t1, v);
+    if (t0 > t1) return false;
+  }
+  return true;
+}
+function blockedBetween(ax, ay, az, bx, by, bz) {          // is there a block on the straight line between two points?
+  const zlo = Math.min(az, bz) - 0.1, zhi = Math.max(az, bz) + 0.1;
+  for (const row of world.rows) {
+    if (!row.emerged || row.sinking || !row.blocks.length) continue;
+    if (row.z + row.ext1 < zlo || row.z + row.ext0 > zhi) continue;
+    for (const b of row.blocks) {
+      const base = row.falling ? b.fy : b.y;
+      for (const part of b.parts) {
+        const cx = b.x + part.ox, cz = row.z + part.oz, hx = part.w / 2, hz = part.d / 2, y0 = base + part.y0;
+        if (segHitsBox(ax, ay, az, bx, by, bz, cx - hx, y0, cz - hz, cx + hx, y0 + part.h, cz + hz)) return true;
+      }
+    }
+  }
+  return false;
+}
+const combat = {
+  runners() { return [player, ...rivals.alive()].filter((r) => r.visible && !r.ko); },
+  step() {
+    const rs = this.runners();
+    for (const a of rs) {
+      const box = a.punchSweep();
+      if (!box) continue;
+      for (const b of rs) {
+        if (b === a || a.punchHits.has(b.id)) continue;
+        const bb = b.bodyBox();
+        if (box.x1 < bb.x0 || box.x0 > bb.x1 || box.y1 < bb.y0 || box.y0 > bb.y1 || box.z1 < bb.z0 || box.z0 > bb.z1) continue;
+        const fy = a.y + Math.min(1, a.height * 0.6);    // the fist's height, and the nearest part of the body at that height
+        if (blockedBetween(a.x, fy, a.z, b.x, clamp(fy, b.y + 0.15, b.y + b.height - 0.15), b.z)) continue;   // no punching through a wall
+        a.punchHits.add(b.id);
+        this.hit(a, b);
+      }
+    }
+  },
+  // Knockback goes the way the punch goes. A Super Punch adds the attacker's own speed into the hit.
+  hit(a, b) {
+    const sup = a.punchSuper, P = sup ? SUPER_PUNCH : PUNCH, dx = a.punchDirX, dz = a.punchDirZ;
+    let kb = P.knockback;
+    if (sup) kb = Math.min(SUPER_PUNCH.maxKnockback, kb + SUPER_PUNCH.momentum * Math.max(0, a.vx * dx + (a.vz + a.carry) * dz));
+    b.takeHit(a, dx * kb, P.lift, dz * kb, P.stun, sup);
+    game.onPunchHit(a, b, sup, kb);
+  },
+};
+// Runners don't walk through each other: overlapping bodies are nudged apart.
+function runnersApart() {
+  const rs = combat.runners();
+  for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) {
+    const a = rs[i], b = rs[j], dx = b.x - a.x, dz = b.z - a.z;
+    const ox = 2 * P_HALF_W - Math.abs(dx), oz = 2 * P_HALF_D - Math.abs(dz);
+    if (ox <= 0 || oz <= 0 || a.y + a.height < b.y + 0.2 || b.y + b.height < a.y + 0.2) continue;
+    if (ox < oz) { const sx = Math.sign(dx) || 1; a.x -= sx * ox / 2; b.x += sx * ox / 2; } else { const sz = Math.sign(dz) || 1; a.z -= sz * oz / 2; b.z += sz * oz / 2; }
+  }
+}
+
+// ---------------------------------------------------------------------
+// 13c. Rival runners: computer players on the same walls, built like the player. They dodge to the gaps, hop
+//      single blocks and bars, dive through glass, and punch whoever gets close (a Super Punch, out of a
+//      dive). They're out when they fall off the arena or touch a laser. The run is still yours alone.
+// ---------------------------------------------------------------------
+const RIVAL_NAMES = ['BLAZE', 'PIXEL', 'NOVA', 'TURBO', 'MOCHI', 'ZIGGY', 'COMET', 'BOLT'];
+const RIVAL_SPOTS = [[-4.5, 0.5], [4.5, 0.5], [-8.5, -1.5], [8.5, -1.5], [0, -3.5]];   // (x, z from the start line)
+function nameTag(r) {                                    // the rival's name, floating over its head
+  if (!r.tag) {
+    const cv = document.createElement('canvas');
+    cv.width = 256; cv.height = 64;
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false }));
+    spr.scale.set(1.9, 0.475, 1);
+    spr.position.y = P_HEIGHT + 0.95;
+    spr.renderOrder = 5;
+    r.root.add(spr);
+    r.tag = { cv, tex, spr, text: '' };
+  }
+  if (r.tag.text === r.name) return;
+  const { cv, tex } = r.tag, g = cv.getContext('2d');
+  r.tag.text = r.name;
+  g.clearRect(0, 0, cv.width, cv.height);
+  g.font = '800 34px system-ui, sans-serif';
+  const w = Math.min(cv.width - 8, g.measureText(r.name).width + 34);
+  g.fillStyle = 'rgba(14,10,38,0.66)';
+  g.beginPath(); g.roundRect((cv.width - w) / 2, 8, w, 48, 14); g.fill();
+  g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(r.name, cv.width / 2, 33);
+  tex.needsUpdate = true;
+}
+const rivals = {
+  pool: [], list: [], total: 0,
+  alive() { return this.list.filter((r) => r.alive); },
+  spawn(n) {
+    this.clear();
+    this.total = n;
+    const skins = SKINS.filter((sk) => sk.id !== skinState.id), names = RIVAL_NAMES.slice().sort(() => Math.random() - 0.5);
+    for (let i = 0; i < n; i++) {
+      if (!this.pool[i]) this.pool[i] = createRunner({ id: i + 1 });
+      const r = this.pool[i], sk = skins[Math.floor(Math.random() * skins.length)];
+      r.name = names[i % names.length];
+      nameTag(r);
+      r.applySkin(sk, { ...sk.colors });
+      r.reset();
+      const [hx, hz] = RIVAL_SPOTS[i % RIVAL_SPOTS.length];   // each has its own spot to go back to between walls
+      r.x = hx + rand(-0.6, 0.6); r.z = P_START_Z + hz + rand(-0.5, 0.5);
+      r.alive = true; r.brain = rivalBrain;                  // (tests swap the brain for a script)
+      r.ai = { homeX: r.x, home: r.z - P_START_Z, lane: r.x, kind: 1, row: null, think: 0, react: rand(0.2, 0.38), skill: clamp(rand(0.5, 0.92) + (level.n - 3) * 0.05, 0.3, 0.98),
+        aimT: 0, fight: null, fightCd: rand(2.5, 5) + fightGap() * 0.3, glassAt: -9, barAt: -9, t: 0 };
+      this.list.push(r);
+    }
+    hud.setRivals(this.alive().length, this.total);
+  },
+  clear() { for (const r of this.list) { r.hide(); r.alive = false; } this.list = []; this.total = 0; hud.setRivals(0, 0); $('feed').replaceChildren(); },
+  out(r) {                                                // off the arena: gone for this run
+    if (!r.alive) return;
+    r.alive = false;
+    r.hide();
+    hud.setRivals(this.alive().length, this.total);
+    const by = r.ko ? r.koBy : r.punchedT < 3 ? r.lastHitBy : null;   // (a zap counts for whoever punched them into it)
+    if (by === player) game.onRivalOut(r);
+    hud.feed(by === player ? `You knocked out ${r.name}` : by ? `${by.name} knocked out ${r.name}` : `${r.name} is out`, by === player ? 'gold' : '');
+  },
+  step(h) {
+    for (const r of this.list) {
+      if (!r.alive) continue;
+      if (r.ko) { r.koStep(h); if (r.y < -16) this.out(r); continue; }   // zapped: thrown clear, then gone
+      r.brain(r, h);
+      r.step(h, true);
+      world.support(r);
+      const c = world.resolve(r, h);
+      if (c && c.kind === 'break') game.onRivalBreak(c);
+      const zap = lasers.check(r);
+      if (zap) { r.koBy = r.punchedT < 2 ? r.lastHitBy : null; r.knockOut(zap); particles.burst(r.x, r.y + 0.8, r.z, 16, ['#ff3048', '#ffffff', '#ff9aa8'], { speed: 6, up: 4, size: [0.06, 0.14], life: [0.4, 0.8], grav: 0.4 }); continue; }
+      if (r.fell()) this.out(r);
+    }
+  },
+  updateVisual(dt) { for (const r of this.list) if (r.alive) r.updateVisual(dt); },
+};
+// How long each rival waits between fights, by level (Very easy … Very hard), in seconds.
+const RIVAL_FIGHT_GAP = [[9, 15], [7, 12], [5.5, 10], [4, 7.5], [3, 5.5]];
+const fightGap = () => rand(...RIVAL_FIGHT_GAP[clamp(level.n - 1, 0, 4)]);
+const RIVAL_PICKS_YOU = [0.1, 0.2, 0.3, 0.4, 0.5];  // when you're the one closest, the chance a rival goes for you (else it lets it be)
+// A rival's head. Dodging comes first: it heads for a gap in the next wall and hops, dives or climbs what it
+// has to. Now and then, with no wall close, it picks a fight with the nearest runner nobody else is after:
+// it walks up, winds up and punches, or jumps and dives in for a Super Punch. Then it goes back to dodging.
+function rivalBrain(r, h) {
+  const ai = r.ai, C = r.ctl;
+  ai.t += h; ai.think -= h; ai.fightCd -= h;
+  let next = null, gap = Infinity;                        // the nearest wall still coming at this runner
+  for (const row of world.rows) {
+    if (row.empty || !row.emerged || row.falling || row.sinking || !row.blocks.length) continue;
+    if (row.z + row.ext0 > r.z + P_HALF_D) continue;      // already behind
+    const g = (r.z - P_HALF_D) - (row.z + row.ext1);
+    if (g < gap) { gap = g; next = row; }
+  }
+  const eta = next ? gap / Math.max(1, world.speed) : Infinity;
+  let tx = next && eta < 2.6 ? ai.lane : ai.homeX, tz = P_START_Z + ai.home, wantJump = false, dive = null, steer = null;
+  if (next && eta < 2.6) {
+    if (ai.row !== next) { ai.row = next; ai.think = (1 - ai.skill) * rand(0, 1.1); }   // a new wall: noticed a moment later (less sharp rivals take longer)
+    if (ai.think <= 0) {                                  // pick a gap, re-thinking now and then (a bit slow, like a person)
+      ai.think = ai.react;
+      const safe = rowSafety(next.cells);
+      let bi = -1, bc = Infinity;
+      for (let i = 0; i < NS; i++) {
+        if (!safe[i]) continue;
+        const cost = Math.abs(SAMPLES[i] - r.x) + (safe[i] === 2 ? 0.8 : safe[i] === 3 ? 40 : 0);
+        if (cost < bc) { bc = cost; bi = i; }
+      }
+      ai.lane = bi >= 0 ? SAMPLES[bi] : r.x; ai.kind = bi >= 0 ? safe[bi] : 0;
+    }
+    tx = ai.lane;
+    const lane = clamp(Math.floor((r.x + HALF_W) / LANE_W), 0, LANES - 1), cell = next.cells[lane];
+    if (ai.kind === 2 && Math.abs(r.x - ai.lane) < 0.7) {
+      if (cell === 'G') {                                 // two-high glass: jump early, dive low through it
+        if (eta < 0.9 && eta > 0.6 && r.grounded && !r.platform) { wantJump = true; ai.glassAt = ai.t; }
+      } else if (cell === 'B' || cell === 'b') {          // a bar: jump late and run over it
+        if (eta < 0.2 && eta > 0.07 && r.grounded) { wantJump = true; ai.barAt = ai.t; }
+      } else if (eta < 0.3 && r.grounded && !r.platform) wantJump = true;   // a single block: hop onto it
+    } else if (ai.kind === 3 && Math.abs(r.x - ai.lane) < 0.7 && eta < 0.5) {
+      tz = r.z - 3;                                       // steps: hop up them, one at a time
+      if (r.grounded) wantJump = true;
+    }
+  }
+  if (ai.t - ai.glassAt < 1) {                            // through the glass: dive low on the way down from the jump
+    tz = r.z - 3;
+    if (!r.grounded && !r.dived && r.vy < 0 && r.y < 0.9) dive = { x: 0, z: -1 };
+  }
+  if (ai.t - ai.barAt < 0.5) tz = r.z - 3;                // keep going forward over the bar
+
+  // Fighting.
+  let f = ai.fight;
+  r.windup = 0;
+  if (f && (eta < 1.4 || !f.target.visible || f.target.ko || ai.t - f.since > 3.5 || (f.done && !r.punching && ai.t - f.doneAt > 0.2))) {
+    ai.fight = f = null; ai.fightCd = fightGap();
+  }
+  if (!f && ai.fightCd <= 0) {
+    ai.fightCd = 0.5;                                     // (looks again in a moment if there's nobody to fight)
+    if (eta > 2.4 && r.grounded && !r.platform && ai.t - ai.glassAt > 1.2) {
+      let best = null, bd = 7.5;
+      for (const o of combat.runners()) {
+        if (o === r || Math.abs(o.y - r.y) > 1 || rivals.list.some((q) => q !== r && q.alive && q.ai.fight && q.ai.fight.target === o)) continue;
+        const d = Math.hypot(o.x - r.x, o.z - r.z) + (o === player ? 1.5 : 0);   // (they'd rather fight each other than you)
+        if (d < bd) { bd = d; best = o; }
+      }
+      if (best === player && Math.random() > RIVAL_PICKS_YOU[clamp(level.n - 1, 0, 4)]) { best = null; ai.fightCd = fightGap() * 0.6; }
+      // a dive-in Super Punch now and then (rarely at you: it can throw you a long way)
+      if (best) f = ai.fight = { target: best, since: ai.t, dive: bd > 3 && Math.random() < (best === player ? 0.15 : 0.45), phase: 'go', done: false, doneAt: 0 };
+    }
+  }
+  if (f) {
+    const o = f.target, dx = o.x - r.x, dz = o.z - r.z, d = Math.max(0.01, Math.hypot(dx, dz)), ux = dx / d, uz = dz / d;
+    C.aimX = ux; C.aimZ = uz;
+    if (f.dive && !f.done) {
+      if (f.phase === 'go') {
+        if (d <= 2.4) f.dive = false;                       // too close to dive: just punch
+        else if (d < 5 && r.grounded && !r.platform) { wantJump = true; f.phase = 'up'; f.upAt = ai.t; }
+        else steer = { x: ux, z: uz };
+      }
+      if (f.phase === 'up') {                             // jump on the spot, then dive at them on the way down
+        steer = { x: 0, z: 0 };
+        if (!r.grounded && r.vy < 0 && r.y < 1.3 && !r.dived) { dive = { x: ux, z: uz }; f.phase = 'dive'; f.diveAt = ai.t; }
+        else if (r.grounded && ai.t - f.upAt > 0.5) f.phase = 'go';   // the jump didn't happen: try again
+      } else if (f.phase === 'dive') {
+        if (r.diving && d < 2 * P_HALF_D + SUPER_PUNCH.reach + 0.3) { r.requestPunch(); f.done = true; f.doneAt = ai.t; }
+        else if (!r.diving && ai.t - f.diveAt > 0.1) { f.done = true; f.doneAt = ai.t; }   // missed
+      }
+    } else if (!f.done) {
+      // Walk round to the side away from the nearest edge, so the punch sends them toward it.
+      const ex = Math.abs(o.x) > 5 ? Math.sign(o.x) : 0, ez = !ex && o.z > 2 ? 1 : 0;
+      const px = ex || ez ? ex : ux, pz = ex || ez ? ez : uz;   // the way the punch will send them
+      const sx = o.x - px * 1.35 - r.x, sz = o.z - pz * 1.35 - r.z, sd = Math.hypot(sx, sz);
+      if (d < 2 * P_HALF_D + PUNCH.reach - 0.25 && (sd < 0.7 || ai.t - f.since > 2)) {   // in place: stop, wind up, punch
+        steer = { x: 0, z: 0 };
+        C.aimX = px * 0.6 + ux * 0.4; C.aimZ = pz * 0.6 + uz * 0.4;
+        ai.aimT += h;
+        r.windup = Math.min(1, ai.aimT / ai.react);
+        if (ai.aimT > ai.react) { r.requestPunch(); f.done = true; f.doneAt = ai.t; ai.aimT = 0; }
+      } else {
+        ai.aimT = 0;
+        // head for the spot (round them if they're in the way), easing in so it doesn't run into them
+        let mx = sx / Math.max(sd, 0.01), mz = sz / Math.max(sd, 0.01);
+        if (d < 1.3) { mx = -ux; mz = -uz; }
+        else if (mx * ux + mz * uz > 0.3 && d < sd) { const side = Math.sign(mx * -uz + mz * ux) || 1; mx = -uz * side; mz = ux * side; }   // step round them
+        const k = clamp(sd * 0.9, 0.3, 1);
+        steer = { x: mx * k, z: mz * k };
+      }
+    }
+  }
+  if (dive) { C.moveX = dive.x; C.moveZ = dive.z; r.requestJump(); return; }
+  if (steer) { C.moveX = steer.x; C.moveZ = steer.z; }
+  else {
+    tx = clamp(tx, -HALF_W + 0.7, HALF_W - 0.7);
+    const ex = tx - r.x, ez = tz - r.z;
+    C.moveX = Math.abs(ex) < 0.05 ? 0 : clamp(ex * 2.4, -1, 1);
+    C.moveZ = Math.abs(ez) < 0.1 ? 0 : clamp(ez * 0.8, -1, 1);
+  }
+  if (wantJump) r.requestJump();
 }
 
 // ---------------------------------------------------------------------
@@ -3796,8 +4239,8 @@ function updateMenuHint() {
   const el = $('menu-hint');
   if (!el) return;
   el.innerHTML = touchMode
-    ? 'Left thumb: <kbd>JOYSTICK</kbd> to move · Right thumb: <kbd>JUMP</kbd>, tap again to dive · drag to turn the camera'
-    : '<kbd>WASD</kbd> move · <kbd>MOUSE</kbd> camera · <kbd>SPACE</kbd> jump, again to dive · <kbd>ESC</kbd> pause';
+    ? 'Left thumb: <kbd>JOYSTICK</kbd> to move · Right thumb: <kbd>JUMP</kbd>, tap again to dive · <kbd>PUNCH</kbd> · drag to turn the camera'
+    : '<kbd>WASD</kbd> move · <kbd>MOUSE</kbd> camera · <kbd>SPACE</kbd> jump, again to dive · <kbd>F</kbd> / <kbd>CLICK</kbd> punch · <kbd>ESC</kbd> pause';
 }
 
 window.addEventListener('keydown', (e) => {
@@ -3903,6 +4346,18 @@ jumpBtn.addEventListener('pointerdown', (e) => {
   rp.className = 'ripple';
   jumpBtn.appendChild(rp);
   setTimeout(() => rp.remove(), 480);
+});
+const punchBtn = $('punch-btn');
+punchBtn.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  setTouchMode(true);
+  try { punchBtn.setPointerCapture(e.pointerId); } catch { /* ignored */ }
+  if (state === 'playing') player.requestPunch();
+  punchBtn.classList.add('pressed');
+});
+for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) punchBtn.addEventListener(ev, () => punchBtn.classList.remove('pressed'));
+document.addEventListener('mousedown', (e) => {          // with the cursor hidden, a left click punches
+  if (e.button === 0 && locked() && state === 'playing') player.requestPunch();
 });
 const endJumpBtn = () => jumpBtn.classList.remove('pressed');
 jumpBtn.addEventListener('pointerup', endJumpBtn);
@@ -4048,6 +4503,26 @@ const hud = {
   countdown(text) {
     this.cd.textContent = text;
     this.cd.classList.remove('tick'); void this.cd.offsetWidth; this.cd.classList.add('tick');
+  },
+  feed(text, cls = '') {                                // a short line under the chips: who got knocked out
+    const el = document.createElement('div');
+    el.className = `feed-item ${cls}`;
+    el.textContent = text;
+    $('feed').prepend(el);
+    while ($('feed').children.length > 4) $('feed').lastChild.remove();
+    setTimeout(() => el.remove(), 3200);
+  },
+  setRivals(n, total) {
+    $('hud-rivals').textContent = n;
+    $('chip-rivals').classList.toggle('on', total > 0);
+  },
+  setPunch(r) {                                         // how ready the next punch is (0 just thrown, 1 ready)
+    const P = r.punchSuper ? SUPER_PUNCH : PUNCH, ready = clamp(1 - Math.max(0, r.punchCd) / P.cooldown, 0, 1);
+    if (ready === this.punchReady) return;
+    this.punchReady = ready;
+    document.documentElement.style.setProperty('--ready', ready.toFixed(3));
+    $('punch-btn').style.setProperty('--cd', (1 - ready).toFixed(3));
+    $('punch-hud').classList.toggle('ready', ready >= 1);
   },
   flash(kind) {
     const f = $('flash');
@@ -4783,6 +5258,7 @@ function syncSettingsUI() {
     ['set-camera', 'val-camera', 'cameraSens', (v) => `${v.toFixed(1)}×`],
     ['set-touch', 'val-touch', 'touchSens', (v) => `${v.toFixed(1)}×`],
     ['set-joy', 'val-joy', 'joySize', (v) => `${Math.round(v * 100)}%`],
+    ['set-rivals', 'val-rivals', 'rivals', (v) => (v ? String(v) : 'Off')],
     ['set-volume', 'val-volume', 'volume', (v) => `${Math.round(v * 100)}%`],
   ];
   for (const [id, valId, key, fmt] of ranges) {
@@ -4826,6 +5302,7 @@ function bindSettingsUI() {
   bindRange('set-camera', 'cameraSens');
   bindRange('set-touch', 'touchSens');
   bindRange('set-joy', 'joySize');
+  bindRange('set-rivals', 'rivals');
   bindRange('set-volume', 'volume');
   $('set-diff').addEventListener('input', (e) => {
     const d = clamp(Math.round(+e.target.value), 1, LEVELS.length);
@@ -4890,6 +5367,7 @@ const game = {
     world.reset('game');
     particles.clear();
     player.reset();
+    rivals.spawn(settings.rivals);
     Object.assign(run, { waves: 0, time: 0, bestAtStart: bestWave, newBest: false, cause: '', causeText: '', pipResetAt: 0, practice });
     timeScale = 1; deathTimer = 0;
     Object.assign(camCtl, { mode: 'follow', yaw: 0, pitch: 0, shake: 0, ease: true });
@@ -4936,6 +5414,7 @@ const game = {
     unlockPointer();
     world.setMode('demo');
     player.hide();
+    rivals.clear();
     camCtl.mode = 'menu';
     timeScale = 1;
     updateMenuBest();
@@ -4951,7 +5430,7 @@ const game = {
     releaseJoystick();
     camCtl.focus.set(player.x, Math.max(0, player.y), clamp(player.z, Z_FAR, Z_NEAR));
     if (cause === 'zap') {
-      run.causeText = 'Zapped by a laser fence';
+      run.causeText = player.punchedT < 1.8 && player.lastHitBy ? `${player.lastHitSuper ? 'Super-punched' : 'Punched'} into a laser by ${player.lastHitBy.name}` : 'Zapped by a laser fence';
       player.knockOut(info.side);
       particles.burst(player.x, player.y + 0.8, player.z, 26, ['#ff3048', '#ffffff', '#ff9aa8'], { speed: 7, up: 5, size: [0.06, 0.16], life: [0.4, 0.9], grav: 0.4 });
       camCtl.shake = 0.8;
@@ -4963,7 +5442,8 @@ const game = {
       vibrate([40, 30, 40, 30, 120]);
       return;
     }
-    run.causeText = player.knockT < 1.5 ? 'Knocked off the edge' : player.pushT < 0.8 ? 'Pushed off the edge by a wall'
+    run.causeText = player.punchedT < 1.8 && player.lastHitBy ? `${player.lastHitSuper ? 'Super-punched' : 'Punched'} off the edge by ${player.lastHitBy.name}`
+      : player.knockT < 1.5 ? 'Knocked off the edge' : player.pushT < 0.8 ? 'Pushed off the edge by a wall'
       : player.carry > 0 ? 'Rode a block off the edge' : 'Fell off the arena';
     camCtl.shake = 0.3;
     audio.play('fall');
@@ -4996,6 +5476,34 @@ const game = {
         { speed: 3.2, up: 3, size: [0.07, 0.14], life: [0.35, 0.6], grav: 0.6 });
     }
   },
+  onPunch(sup) {
+    audio.play(sup ? 'superswing' : 'swing');
+    vibrate(sup ? 12 : 6);
+  },
+  onRivalPunch(r, sup) {
+    const near = clamp(1 - Math.hypot(r.x - player.x, r.z - player.z) / 14, 0, 1);
+    if (near > 0.05) audio.play(sup ? 'superswing' : 'swing', near * 0.6);
+  },
+  onPunchHit(a, b, sup, kb) {
+    const you = a === player || b === player, near = you ? 1 : clamp(1 - Math.hypot(b.x - player.x, b.z - player.z) / 16, 0.15, 1);
+    const x = b.x - a.punchDirX * P_HALF_W, z = b.z - a.punchDirZ * P_HALF_D, y = b.y + (sup ? 0.6 : 0.95);
+    audio.play(sup ? 'superpunch' : 'punch', near);
+    if (sup) {                                            // a Super Punch: a big gold burst and a shockwave
+      particles.burst(x, y, z, 30, ['#ffe066', '#ffd23f', '#44f0ff', '#ffffff'], { speed: 7 + kb * 0.2, up: 4.5, size: [0.08, 0.2], life: [0.4, 0.8], grav: 0.5 });
+      rings.spawn(b.x, b.z, 0xffd23f, 7, 0.55);
+      rings.spawn(b.x, b.z, 0x44f0ff, 4.5, 0.4);
+    } else {
+      particles.burst(x, y, z, 12, ['#ffffff', '#ffe9a8', '#ff9aa8'], { speed: 4.5, up: 2.5, size: [0.06, 0.14], life: [0.25, 0.5], grav: 0.6 });
+    }
+    if (a === player) { camCtl.shake = Math.max(camCtl.shake, sup ? 0.5 : 0.22); if (sup) hud.flash('gold'); vibrate(sup ? [20, 20, 40] : 18); }
+    if (b === player) { camCtl.shake = Math.max(camCtl.shake, sup ? 0.65 : 0.35); hud.flash('hit'); vibrate(sup ? [40, 30, 60] : 30); }
+  },
+  onRivalBreak(c) {
+    const near = clamp(1 - Math.hypot(c.x - player.x, c.z - player.z) / 16, 0, 1);
+    if (near > 0.05) audio.play('shatter');
+    particles.burst(c.x, c.y + c.h / 2, c.z, 16, ['#d9fbff', '#79d3ec', '#ffffff', '#b9a6ff'], { speed: 6, up: 5, size: [0.12, 0.3], life: [0.6, 1.1], grav: 1.1, carry: world.speed });
+  },
+  onRivalOut() { audio.play('ko'); vibrate(25); },
   onDive() {
     audio.play('dive');
     vibrate(8);
@@ -5005,6 +5513,7 @@ const game = {
     setState('gameover');
     unlockPointer();
     world.setMode('demo');
+    rivals.clear();
     if (camCtl.mode !== 'over') camCtl.ease = true;
     camCtl.mode = 'over';
     const practice = run.practice !== null, n = run.waves, isBest = !practice && n > run.bestAtStart;
@@ -5046,6 +5555,9 @@ const game = {
         break;
       case 'KeyR':
         if ((state === 'paused' && currentScreen === 'pause') || state === 'gameover') this.start(run.practice);
+        break;
+      case 'KeyF':
+        if (state === 'playing') player.requestPunch();
         break;
     }
   },
@@ -5188,6 +5700,9 @@ function simulate(dt, active) {
       world.support(player);
       const contact = world.resolve(player, h);
       if (contact) game.onContact(contact);
+      rivals.step(h);                                     // the other runners, on the same walls
+      runnersApart();
+      combat.step();                                      // everyone's punches, settled together
       const zap = lasers.check(player);
       if (zap) { game.die('zap', { side: zap }); continue; }
       if (player.fell()) { game.die('fall'); continue; }
@@ -5196,6 +5711,7 @@ function simulate(dt, active) {
       if (state === 'dying') {
         if (run.cause === 'fall') { player.step(h, false); world.support(player); }
         else player.koStep(h);
+        rivals.step(h); runnersApart(); combat.step();
       }
       if (!world.paused) world.step(h);
     }
@@ -5208,6 +5724,7 @@ function update(rawDt) {
       readMove();
       run.time += gdt;
       simulate(gdt, true);
+      hud.setPunch(player);
       if (state === 'playing' && performance.now() > hud.busyUntil) {
         const w = world.pendingAnnouncement(player);
         if (w) hud.showBanner(`WAVE ${w.index + 1}`, w.pattern.name.toUpperCase() + (w.mirrored ? ' · MIRRORED' : ''), '', 1.9);
@@ -5239,6 +5756,7 @@ function update(rawDt) {
   const frozen = state === 'paused' || state === 'countdown';
   const vdt = frozen ? 0 : gdt;
   player.updateVisual(vdt);
+  rivals.updateVisual(vdt);
   blockPreview.update(dt);
   buildUpdate(dt);
   updatePlayerExtras();
@@ -5329,6 +5847,7 @@ function init() {
       designs, meshCounts: () => ({ hash: MESH['#'].count, ghost: MESH.ghost.count, spikes: MESH.spikes.count, bars: MESH.bar.count, breakables: MESH.brk.count }), layouts, layoutOpts,
       checkLayouts: () => layouts.forEach((L, i) => checkLayout(i)),
       layoutBlockCount: () => layoutView.meshes.map((m) => m.count),
+      rivals, combat, createRunner, PUNCH, SUPER_PUNCH, blockedBetween,
       build, voxAt, voxRay, buildPlace, buildRemove, buildAim, buildAimRay, buildDir, enterBuild, leaveBuild, buildTool, VOX_H,
       setLayoutCells: (i, rows) => { layouts[i].vox = cellsToVox(rows.map((r) => (typeof r === 'string' ? [...r] : r))); checkLayout(i); },
       fogNear: () => scene.fog.near,

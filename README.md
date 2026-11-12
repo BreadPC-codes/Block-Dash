@@ -1,6 +1,6 @@
 # Block Dash
 
-A single-player 3D obstacle survival game in one file: `index.html` (HTML, CSS and JavaScript, with [Three.js](https://threejs.org/) r170 loaded from a CDN).
+A single-player 3D obstacle survival game in one file: `index.html` (HTML, CSS and JavaScript, with [Three.js](https://threejs.org/) r170 loaded from a CDN). You share the arena with computer-controlled rival runners, and you can punch them.
 
 Walls of cube blocks sweep across a small floating 12-lane arena with a slightly slippery checkered floor, one wave at a time and at most one new wall every 7 seconds. Slip through the holes, jump or dive over single cubes, or climb on top and ride. A wall that catches you pushes you toward the edge, so slide into a hole before you run out of floor. The always-on laser fences stand right beside the outer lanes, so there is no way around a wall at the sides: every wall reaches from fence to fence. Every wave you fully survive adds one to the **WAVE SURVIVED** counter.
 
@@ -27,6 +27,8 @@ Then open <http://localhost:8000>.
 | Move | `W A S D` or arrow keys | Virtual joystick, bottom-left |
 | Jump | `Space` | **JUMP** button, bottom-right |
 | Dive | `Space` again while in the air | Tap **JUMP** again while in the air |
+| Punch | `F`, or left click while the cursor is hidden | **PUNCH** button, left of **JUMP** |
+| Super Punch | Punch during a dive (or the belly-slide right after it) | The same, with **PUNCH** |
 | Pause | `Esc` or `P`, or the ❚❚ button | ❚❚ button |
 | Camera | Move the mouse: the camera turns 360° around the runner | Drag anywhere away from the joystick and **JUMP** |
 | Restart / menu | `R` / `Enter` / `Esc` on the pause and game-over screens | Buttons |
@@ -34,6 +36,18 @@ Then open <http://localhost:8000>.
 While you play, the cursor is hidden (pointer lock) and the mouse turns the camera all the way around the runner. Moving the mouse up and down tilts it between skimming the floor and looking almost straight down. If it turns too fast or too slow, change **Mouse sensitivity** in Settings (0.2× to 4×). Movement follows the camera, so `W` always runs away from it. `Esc` frees the cursor and pauses. If the cursor is free while you play, click the 3D view to take the camera again. After a game over, the camera slowly circles the spot where the run ended.
 
 Touch controls appear automatically on touch devices. You can steer and jump at the same time with two thumbs, and turn the camera by dragging anywhere else on the screen.
+
+## Punching and rivals
+
+**Punch.** The arm pulls back and shoots out. Anyone inside the fist's reach in front of you while it is out gets hit once, and is knocked the way the punch goes with a small hop and a short tumble. You punch the way you are running, or the way the camera looks if you are standing still. A punch works standing, running and jumping, and it never changes how you move. After a punch there is a short cooldown (0.55 s), shown by the **PUNCH** meter in the corner (or the sweep on the touch button). A press up to 0.12 s before you're ready is remembered, and holding the key doesn't punch faster.
+
+**Super Punch.** Punch during a dive, or during the belly-slide right after one, and it becomes a Super Punch. The dive carries on at full speed: nothing about your movement changes, the fist leads, and its reach turns with your movement, so it stays out in front of you in the air and close to the ground. It hits much harder than a normal punch and harder still the faster you are going (11 plus 42% of your speed, up to 20, against 8.5 for a normal punch), with a bigger hop. It ends in a gold burst and a shockwave. You keep going after it connects.
+
+You can't punch through blocks: a wall or a glass block between you and someone stops the punch, but a knee-high bar doesn't. Every hit is checked 120 times a second against the reach swept since the last check, so speed never lets a punch skip through someone.
+
+**Rivals.** Set **Rival runners** in Settings, from Off to 5 (3 by default). Each wears a random outfit and has its name over its head. They play by the same rules as you: they head for the gaps, hop single blocks and bars, dive through glass and climb the steps, and they can be pushed off, knocked off or zapped like you. Now and then, when no wall is close, a rival picks a fight with the nearest runner nobody else is after. It walks up and winds up (the arm pulls back) before it punches, or jumps and dives in for a Super Punch (rarely at you), and it lines up its punch to send its target toward the nearest edge. Rivals fight each other more often than they go for you, and how often they fight depends on the difficulty. The **RIVALS** chip counts who is still in, and a line under it says who knocked out whom. The run is still yours: it ends only when you are out, and only your waves count. If a punch sends you off, the game-over screen says who threw it.
+
+There is no online multiplayer. Every runner's punches are settled in one place, once per physics step, for all runners together. That is the point a networked version would run on its server. The numbers are constants in the script: `PUNCH` and `SUPER_PUNCH` near the top (reach, timing, cooldown, knockback, lift, stun), and `RIVAL_FIGHT_GAP` and `RIVAL_PICKS_YOU` beside the rivals' code (how often they fight, and how often they pick you).
 
 ## How the waves work
 
@@ -144,8 +158,8 @@ The hotbar has five kinds of block: **BLOCK** (an ordinary block in the wave's c
 
 ## Settings and saved data
 
-The Settings screen covers graphics quality (Low, Medium, High), field of view (70° by default), camera X and Y offset, mouse and camera sensitivity, joystick sensitivity and size, volume, sound effects, music and vibration. Settings (including the difficulty) are stored in `localStorage` under `blockdash.settings.v1`. The personal best is kept per difficulty: `blockdash.bestWave` for Normal and `blockdash.bestWave.1`, `.2`, `.4` and `.5` for the other levels. The chosen outfit and your colours are stored under `blockdash.skin.v1`, your 20 block designs under `blockdash.blocks.v1`, and your 30 wave layouts under `blockdash.layouts.v1`.
+The Settings screen covers graphics quality (Low, Medium, High), field of view (70° by default), camera X and Y offset, mouse and camera sensitivity, joystick sensitivity and size (it scales the **JUMP** and **PUNCH** buttons too), the number of rival runners, volume, sound effects, music and vibration. Settings (including the difficulty) are stored in `localStorage` under `blockdash.settings.v1`. The personal best is kept per difficulty: `blockdash.bestWave` for Normal and `blockdash.bestWave.1`, `.2`, `.4` and `.5` for the other levels. The chosen outfit and your colours are stored under `blockdash.skin.v1`, your 20 block designs under `blockdash.blocks.v1`, and your 30 wave layouts under `blockdash.layouts.v1`.
 
 ## Debugging
 
-Add `?debug=1` to the URL to expose `window.BlockDash` (game state, world, player and the pattern solver) in the browser console.
+Add `?debug=1` to the URL to expose `window.BlockDash` (game state, world, player, rivals, the punch settings and the pattern solver) in the browser console.
