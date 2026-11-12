@@ -229,17 +229,8 @@ body.touch[data-state=playing] #touch,body.touch[data-state=countdown] #touch{di
 .skin-stage:active{cursor:grabbing}
 .drag-hint{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);padding:6px 14px;border-radius:999px;background:rgba(14,10,38,.55);border:1px solid var(--line);
   color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.14em;white-space:nowrap;pointer-events:none}
-/* ---------- Wave layout editor ---------- */
-.lt-panel{width:min(600px,100%);display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-content:start;
-  grid-template-areas:"title" "slots" "name" "editor" "tools" "status" "only" "hint" "actions"}
-.lt-panel h2{margin:0;grid-area:title}
-#lt-slots{grid-area:slots}.lt-name-row{grid-area:name}.lt-editor{grid-area:editor}.lt-tools-row{grid-area:tools}
-#lt-status{grid-area:status}.lt-only-row{grid-area:only}#lt-hint{grid-area:hint}.lt-panel .skin-actions{grid-area:actions}
-@media (min-width:900px) and (min-height:560px){
-  .lt-panel{width:min(960px,100%);grid-template-columns:minmax(0,1fr) auto;column-gap:22px;align-items:start;
-    grid-template-areas:"title title" "slots editor" "name editor" "status editor" "only editor" "hint tools" "actions tools"}
-}
-.lt-select{font:inherit;font-size:12px;font-weight:700;padding:7px 8px;border-radius:10px;border:1px solid var(--line);background:#2a2150;color:#fff}
+/* ---------- Wave layout editor (the arena seen from above) ---------- */
+.lt-panel{width:min(440px,46vw)}
 .lt-slots{display:grid;grid-template-columns:repeat(10,1fr);gap:5px}
 .lt-slot{position:relative;padding:3px;border-radius:8px;border:2px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);min-height:0;min-width:0}
 .lt-slot canvas{display:block;width:100%;aspect-ratio:1;image-rendering:pixelated;border-radius:3px}
@@ -248,12 +239,8 @@ body.touch[data-state=playing] #touch,body.touch[data-state=countdown] #touch{di
 .lt-slot.bad.on::after{background:#ff3b4f}
 .lt-slot[aria-selected=true]{border-color:var(--gold);box-shadow:0 0 12px rgba(255,210,63,.35)}
 .lt-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
-.lt-row input[type=text]{flex:1;min-width:150px;font:inherit;font-size:14px;font-weight:700;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:#2a2150;color:#fff}
-.lt-editor{display:flex;gap:10px;align-items:flex-start;justify-content:center}
-.lt-gridwrap{display:flex;flex-direction:column;align-items:center;gap:4px}
-.lt-gridwrap small{font-size:10px;font-weight:800;letter-spacing:.12em;color:var(--muted)}
-#lt-canvas{width:min(296px,62vw);height:auto;aspect-ratio:1;border-radius:10px;border:2px solid rgba(255,255,255,.22);touch-action:none;cursor:crosshair;background:#2a2150}
-.lt-brushes{display:grid;gap:6px;min-width:96px}
+.lt-row input[type=text]{flex:1;min-width:140px;font:inherit;font-size:14px;font-weight:700;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:#2a2150;color:#fff}
+.lt-brushes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .lt-brush{display:flex;align-items:center;gap:7px;padding:7px 8px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.05);font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--muted);min-height:0;min-width:0}
 .lt-brush i{flex:none;width:16px;height:16px;border-radius:4px;background:var(--c);box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}
 .lt-brush.on{background:rgba(255,255,255,.16);color:#fff;border-color:#fff}
@@ -261,6 +248,9 @@ body.touch[data-state=playing] #touch,body.touch[data-state=countdown] #touch{di
 .lt-status.ok{background:rgba(60,207,109,.14);color:#8ff0b0;border:1px solid rgba(60,207,109,.35)}
 .lt-status.bad{background:rgba(255,59,79,.14);color:#ffb3bd;border:1px solid rgba(255,59,79,.35)}
 .lt-status.empty{background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--line)}
+.lt-select{font:inherit;font-size:12px;font-weight:700;padding:7px 8px;border-radius:10px;border:1px solid var(--line);background:#2a2150;color:#fff}
+.lt-stage{cursor:crosshair}
+.lt-stage .drag-hint{bottom:auto;top:2%;white-space:normal;max-width:92%;text-align:center;line-height:1.4}
 /* ---------- Block designer ---------- */
 .bd-panel{width:min(560px,56vw)}
 .bd-loadout{display:grid;grid-template-columns:repeat(10,1fr);gap:5px}
@@ -285,6 +275,7 @@ body.touch[data-state=playing] #touch,body.touch[data-state=countdown] #touch{di
 .bd-hint{margin:0;font-size:11.5px;color:var(--muted);text-align:center;line-height:1.35}
 @media (orientation:portrait){
   .bd-panel{width:100%}
+  .lt-panel{width:100%;max-height:56%}
   #bd-canvas{width:min(250px,58vw)}
   .skins-layout{flex-direction:column-reverse;gap:8px}
   .skins-panel{width:100%;max-height:64%}
@@ -427,9 +418,7 @@ body.touch .kbd-hint{display:none}
   .swatch{width:26px;height:26px;flex:none}
   .skin-actions .btn{min-height:38px;padding:6px 10px}
   .bd-panel .skin-grid,.bd-hint{display:none}
-  .lt-panel{gap:7px}
   .lt-panel h2,.lt-hint{display:none}
-  #lt-canvas{width:min(230px,52vh)}
   .lt-brush{padding:5px 7px}
   #bd-canvas{width:min(190px,40vh)}
   .bd-tool{padding:5px 4px;font-size:10px}
@@ -582,36 +571,33 @@ body.touch .kbd-hint{display:none}
 </section>
 
 <!-- ================= WAVE LAYOUT EDITOR ================= -->
-<section class="screen dim" id="screen-waves" aria-label="Wave layout editor">
-  <div class="panel lt-panel">
-    <h2>WAVES</h2>
-    <div class="lt-slots" id="lt-slots" role="listbox" aria-label="Your 30 wave layouts"></div>
-    <div class="lt-row lt-name-row">
-      <input type="text" id="lt-name" maxlength="18" aria-label="Layout name" autocomplete="off" spellcheck="false">
-      <label class="bd-check"><input type="checkbox" id="lt-on"> In game</label>
-    </div>
-    <div class="lt-editor">
-      <div class="lt-gridwrap">
-        <small>TOP ROW REACHES YOU FIRST</small>
-        <canvas id="lt-canvas" width="320" height="320" aria-label="Wave layout, 8 rows by 8 lanes"></canvas>
+<section class="screen" id="screen-waves" aria-label="Wave layout editor">
+  <div class="skins-layout">
+    <div class="panel skins-panel lt-panel">
+      <h2>WAVES</h2>
+      <div class="lt-slots" id="lt-slots" role="listbox" aria-label="Your 30 wave layouts"></div>
+      <div class="lt-row lt-name-row">
+        <input type="text" id="lt-name" maxlength="18" aria-label="Layout name" autocomplete="off" spellcheck="false">
+        <label class="bd-check"><input type="checkbox" id="lt-on"> In game</label>
       </div>
       <div class="lt-brushes" id="lt-brushes" role="radiogroup" aria-label="Brush"></div>
+      <div class="lt-row lt-tools-row">
+        <button type="button" class="bd-tool" id="lt-mirror" aria-pressed="false">MIRROR</button>
+        <button type="button" class="bd-tool" id="lt-undo">UNDO</button>
+        <button type="button" class="bd-tool" id="lt-clear">CLEAR</button>
+        <select id="lt-template" class="lt-select" aria-label="Start from a built-in pattern"></select>
+      </div>
+      <p class="lt-status" id="lt-status" role="status"></p>
+      <div class="lt-row lt-only-row">
+        <label class="bd-check"><input type="checkbox" id="lt-only"> Only my layouts</label>
+      </div>
+      <p class="bd-hint lt-hint" id="lt-hint"></p>
+      <div class="skin-actions">
+        <button class="btn" id="lt-try">TRY IT</button>
+        <button class="btn primary" id="lt-done">DONE</button>
+      </div>
     </div>
-    <div class="lt-row lt-tools-row">
-      <button type="button" class="bd-tool" id="lt-mirror" aria-pressed="false">MIRROR</button>
-      <button type="button" class="bd-tool" id="lt-undo">UNDO</button>
-      <button type="button" class="bd-tool" id="lt-clear">CLEAR</button>
-      <select id="lt-template" class="lt-select" aria-label="Start from a built-in pattern"></select>
-    </div>
-    <p class="lt-status" id="lt-status" role="status"></p>
-    <div class="lt-row lt-only-row">
-      <label class="bd-check"><input type="checkbox" id="lt-only"> Only my layouts</label>
-    </div>
-    <p class="bd-hint lt-hint" id="lt-hint"></p>
-    <div class="skin-actions">
-      <button class="btn" id="lt-try">TRY IT</button>
-      <button class="btn primary" id="lt-done">DONE</button>
-    </div>
+    <div class="skin-stage lt-stage" id="lt-stage"><span class="drag-hint">CLICK OR DRAG ON THE ARENA · NEAREST ROW COMES FIRST</span></div>
   </div>
 </section>
 
@@ -2076,6 +2062,7 @@ const world = {
   mode: 'demo', rows: [], waves: [], nextIndex: 0,
   lastRowZ: null, lastSolidZ: null, prev: null, lastPatternId: null,
   speed: DEMO_SPEED, targetSpeed: DEMO_SPEED, time: 0, firstZ: -14, emergeDelay: 0, flash: 0, demoColor: 0, demoDesign: 0, lastWave: null,
+  paused: false,                                         // the WAVES editor stops and hides the background walls
 
   reset(mode) {
     for (const r of this.rows) if (r.emerged && !r.falling && !r.sinking) { r.sinking = true; r.sinkT = 0; }
@@ -2371,6 +2358,10 @@ const world = {
   render(dt) {
     const n = this.counts || (this.counts = new Map());
     n.clear();
+    if (this.paused) {
+      for (const m of [...Object.values(MESH), ...designs.filter((d) => d.mesh).map((d) => d.mesh)]) { m.count = 0; m.visible = false; }
+      return;
+    }
     // Sight lines from the camera to the runner's head and feet (stopping just short of the runner).
     const see = camCtl.mode === 'follow' && player.visible && player.y > -3;
     if (see) {
@@ -3250,6 +3241,90 @@ const blockPreview = (() => {
     update(dt) { if (!g.visible) return; this.t += dt; g.rotation.y = Math.PI / 2 + this.yaw + Math.sin(this.t * 0.5) * 0.45; },
   };
 })();
+// The WAVES editor shows the layout as real blocks on the arena, seen from above. Each layout row
+// gets a band of the arena; the band next to the runner is the row that reaches you first.
+const LT_BAND = 4.3, LT_NEAR = 9.4;
+const ltBandZ = (k) => LT_NEAR - LT_BAND * k - LT_BAND / 2;
+const layoutView = (() => {
+  const g = new THREE.Group();
+  g.visible = false;
+  scene.add(g);
+  const blocks = new THREE.InstancedMesh(UNIT_BOX, new THREE.MeshStandardMaterial({ map: TEX.block, roughness: 0.45, metalness: 0.05 }), 520);
+  const crushers = new THREE.InstancedMesh(UNIT_BOX, crushMat, 80);
+  for (const m of [blocks, crushers]) { m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false; m.count = 0; g.add(m); }
+  for (let i = 0; i < 520; i++) blocks.setColorAt(i, WHITE);
+  const pts = [], zFar = LT_NEAR - LT_BAND * 8;            // floor grid: 10 lanes × 8 bands
+  for (let l = 0; l <= LANES; l++) { const x = -HALF_W + l * LANE_W; pts.push(x, 0.04, zFar, x, 0.04, LT_NEAR); }
+  for (let k = 0; k <= 8; k++) { const z = LT_NEAR - LT_BAND * k; pts.push(-HALF_W, 0.04, z, HALF_W, 0.04, z); }
+  const lineGeo = new THREE.BufferGeometry();
+  lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  g.add(new THREE.LineSegments(lineGeo, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 })));
+  const hover = new THREE.InstancedMesh(new THREE.PlaneGeometry(LANE_W - 0.14, LT_BAND - 0.14).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, depthWrite: false, toneMapped: false }), 4);
+  hover.count = 0; hover.frustumCulled = false; hover.renderOrder = 3;
+  g.add(hover);
+  const arrow = new THREE.Shape();                       // arrows past the far edge: the way the walls roll in
+  arrow.moveTo(0, -1); arrow.lineTo(1.1, 0.5); arrow.lineTo(0, 0.05); arrow.lineTo(-1.1, 0.5); arrow.closePath();
+  const arrowGeo = new THREE.ShapeGeometry(arrow).rotateX(-Math.PI / 2);
+  const arrowMat = new THREE.MeshBasicMaterial({ color: 0x44f0ff, toneMapped: false, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
+  for (const x of [-6, 0, 6]) for (const z of [-27.4, -29.4]) { const a = new THREE.Mesh(arrowGeo, arrowMat); a.position.set(x, 0.05, z); g.add(a); }
+  const blockCells = [], crushCells = [], _m = new THREE.Matrix4(), _col = new THREE.Color();
+  const HEIGHT = { J: 1, '#': 2, 3: 3, S: 3, M: 1, '.': 0 };
+  const lanesOf = (col) => (col === 0 ? [0, 1] : col === 7 ? [LANES - 2, LANES - 1] : [col + PAD]);
+  return {
+    g,
+    draw(L) {
+      let nb = 0, nc = 0;
+      L.rows.forEach((row, k) => {
+        const zc = ltBandZ(k) - 0.7;
+        padRow(row).forEach((c, lane) => {
+          if (c === '.') return;
+          const x = laneX(lane), cell = { k, col: clamp(lane - PAD, 0, 7) };
+          if (c === 'M') {
+            _m.makeScale(BLOCK_W, BLOCK_H, BLOCK_D).setPosition(x, 0, zc);
+            crushers.setMatrixAt(nc, _m); crushCells[nc++] = cell;
+            return;
+          }
+          const stack = [[0, HEIGHT[c], BLOCK_D]];
+          if (c === 'S') stack.push([0.93 + 0.4, 2, 0.8], [0.93 + 1.2, 1, 0.8]);   // steps, drawn shallow so every row fits
+          for (const [dz, n, d] of stack) {
+            for (let u = 0; u < n; u++) {
+              _m.makeScale(BLOCK_W, BLOCK_H, d).setPosition(x, u * BLOCK_H, zc + dz);
+              blocks.setMatrixAt(nb, _m); blocks.setColorAt(nb, _col.set(LT_COLORS[c])); blockCells[nb++] = cell;
+            }
+          }
+        });
+      });
+      blocks.count = nb; crushers.count = nc;
+      blocks.instanceMatrix.needsUpdate = true; blocks.instanceColor.needsUpdate = true; crushers.instanceMatrix.needsUpdate = true;
+      blocks.computeBoundingSphere(); crushers.computeBoundingSphere();
+    },
+    cellOf(mesh, i) { return (mesh === crushers ? crushCells : blockCells)[i] || null; },
+    meshes: [blocks, crushers],
+    setHover(cells, L) {                                 // highlight the cells about to be painted, on top of what is there
+      let n = 0;
+      for (const c of cells) for (const lane of lanesOf(c.col)) {
+        if (n >= 4) break;
+        _m.makeTranslation(laneX(lane), HEIGHT[L.rows[c.k][c.col]] * BLOCK_H + 0.06, ltBandZ(c.k));
+        hover.setMatrixAt(n++, _m);
+      }
+      hover.count = n;
+      hover.instanceMatrix.needsUpdate = true;
+    },
+  };
+})();
+const ltRay = new THREE.Raycaster(), _ltNdc = new THREE.Vector2(), _ltHit = new THREE.Vector3(), LT_FLOOR = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+function ltPick(e) {                                     // which layout cell is under the pointer: a block first, else the floor
+  const r = renderer.domElement.getBoundingClientRect();
+  _ltNdc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ltRay.setFromCamera(_ltNdc, camera);
+  const hit = ltRay.intersectObjects(layoutView.meshes, false)[0];
+  if (hit && hit.instanceId !== undefined) return layoutView.cellOf(hit.object, hit.instanceId);
+  if (!ltRay.ray.intersectPlane(LT_FLOOR, _ltHit)) return null;
+  const lane = Math.floor((_ltHit.x + HALF_W) / LANE_W), k = Math.floor((LT_NEAR - _ltHit.z) / LT_BAND);
+  if (lane < 0 || lane >= LANES || k < 0 || k > 7) return null;
+  return { k, col: clamp(lane - PAD, 0, 7) };
+}
 const camCtl = {
   mode: 'menu', params: cameraParams(innerWidth / Math.max(1, innerHeight)),
   pos: new THREE.Vector3(34, 24, 30), look: new THREE.Vector3(0, 0, ARENA_MID),
@@ -3286,6 +3361,12 @@ function updateCamera(dt) {
     c.lookT.set(SHOW.x, 1.1, SHOW.z);
     c.pos.set(damp(c.pos.x, c.target.x, 2.6, dt), damp(c.pos.y, c.target.y, 2.6, dt), damp(c.pos.z, c.target.z, 2.6, dt));
     c.look.set(damp(c.look.x, c.lookT.x, 3.2, dt), damp(c.look.y, c.lookT.y, 3.2, dt), damp(c.look.z, c.lookT.z, 3.2, dt));
+  } else if (c.mode === 'editor') {                      // WAVES: the arena from above
+    const side = P.t > 0.5;                              // tall screens: lay the arena sideways
+    c.lookT.set(0, 0, LT_NEAR - LT_BAND * 4 - 0.4);
+    if (side) c.target.set(16, 86, c.lookT.z); else c.target.set(0, 46, c.lookT.z + 12);
+    c.pos.set(damp(c.pos.x, c.target.x, 2.4, dt), damp(c.pos.y, c.target.y, 2.4, dt), damp(c.pos.z, c.target.z, 2.4, dt));
+    c.look.set(damp(c.look.x, c.lookT.x, 3, dt), damp(c.look.y, c.lookT.y, 3, dt), damp(c.look.z, c.lookT.z, 3, dt));
   } else {
     // Third-person orbit: the mouse (or a drag) turns the camera all the way around the runner.
     // Yaw and pitch apply straight away; only the point it circles follows the runner smoothly.
@@ -3318,9 +3399,9 @@ function updateCamera(dt) {
   const sh = c.shake * c.shake * 0.6;
   camera.position.set(c.pos.x + (Math.random() - 0.5) * sh, c.pos.y + (Math.random() - 0.5) * sh, c.pos.z + (Math.random() - 0.5) * sh);
   camera.lookAt(c.look);
-  const fov = c.mode === 'menu' ? lerp(50, 64, P.t) : c.mode === 'locker' ? lerp(40, 58, P.t) : settings.fov + 15 * P.t;   // portrait gets a little extra
+  const fov = c.mode === 'menu' ? lerp(50, 64, P.t) : c.mode === 'locker' ? lerp(40, 58, P.t) : c.mode === 'editor' ? lerp(50, 60, P.t) : settings.fov + 15 * P.t;   // portrait gets a little extra
   if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = damp(camera.fov, fov, 3, dt); camera.updateProjectionMatrix(); }
-  c.viewK = damp(c.viewK, c.mode === 'locker' ? 1 : 0, 4, dt);
+  c.viewK = damp(c.viewK, c.mode === 'locker' || c.mode === 'editor' ? 1 : 0, 4, dt);
   setViewShift(c.viewK);
   sky.position.copy(camera.position);
   stars.pts.position.copy(camera.position);
@@ -3636,7 +3717,8 @@ function showScreen(name) {
   if (name === 'skins' && prev !== 'skins') openSkins();
   if (prev === 'blocks' && name !== 'blocks') closeBlocks();
   if (name === 'blocks' && prev !== 'blocks') openBlocks();
-  if (name === 'waves') syncLayoutUI();
+  if (prev === 'waves' && name !== 'waves') closeWaves();
+  if (name === 'waves' && prev !== 'waves') openWaves();
   for (const s of SCREENS) $('screen-' + s).classList.toggle('active', s === name);
   if (name) {
     const el = $('screen-' + name);
@@ -3759,13 +3841,13 @@ function ltMessage(L) {
   if (!L.error) return { cls: 'ok', text: '✓ There is always a way through. Ready to play.' };
   if (/no obstacles/.test(L.error)) return { cls: 'empty', text: 'Paint some blocks to make a layout.' };
   const row = L.error.match(/row (\d)/);
-  if (row) return { cls: 'bad', text: `✗ Row ${9 - +row[1]} from the top has no way through. Leave a hole, a single block or climb steps.` };
+  if (row) return { cls: 'bad', text: `✗ Row ${9 - +row[1]} (counting from your runner) has no way through. Leave a hole, a single block or climb steps.` };
   return { cls: 'bad', text: '✗ There is no safe path through these rows. Open up some holes.' };
 }
 function ltChanged(live) {
   checkLayout(lt.slot);
   drawLayoutThumb(lt.slot);
-  drawLayoutEditor();
+  layoutView.draw(ltLayout());
   if (!live) { saveLayouts(); syncLayoutUI(); }
 }
 function ltPushUndo() {
@@ -3776,10 +3858,6 @@ function ltPaint(x, y) {
   const L = ltLayout();
   L.rows[y][x] = lt.brush;
   if (lt.mirror) L.rows[y][7 - x] = lt.brush;
-}
-function ltCell(e) {
-  const r = $('lt-canvas').getBoundingClientRect();
-  return { x: clamp(Math.floor(((e.clientX - r.left) / r.width) * 8), 0, 7), y: clamp(Math.floor(((e.clientY - r.top) / r.height) * 8), 0, 7) };
 }
 function drawLayoutCell(g, c, x, y, S) {
   g.fillStyle = c === '.' ? ((x + y) % 2 ? '#2a2150' : '#30275c') : LT_COLORS[c];
@@ -3798,22 +3876,9 @@ function drawLayoutCell(g, c, x, y, S) {
   g.textAlign = 'center'; g.textBaseline = 'middle';
   g.fillText({ J: '1', '#': '2+', 3: '3', M: 'M' }[c], x * S + S / 2, y * S + S / 2 + 1);
 }
-function drawLayoutEditor() {
-  const cv = $('lt-canvas'), g = cv.getContext('2d'), S = cv.width / 8, L = ltLayout();
-  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) drawLayoutCell(g, L.rows[y][x], x, y, S);
-  g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1;
-  g.beginPath();
-  for (let k = 1; k < 8; k++) { const v = Math.round(k * S) + 0.5; g.moveTo(v, 0); g.lineTo(v, cv.height); g.moveTo(0, v); g.lineTo(cv.width, v); }
-  g.stroke();
-  if (lt.mirror) {
-    g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 2; g.setLineDash([6, 5]);
-    g.beginPath(); g.moveTo(cv.width / 2, 0); g.lineTo(cv.width / 2, cv.height); g.stroke();
-    g.setLineDash([]);
-  }
-}
 function drawLayoutThumb(i) {
   const cv = $('lt-slots').children[i].querySelector('canvas'), g = cv.getContext('2d'), L = layouts[i];
-  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) drawLayoutCell(g, L.rows[y][x], x, y, cv.width / 8);
+  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) drawLayoutCell(g, L.rows[y][x], x, 7 - y, cv.width / 8);   // first row at the bottom, like the arena view
 }
 function syncLayoutUI() {
   const L = ltLayout(), msg = ltMessage(L), inGame = layoutsInGame().length;
@@ -3834,7 +3899,26 @@ function syncLayoutUI() {
   $('lt-hint').textContent = !inGame ? 'Tick "In game" on a layout that is ready to mix it into your runs.'
     : layoutOpts.only ? `Every wave is one of your ${inGame} layout${inGame === 1 ? '' : 's'}, in slot order.`
       : `${inGame} of your layout${inGame === 1 ? '' : 's'} ${inGame === 1 ? 'is' : 'are'} mixed in with the built-in waves.`;
-  drawLayoutEditor();
+  layoutView.draw(L);
+  layoutView.setHover([], L);
+}
+const FOG_NEAR = scene.fog.near, FOG_FAR = scene.fog.far;
+function openWaves() {
+  camCtl.mode = 'editor';
+  world.paused = true;
+  layoutView.g.visible = true;
+  player.showcase(0, 9.7, 0);                            // your runner marks the near edge
+  player.yaw = 0;
+  scene.fog.near = 400; scene.fog.far = 600;             // a clear view from up high
+  syncLayoutUI();
+}
+function closeWaves() {
+  layoutView.g.visible = false;
+  world.paused = false;
+  player.showYaw = null;
+  player.hide();
+  scene.fog.near = FOG_NEAR; scene.fog.far = FOG_FAR;
+  if (state === 'menu') camCtl.mode = 'menu';
 }
 function buildLayoutUI() {
   const slots = $('lt-slots');
@@ -3886,30 +3970,32 @@ function buildLayoutUI() {
   });
   $('lt-try').addEventListener('click', () => { if (ltLayout().pattern) { audio.play('click'); game.start(lt.slot); } });
   $('lt-done').addEventListener('click', () => { audio.play('click'); showScreen('menu'); });
-  // paint cells: click, or drag across them
-  const cv = $('lt-canvas');
-  cv.addEventListener('pointerdown', (e) => {
+  // paint on the arena: click a cell, or drag across cells
+  const st = $('lt-stage');
+  st.addEventListener('pointerdown', (e) => {
+    const c = ltPick(e);
+    if (!c) return;
     e.preventDefault();
     ltPushUndo();
-    const c = ltCell(e);
     lt.painting = true; lt.last = c;
-    ltPaint(c.x, c.y);
+    ltPaint(c.col, c.k);
     ltChanged(true);
-    try { cv.setPointerCapture(e.pointerId); } catch { /* ignored */ }
+    try { st.setPointerCapture(e.pointerId); } catch { /* ignored */ }
   });
-  cv.addEventListener('pointermove', (e) => {
-    if (!lt.painting) return;
-    const c = ltCell(e);
-    if (c.x === lt.last.x && c.y === lt.last.y) return;
-    let { x, y } = lt.last;                              // fill in the cells between, so fast drags leave no gaps
-    while (x !== c.x || y !== c.y) { x += Math.sign(c.x - x); y += Math.sign(c.y - y); ltPaint(x, y); }
+  st.addEventListener('pointermove', (e) => {
+    const c = ltPick(e);
+    layoutView.setHover(c ? (lt.mirror && c.col !== 7 - c.col ? [c, { k: c.k, col: 7 - c.col }] : [c]) : [], ltLayout());
+    if (!lt.painting || !c || (c.col === lt.last.col && c.k === lt.last.k)) return;
+    let { col, k } = lt.last;                            // fill in the cells between, so fast drags leave no gaps
+    while (col !== c.col || k !== c.k) { col += Math.sign(c.col - col); k += Math.sign(c.k - k); ltPaint(col, k); }
     lt.last = c;
     ltChanged(true);
   });
   const end = () => { if (!lt.painting) return; lt.painting = false; ltChanged(); };
-  cv.addEventListener('pointerup', end);
-  cv.addEventListener('pointercancel', end);
-  cv.addEventListener('lostpointercapture', end);
+  st.addEventListener('pointerup', end);
+  st.addEventListener('pointercancel', end);
+  st.addEventListener('lostpointercapture', end);
+  st.addEventListener('pointerleave', () => layoutView.setHover([], ltLayout()));
   window.addEventListener('keydown', (e) => {
     if (currentScreen === 'waves' && (e.ctrlKey || e.metaKey) && e.code === 'KeyZ') { e.preventDefault(); $('lt-undo').click(); }
   });
@@ -4619,7 +4705,7 @@ function simulate(dt, active) {
         if (run.cause === 'fall') { player.step(h, false); world.support(player); }
         else player.koStep(h);
       }
-      world.step(h);
+      if (!world.paused) world.step(h);
     }
   }
 }
@@ -4749,6 +4835,12 @@ function init() {
       skins: { SKINS, state: skinState, select: selectSkin },
       designs, meshCounts: () => ({ hash: MESH['#'].count, ghost: MESH.ghost.count }), layouts, layoutOpts,
       checkLayouts: () => layouts.forEach((L, i) => checkLayout(i)),
+      layoutHoverCount: () => layoutView.g.children.find((o) => o.isInstancedMesh && o.material.opacity === 0.3).count,
+      fogNear: () => scene.fog.near,
+      ltCellScreen: (k, col, top = 0) => {                // where a layout cell is on screen in the WAVES editor
+        const v = new THREE.Vector3(laneX(col + PAD), top, ltBandZ(k)).project(camera), r = renderer.domElement.getBoundingClientRect();
+        return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height };
+      },
       info() { return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, pixelRatio: renderer.getPixelRatio() }; },
       consts: { P_START_Z, P_HALF_W, P_HALF_D, P_HEIGHT, ROW_HALF_D, BLOCK_H, BLOCK_W, BLOCK_D, HIT_HALF_D, JUMP_V, G_UP, G_DOWN, AIR_TIME, MOVE_SPEED, CRUSH_UP, LANES, Z_SPAWN, Z_NEAR, Z_FAR, FALL_HANG, HALF_W, ARENA_HALF, LASER_X },
     };

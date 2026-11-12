@@ -110,9 +110,11 @@ Paint your own blocks under **BLOCKS** on the main menu. You get a loadout of 20
 
 ## Wave layouts
 
-Arrange the walls yourself under **WAVES** on the main menu. You get 30 layout slots. Each layout is an 8×8 grid in the same format as the built-in patterns. Each grid row is one row of the wave, and the top row reaches you first. The eight columns are the lanes; the outer ones stretch to the edges of the 10-lane arena.
+Arrange the walls yourself under **WAVES** on the main menu. You edit them from above: the camera flies up over the arena and the layout stands on it as real blocks. Your runner waits at the near edge, and glowing arrows past the far edge show where the walls roll in from. The background walls pause while you edit. On a phone held upright the arena lies sideways so it fits above the panel.
 
-- Brushes: **HOLE**, **SINGLE** (one block: jump onto or over it), **BLOCK** (2–3 high), **TALL** (exactly 3 high), **CLIMB** (a 3-high wall lane with steps in front) and **CRUSHER**. Click or drag to paint; **MIRROR** paints both sides at once, and there is **UNDO** (or Ctrl+Z) and **CLEAR**. **Start from…** copies any built-in pattern into the slot.
+You get 30 layout slots. Each layout has 8 rows, one per band of the arena; the row nearest your runner reaches you first. It has 8 lanes; the outer two stretch to the edges of the 10-lane arena. This is the same format as the built-in patterns.
+
+- Brushes: **HOLE**, **SINGLE** (one block: jump onto or over it), **BLOCK** (2–3 high), **TALL** (exactly 3 high), **CLIMB** (a 3-high wall lane with steps in front; the steps are drawn shallower in the editor so every row fits) and **CRUSHER**. Click or drag on the arena to paint; clicking a block paints its cell, so you can paint on top of tall walls. **MIRROR** paints both sides at once, and there is **UNDO** (or Ctrl+Z) and **CLEAR**. **Start from…** copies any built-in pattern into the slot.
 - Give each layout a name; it shows in the wave banner when it comes up.
 - The survivability solver checks the layout as you paint. It says whether there is always a way through, or which row has none. A layout that can't be survived is never used.
 - **In game** mixes the layout in with the built-in waves. **Only my layouts** makes every wave one of yours, in slot order. The difficulty slider still sets the speed and reaction time.
