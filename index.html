@@ -222,6 +222,116 @@ body[data-state=playing]:not(.touch) .punch-hud{display:flex}
 .diff-ends{display:flex;justify-content:space-between;font-size:10px;font-weight:800;letter-spacing:.14em;color:var(--muted);opacity:.75}
 .diff-about{margin:5px 0 0;font-size:12.5px;line-height:1.35;color:#e4dfff;min-height:2.7em}
 .menu-row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+/* ---------- Main menu: the lobby. Your runner stands on its podium in the middle (the 3D scene); the
+   ways to make the game yours down the left, the way into a run on the right. ---------- */
+#screen-menu{padding:0;background:linear-gradient(180deg,rgba(8,5,25,.5),rgba(8,5,25,0) 24%,rgba(8,5,25,0) 62%,rgba(8,5,25,.62)),
+  radial-gradient(ellipse 58% 66% at 50% 46%,rgba(8,5,25,0) 45%,rgba(8,5,25,.38))}
+.menu-wrap.lobby{position:absolute;inset:0;max-height:none;overflow:hidden;display:grid;gap:10px 18px;text-align:left;align-items:center;
+  padding:calc(var(--sat) + 16px) calc(var(--sar) + 22px) calc(var(--sab) + 10px) calc(var(--sal) + 22px);
+  grid-template-columns:minmax(200px,1fr) minmax(0,1.15fr) minmax(250px,1fr);grid-template-rows:auto 1fr auto auto;
+  grid-template-areas:"head head corner" "side . go" "side plate go" "foot foot foot"}
+.lobby-head{grid-area:head;align-self:start;display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding-top:12px}
+.lobby .logo{justify-content:flex-start;gap:clamp(8px,1.4vw,16px);margin:0;transform:rotate(-2deg);transform-origin:left bottom}
+.lobby .tile{--s:clamp(34px,4.3vw,58px)}
+.lobby .tagline{font-size:clamp(12px,1.25vw,15px);font-weight:700;padding-left:4px}
+.lobby-corner{grid-area:corner;align-self:start;justify-self:end;display:flex;gap:12px}
+.round-btn{appearance:none;-webkit-appearance:none;border:0;cursor:pointer;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;flex:none;
+  color:#2b1d5e;font-family:var(--display);font-size:27px;line-height:1;background:linear-gradient(180deg,#fff,#dcd5ff);
+  box-shadow:inset 0 -3px 0 rgba(43,29,94,.12),0 5px 0 #7a6bc6,0 10px 18px rgba(0,0,0,.35);transition:transform .16s cubic-bezier(.3,1.6,.5,1),box-shadow .16s}
+.round-btn svg{width:30px;height:30px;fill:#2b1d5e}
+.round-btn:hover{transform:translateY(-2px) rotate(-10deg) scale(1.07)}
+.round-btn:active{transform:translateY(4px);box-shadow:0 1px 0 #7a6bc6,0 4px 10px rgba(0,0,0,.3)}
+.round-btn:focus-visible{outline:3px solid var(--cyan);outline-offset:3px}
+.lobby-side{grid-area:side;align-self:center;justify-self:start;display:flex;flex-direction:column;gap:16px;width:min(250px,100%)}
+.lobby-tile{appearance:none;-webkit-appearance:none;border:0;cursor:pointer;display:flex;align-items:center;gap:12px;padding:10px 16px 12px 11px;border-radius:20px;
+  color:#fff;text-align:left;font:inherit;background:linear-gradient(180deg,var(--t1),var(--t2));
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.5),inset 0 -3px 0 rgba(0,0,0,.12),0 6px 0 var(--t3),0 12px 22px rgba(0,0,0,.35);
+  transform:rotate(var(--tilt,-1.5deg));transition:transform .16s cubic-bezier(.3,1.6,.5,1),box-shadow .16s}
+.lobby-tile:nth-child(2){--tilt:1.2deg}
+.lobby-tile:nth-child(3){--tilt:-.8deg}
+.lobby-tile:hover{transform:translateY(-3px) rotate(0) scale(1.04)}
+.lobby-tile:active{transform:translateY(5px) rotate(0);box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 1px 0 var(--t3),0 4px 10px rgba(0,0,0,.3)}
+.lobby-tile:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.tile-ico{flex:none;width:50px;height:50px;border-radius:15px;display:grid;place-items:center;background:rgba(255,255,255,.24);box-shadow:inset 0 0 0 2px rgba(255,255,255,.4)}
+.tile-ico svg{width:31px;height:31px;fill:#fff;filter:drop-shadow(0 2px 0 rgba(0,0,0,.25))}
+.tile-txt b{display:block;font-family:var(--display);font-weight:400;font-size:22px;letter-spacing:.04em;line-height:1.05;text-shadow:0 2px 0 var(--t3)}
+.tile-txt small{display:block;font-size:12px;font-weight:800;letter-spacing:.02em;opacity:.95;margin-top:2px;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+.t-skins{--t1:#ff94cb;--t2:#ff4fa3;--t3:#a3226a}
+.t-blocks{--t1:#86e6ff;--t2:#2aa6ee;--t3:#11608f}
+.t-waves{--t1:#bdf27e;--t2:#5ec42f;--t3:#2f7a12}
+.lobby-plate{grid-area:plate;justify-self:center;align-self:end;display:flex;flex-direction:column;align-items:center;gap:1px;padding:7px 22px 8px;border-radius:16px;
+  background:rgba(14,10,38,.62);border:2px solid rgba(255,255,255,.2);box-shadow:0 6px 18px rgba(0,0,0,.35);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.lobby-plate small{font-size:10px;font-weight:800;letter-spacing:.18em;color:var(--muted)}
+.lobby-plate b{font-family:var(--display);font-weight:400;font-size:20px;letter-spacing:.05em;color:#fff;white-space:nowrap}
+.lobby-go{grid-area:go;align-self:end;justify-self:end;display:flex;flex-direction:column;gap:12px;width:min(340px,100%)}
+.lobby .best-card{justify-content:center;padding:8px 16px}
+.lobby .diff-pick{width:100%}
+.play-btn{position:relative;overflow:hidden;width:100%;min-width:0;min-height:clamp(64px,11vh,90px);font-size:clamp(30px,3.4vw,44px);border-radius:22px;letter-spacing:.07em;
+  box-shadow:inset 0 3px 0 rgba(255,255,255,.75),inset 0 -4px 0 rgba(160,60,0,.18),0 8px 0 #b8560c,0 18px 30px rgba(0,0,0,.42);animation:playGlow 2.4s ease-in-out infinite}
+.play-in{display:inline-flex;align-items:center;animation:playBob 2.4s ease-in-out infinite}   /* (the label bobs; the button itself holds still) */
+.play-btn::after{content:"";position:absolute;top:0;bottom:0;left:-60%;width:38%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.6),transparent);transform:skewX(-20deg);
+  animation:playShine 3.4s ease-in-out infinite;pointer-events:none}
+.play-btn:hover .play-in{animation-play-state:paused}
+.play-btn:active{transform:translateY(6px);box-shadow:inset 0 3px 0 rgba(255,255,255,.75),0 2px 0 #b8560c,0 6px 14px rgba(0,0,0,.35)}
+.play-ico{display:inline-block;margin-right:.32em;font-size:.82em;transform:translateY(-.06em)}
+@keyframes playBob{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-2px) scale(1.06)}}
+@keyframes playGlow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.08) saturate(1.1)}}
+@keyframes playShine{0%,55%{left:-60%}100%{left:130%}}
+.lobby-foot{grid-area:foot;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;min-height:0}
+/* everything pops in when the lobby opens */
+.screen.active .lobby-head{animation:lobbyIn .5s cubic-bezier(.3,1.4,.5,1) both}
+.screen.active .lobby-corner{animation:lobbyIn .5s .1s cubic-bezier(.3,1.4,.5,1) both}
+.screen.active .lobby-tile{animation:lobbyInLeft .5s cubic-bezier(.3,1.4,.5,1) backwards}
+.screen.active .lobby-tile:nth-child(1){animation-delay:.08s}
+.screen.active .lobby-tile:nth-child(2){animation-delay:.16s}
+.screen.active .lobby-tile:nth-child(3){animation-delay:.24s}
+.screen.active .lobby-go{animation:lobbyInRight .55s .12s cubic-bezier(.3,1.4,.5,1) both}
+.screen.active .lobby-plate{animation:lobbyIn .5s .3s cubic-bezier(.3,1.4,.5,1) both}
+@keyframes lobbyIn{from{opacity:0;translate:0 -16px;scale:.92}to{opacity:1;translate:0 0;scale:1}}
+@keyframes lobbyInLeft{from{opacity:0;translate:-60px 0}to{opacity:1;translate:0 0}}
+@keyframes lobbyInRight{from{opacity:0;translate:60px 0}to{opacity:1;translate:0 0}}
+/* phones held upright: the runner in the middle, everything else above and below */
+@media (orientation:portrait){
+  .menu-wrap.lobby{grid-template-columns:1fr auto;grid-template-rows:auto 1fr auto auto auto auto;gap:10px 12px;
+    grid-template-areas:"head corner" ". ." "plate plate" "side side" "go go" "foot foot";padding:calc(var(--sat) + 14px) calc(var(--sar) + 14px) calc(var(--sab) + 10px) calc(var(--sal) + 14px)}
+  .lobby .logo{transform:rotate(-2deg)}
+  .lobby .tile{--s:clamp(26px,7.4vw,46px)}
+  .lobby .tagline{display:none}
+  .round-btn{width:48px;height:48px;font-size:23px}
+  .round-btn svg{width:26px;height:26px}
+  .lobby-side{flex-direction:row;width:100%;gap:10px}
+  .lobby-tile{flex:1;min-width:0;flex-direction:column;gap:6px;padding:9px 6px 11px;text-align:center}
+  .tile-ico{width:42px;height:42px;border-radius:13px}
+  .tile-ico svg{width:26px;height:26px}
+  .tile-txt b{font-size:16px}
+  .tile-txt small{display:none}
+  .lobby-go{width:100%;justify-self:stretch;gap:10px}
+  .lobby .diff-about{display:none}
+  .play-btn{min-height:66px;font-size:32px}
+}
+/* short screens (phones on their side): everything a little smaller */
+@media (max-height:520px) and (orientation:landscape){
+  .menu-wrap.lobby{gap:6px 14px;padding:calc(var(--sat) + 8px) calc(var(--sar) + 14px) calc(var(--sab) + 6px) calc(var(--sal) + 14px);
+    grid-template-columns:minmax(170px,1fr) minmax(0,1fr) minmax(220px,1fr)}
+  .lobby .tile{--s:clamp(24px,7vh,36px)}
+  .lobby .tagline{display:none}
+  .round-btn{width:42px;height:42px;font-size:20px;box-shadow:0 4px 0 #7a6bc6,0 6px 12px rgba(0,0,0,.35)}
+  .round-btn svg{width:22px;height:22px}
+  .lobby-side{gap:10px;width:min(210px,100%)}
+  .lobby-tile{padding:6px 12px 8px 8px;gap:9px;border-radius:16px}
+  .tile-ico{width:36px;height:36px;border-radius:11px}
+  .tile-ico svg{width:23px;height:23px}
+  .tile-txt b{font-size:17px}
+  .tile-txt small{font-size:10.5px}
+  .lobby-go{gap:7px;width:min(290px,100%)}
+  .lobby .best-card{padding:5px 12px;white-space:nowrap}
+  .lobby .pb-long{display:none}
+  .play-btn{min-height:52px;font-size:28px;border-radius:18px}
+  .lobby-plate{padding:4px 16px 5px}
+  .lobby-plate b{font-size:16px}
+  .lobby-foot .menu-hint{display:none}
+}
+@media (prefers-reduced-motion:reduce){.play-btn,.play-in,.play-btn::after,.screen.active .lobby-head,.screen.active .lobby-corner,.screen.active .lobby-tile,.screen.active .lobby-go,.screen.active .lobby-plate{animation:none}}
 /* ---------- Skins ---------- */
 .skins-layout{width:100%;height:100%;display:flex;align-items:stretch;gap:16px}
 .skins-panel{width:min(480px,50vw);display:flex;flex-direction:column;gap:10px;padding:16px 18px 14px}
@@ -556,8 +666,9 @@ body.touch .kbd-hint{display:none}
 
 <!-- ================= MAIN MENU ================= -->
 <section class="screen" id="screen-menu" aria-label="Main menu">
-  <div class="menu-wrap">
-    <h1 class="logo" aria-label="Block Dash">
+  <div class="menu-wrap lobby">
+    <div class="lobby-head">
+      <h1 class="logo" aria-label="Block Dash">
       <span class="word" aria-hidden="true">
         <span class="tile" style="--c1:#ffe36e;--c2:#ffb52e;--c3:#b36a00;--d:.05s">B</span>
         <span class="tile" style="--c1:#ff9a86;--c2:#ff4d5e;--c3:#a3203a;--d:.12s">L</span>
@@ -572,24 +683,32 @@ body.touch .kbd-hint{display:none}
         <span class="tile" style="--c1:#aebdff;--c2:#5b6cff;--c3:#2a35a3;--d:.63s">H</span>
       </span>
     </h1>
-    <p class="tagline">Dodge the walls. Jump, dive, don't get pushed off.</p>
-    <div class="best-card"><span class="star">★</span>PERSONAL BEST <b id="menu-best">0</b><span id="menu-best-unit">WAVES</span></div>
-    <div class="diff-pick" id="diff-pick">
+      <p class="tagline">Dodge the walls. Punch your rivals off.</p>
+    </div>
+    <div class="lobby-corner">
+      <button class="round-btn" id="btn-howto" aria-label="How to play" title="How to play"><span aria-hidden="true">?</span></button>
+      <button class="round-btn" id="btn-settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13.1a7.7 7.7 0 0 0 0-2.2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.9-1.1L14.7 3h-4l-.4 2.7a7.6 7.6 0 0 0-1.9 1.1l-2.5-1-2 3.5 2.1 1.6a7.7 7.7 0 0 0 0 2.2l-2.1 1.6 2 3.5 2.5-1c.6.5 1.2.8 1.9 1.1l.4 2.7h4l.4-2.7c.7-.3 1.3-.6 1.9-1.1l2.5 1 2-3.5zM12.7 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/></svg></button>
+    </div>
+    <nav class="lobby-side" aria-label="Make it yours">
+      <button class="lobby-tile t-skins" id="btn-skins"><span class="tile-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.6 3.2 12 5.1l3.4-1.9 5.6 3.4-2.3 4.3-1.9-1V21H7.2V9.9l-1.9 1L3 6.6z"/></svg></span><span class="tile-txt"><b>SKINS</b><small>Outfits and colours</small></span></button>
+      <button class="lobby-tile t-blocks" id="btn-blocks"><span class="tile-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2 20.6 7v10L12 21.8 3.4 17V7z" opacity=".55"/><path d="M12 2.2 20.6 7 12 11.8 3.4 7z"/><path d="M12 11.8v10L3.4 17V7z" opacity=".8"/></svg></span><span class="tile-txt"><b>BLOCKS</b><small>Paint your own</small></span></button>
+      <button class="lobby-tile t-waves" id="btn-waves"><span class="tile-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="12" width="5.5" height="9.5" rx="1.4"/><rect x="9.25" y="6.5" width="5.5" height="15" rx="1.4"/><rect x="16" y="2.5" width="5.5" height="19" rx="1.4"/></svg></span><span class="tile-txt"><b>WAVES</b><small>Build your own</small></span></button>
+    </nav>
+    <div class="lobby-plate" id="lobby-plate"><small>YOUR RUNNER</small><b id="lobby-skin">Classic</b></div>
+    <div class="lobby-go">
+      <div class="best-card"><span class="star">★</span><span><span class="pb-long">PERSONAL </span>BEST</span> <b id="menu-best">0</b><span id="menu-best-unit">WAVES</span></div>
+      <div class="diff-pick" id="diff-pick">
       <div class="diff-head"><label for="set-diff">DIFFICULTY</label><b id="diff-name">NORMAL</b></div>
       <input type="range" id="set-diff" min="1" max="5" step="1" value="3">
       <div class="diff-ends" aria-hidden="true"><span>EASY</span><span>HARD</span></div>
       <p class="diff-about" id="diff-about"></p>
     </div>
-    <button class="btn primary big" id="btn-play">▶&nbsp; PLAY</button>
-    <div class="menu-row">
-      <button class="btn" id="btn-skins">SKINS</button>
-      <button class="btn" id="btn-blocks">BLOCKS</button>
-      <button class="btn" id="btn-waves">WAVES</button>
-      <button class="btn" id="btn-howto">HOW TO PLAY</button>
-      <button class="btn" id="btn-settings">SETTINGS</button>
+      <button class="btn primary big play-btn" id="btn-play"><span class="play-in"><span class="play-ico" aria-hidden="true">▶</span>PLAY</span></button>
     </div>
-    <p class="menu-hint" id="menu-hint"></p>
-    <p class="rotate-hint">↻ Turn your device sideways for the widest view</p>
+    <div class="lobby-foot">
+      <p class="menu-hint" id="menu-hint"></p>
+      <p class="rotate-hint">↻ Turn your device sideways for the widest view</p>
+    </div>
   </div>
 </section>
 
@@ -4048,6 +4167,7 @@ function cameraParams(aspect) {
 }
 // The skins screen shows the runner on a podium just beside the arena, facing a close-up camera.
 const SHOW = { x: HALF_W + 4.72, z: -3, yaw: -Math.PI / 2 };   // the podium beside the arena
+const LOBBY = { x: 0, z: Z_NEAR + 5.4, yaw: Math.PI };          // in the lobby it floats off the near end, the arena behind
 const podium = (() => {
   const g = new THREE.Group();
   const top = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.45, 0.5, 40),
@@ -4186,13 +4306,14 @@ const camCtl = {
   pos: new THREE.Vector3(34, 24, 30), look: new THREE.Vector3(0, 0, ARENA_MID),
   target: new THREE.Vector3(), lookT: new THREE.Vector3(), pivot: new THREE.Vector3(P_START_X, 0, P_START_Z),
   posOff: new THREE.Vector3(), lookOff: new THREE.Vector3(),
-  angle: 0.75, shake: 0, yaw: 0, pitch: 0, rad: 0, ease: false, viewK: 0,
+  angle: 0.75, shake: 0, yaw: 0, pitch: 0, rad: 0, ease: false, shiftX: 0, shiftY: 0,
 };
-// Shift the picture so the podium runner sits beside the skins panel (k: 0 = centred, 1 = shifted).
-function setViewShift(k) {
-  if (k < 0.001) { if (camera.view && camera.view.enabled) camera.clearViewOffset(); return; }
-  const w = Math.max(1, stage.clientWidth || innerWidth), h = Math.max(1, stage.clientHeight || innerHeight), wide = w >= h * 1.05;
-  camera.setViewOffset(w, h, wide ? -w * 0.23 * k : 0, wide ? 0 : h * 0.31 * k, w, h);
+// Shift the picture (as fractions of the screen) so the podium runner sits beside the skins panel, or in the
+// lobby above the buttons on a tall screen.
+function setViewShift(fx, fy) {
+  if (Math.abs(fx) < 0.001 && Math.abs(fy) < 0.001) { if (camera.view && camera.view.enabled) camera.clearViewOffset(); return; }
+  const w = Math.max(1, stage.clientWidth || innerWidth), h = Math.max(1, stage.clientHeight || innerHeight);
+  camera.setViewOffset(w, h, w * fx, h * fy, w, h);
 }
 // Pitch is an offset from the default elevation; keep the camera between skimming the floor and almost straight down.
 const CAM_ELEV_MIN = 0.1, CAM_ELEV_MAX = 1.38;
@@ -4204,13 +4325,13 @@ function turnCamera(dx, dy, sens) {
 }
 function updateCamera(dt) {
   const c = camCtl, P = c.params;
-  if (c.mode === 'menu') {
-    c.angle += dt * 0.06;
-    const r = 38 * ARENA_K * (1 + P.t * 0.45);
-    c.target.set(Math.sin(c.angle) * r, (18 + Math.sin(c.angle * 0.7) * 3 + P.t * 8) * ARENA_K, ARENA_MID + 4 + Math.cos(c.angle) * r);
-    c.lookT.set(0, -1, ARENA_MID - 2);
-    c.pos.set(damp(c.pos.x, c.target.x, 1.1, dt), damp(c.pos.y, c.target.y, 1.1, dt), damp(c.pos.z, c.target.z, 1.1, dt));
-    c.look.set(damp(c.look.x, c.lookT.x, 1.4, dt), damp(c.look.y, c.lookT.y, 1.4, dt), damp(c.look.z, c.lookT.z, 1.4, dt));
+  if (c.mode === 'menu') {                               // the lobby: you on your podium, the arena and its walls behind
+    c.angle += dt;
+    const a = 0.16 + Math.sin(c.angle * 0.22) * 0.1, d = lerp(7.8, 9.6, P.t);   // a slow drift round the front
+    c.target.set(LOBBY.x + Math.sin(a - 0.16) * d, lerp(2.2, 2.6, P.t) + Math.sin(c.angle * 0.3) * 0.08, LOBBY.z + Math.cos(a - 0.16) * d);
+    c.lookT.set(LOBBY.x, lerp(1.1, 1.0, P.t), LOBBY.z);
+    c.pos.set(damp(c.pos.x, c.target.x, 2.2, dt), damp(c.pos.y, c.target.y, 2.2, dt), damp(c.pos.z, c.target.z, 2.2, dt));
+    c.look.set(damp(c.look.x, c.lookT.x, 2.8, dt), damp(c.look.y, c.lookT.y, 2.8, dt), damp(c.look.z, c.lookT.z, 2.8, dt));
   } else if (c.mode === 'locker') {                      // skins / blocks: close-up of the podium
     const zoom = blockPreview.g.visible ? 1.3 + 0.9 * P.t : 1;   // the block stack is wider than the runner
     c.target.set(SHOW.x + 5.9 * zoom, 1.1 + 0.95 * zoom, SHOW.z - 1.3 * zoom);
@@ -4252,10 +4373,15 @@ function updateCamera(dt) {
   const sh = c.shake * c.shake * 0.6;
   camera.position.set(c.pos.x + (Math.random() - 0.5) * sh, c.pos.y + (Math.random() - 0.5) * sh, c.pos.z + (Math.random() - 0.5) * sh);
   camera.lookAt(c.look);
-  const fov = c.mode === 'menu' ? lerp(50, 64, P.t) : c.mode === 'locker' ? lerp(40, 58, P.t) : c.mode === 'editor' ? lerp(72, 84, P.t) : settings.fov + 15 * P.t;   // portrait gets a little extra
+  const fov = c.mode === 'menu' ? lerp(38, 50, P.t) : c.mode === 'locker' ? lerp(40, 58, P.t) : c.mode === 'editor' ? lerp(72, 84, P.t) : settings.fov + 15 * P.t;   // portrait gets a little extra
   if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = damp(camera.fov, fov, 3, dt); camera.updateProjectionMatrix(); }
-  c.viewK = damp(c.viewK, c.mode === 'locker' ? 1 : 0, 4, dt);
-  setViewShift(c.viewK);
+  {
+    const w = Math.max(1, stage.clientWidth || innerWidth), h = Math.max(1, stage.clientHeight || innerHeight), wide = w >= h * 1.05;
+    const fx = c.mode === 'locker' && wide ? -0.23 : 0;
+    const fy = c.mode === 'locker' ? (wide ? 0 : 0.31) : c.mode === 'menu' && state === 'menu' && !wide ? 0.2 : 0;
+    c.shiftX = damp(c.shiftX, fx, 4, dt); c.shiftY = damp(c.shiftY, fy, 4, dt);
+    setViewShift(c.shiftX, c.shiftY);
+  }
   sky.position.copy(camera.position);
   stars.pts.position.copy(camera.position);
   placeSun(c.mode === 'menu' ? ARENA_MID : player.z - 12);
@@ -4659,6 +4785,7 @@ let currentScreen = null, settingsReturn = 'menu';
 function showScreen(name) {
   const prev = currentScreen;
   currentScreen = name;
+  if (prev === 'menu' && !['menu', 'howto', 'settings', 'keys'].includes(name)) leaveLobby();   // (Skins and Blocks set the podium up their own way)
   if (prev === 'skins' && name !== 'skins') closeSkins();
   if (name === 'skins' && prev !== 'skins') openSkins();
   if (prev === 'blocks' && name !== 'blocks') closeBlocks();
@@ -4666,6 +4793,7 @@ function showScreen(name) {
   if (prev === 'waves' && name !== 'waves') closeWaves();
   if (name === 'waves' && prev !== 'waves') openWaves();
   if (prev === 'keys' && name !== 'keys') keyCapture.active = false;
+  if (name === 'menu' && state === 'menu') enterLobby();
   for (const s of SCREENS) $('screen-' + s).classList.toggle('active', s === name);
   if (name) {
     const el = $('screen-' + name);
@@ -4683,7 +4811,10 @@ function showScreen(name) {
 }
 // ---- Skins screen ----
 const skinUI = { slot: 'top', cards: {}, thumbQueue: [], thumbsDone: false };
-function applyCurrentSkin() { player.applySkin(SKIN_BY_ID[skinState.id], skinColors(skinState.id)); }
+function applyCurrentSkin() {
+  player.applySkin(SKIN_BY_ID[skinState.id], skinColors(skinState.id));
+  $('lobby-skin').textContent = SKIN_BY_ID[skinState.id].name.toUpperCase();
+}
 function skinChanged() {
   saveSkins(); applyCurrentSkin(); syncSkinUI();
   if (!skinUI.thumbQueue.includes(skinState.id)) skinUI.thumbQueue.push(skinState.id);
@@ -4762,9 +4893,24 @@ function syncSkinUI() {
     sw.appendChild(b);
   }
 }
+// The lobby (main menu): your runner on its podium, turning to show off; drag to spin it, tap for a bounce.
+function enterLobby() {
+  camCtl.mode = 'menu';
+  if (podium.visible && player.visible && player.showYaw !== null) return;   // (back from Settings or How to play)
+  podium.visible = true;
+  podium.position.set(LOBBY.x, 0, LOBBY.z);
+  player.showcase(LOBBY.x, LOBBY.z, LOBBY.yaw);
+  player.yaw = LOBBY.yaw;
+  player.squash = 0.7;
+}
+function leaveLobby() {
+  podium.visible = false;
+  player.showYaw = null;
+}
 function openSkins() {
   camCtl.mode = 'locker';
   podium.visible = true;
+  podium.position.set(SHOW.x, 0, SHOW.z);
   player.showcase(SHOW.x, SHOW.z, SHOW.yaw);
   player.yaw = SHOW.yaw;
   if (!skinUI.thumbsDone) { skinUI.thumbsDone = true; skinUI.thumbQueue.push(...SKINS.map((sk) => sk.id)); }
@@ -5274,6 +5420,7 @@ function buildBlockUI() {
 function openBlocks() {
   camCtl.mode = 'locker';
   podium.visible = true;
+  podium.position.set(SHOW.x, 0, SHOW.z);
   player.hide();
   blockPreview.g.visible = true;
   syncBlockUI();
@@ -5609,6 +5756,7 @@ const game = {
     showScreen(null);
     level = LEVELS[settings.difficulty - 1];                // the run keeps this level until it ends
     bestWave = loadBest(level.n);
+    leaveLobby();
     world.reset('game');
     particles.clear();
     player.reset();
@@ -6030,6 +6178,28 @@ function frame(now) {
 // ---------------------------------------------------------------------
 // 21. Wiring & start-up
 // ---------------------------------------------------------------------
+function wireLobby() {
+  // drag across the lobby (away from its buttons) to spin your runner; a tap gives it a bounce
+  const el = $('screen-menu'), drag = { id: null, x: 0, moved: 0 };
+  el.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button, input, label, a, .diff-pick, .best-card') || currentScreen !== 'menu') return;
+    drag.id = e.pointerId; drag.x = e.clientX; drag.moved = 0;
+    try { el.setPointerCapture(e.pointerId); } catch { /* ignored */ }
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== drag.id || player.showYaw === null) return;
+    player.showYaw += (e.clientX - drag.x) * 0.012;
+    drag.moved += Math.abs(e.clientX - drag.x);
+    drag.x = e.clientX;
+  });
+  const end = (e) => {
+    if (e.pointerId !== drag.id) return;
+    drag.id = null;
+    if (e.type === 'pointerup' && drag.moved < 6 && player.showYaw !== null) { player.squash = 0.8; audio.play('jump'); }
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+}
 function wireButtons() {
   $('btn-play').addEventListener('click', () => game.start());
   $('btn-howto').addEventListener('click', () => { audio.play('click'); showScreen('howto'); });
@@ -6069,6 +6239,7 @@ function init() {
   bindSettingsUI();
   bindKeysUI();
   wireButtons();
+  wireLobby();
   setTouchMode(COARSE || (HAS_TOUCH && !matchMedia('(pointer: fine)').matches));
   refreshKeyHints();
   createRenderer();
