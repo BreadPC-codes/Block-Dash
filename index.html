@@ -4409,7 +4409,7 @@ function runnersApart() {
 //      dive). They're out when they fall off the arena or touch a laser. The run is still yours alone.
 // ---------------------------------------------------------------------
 const RIVAL_NAMES = ['BLAZE', 'PIXEL', 'NOVA', 'TURBO', 'MOCHI', 'ZIGGY', 'COMET', 'BOLT'];
-const RIVAL_SPOTS = [[-4.5, 0.5], [4.5, 0.5], [-8.5, -1.5], [8.5, -1.5], [0, -3.5]];   // (x, z from the start line)
+const RIVAL_SPOTS = [[-4.5, 0.5], [4.5, 0.5], [-7, -1.5], [7, -1.5], [0, -3.5]];   // (x, z from the start line)
 function nameTag(r) {                                    // the rival's name, floating over its head
   if (!r.tag) {
     const cv = document.createElement('canvas');
@@ -4594,7 +4594,7 @@ function rivalBrain(r, h) {
       }
     } else if (!f.done) {
       // Walk round to the side away from the nearest edge, so the punch sends them toward it (rivals don't do that to you).
-      const sly = o !== player, ex = sly && Math.abs(o.x) > 5 ? Math.sign(o.x) : 0, ez = sly && !ex && o.z > 2 ? 1 : 0;
+      const sly = o !== player, ex = sly && Math.abs(o.x) > 7.2 ? Math.sign(o.x) : 0, ez = sly && !ex && o.z > 4 ? 1 : 0;   // (only when they're near it)
       const px = ex || ez ? ex : ux, pz = ex || ez ? ez : uz;   // the way the punch will send them
       const sx = o.x - px * 1.35 - r.x, sz = o.z - pz * 1.35 - r.z, sd = Math.hypot(sx, sz);
       if (d < 2 * P_HALF_D + PUNCH.reach - 0.25 && (sd < 0.7 || ai.t - f.since > 2)) {   // in place: stop, wind up, punch
