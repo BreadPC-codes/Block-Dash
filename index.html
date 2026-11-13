@@ -1204,11 +1204,11 @@ const BAR_H = 0.8, BAR_D = 0.8;                           // a bar lies on the f
 // knockback and lift fling whoever it hits; they have no control until they land (at most `stun`), then
 // `down` more seconds to get up.
 const PUNCH = { buffer: 0.12, cooldown: 0.55, duration: 0.34, active: [0.05, 0.24], reach: 1.6, halfWidth: 0.8, low: 0.1, high: 1.75,
-  knockback: 12, lift: 6.5, stun: 1.2, down: 0.2 };
+  knockback: 12, lift: 6.5, stun: 1.2, down: 2.0 };
 // Super Punch: the punch button while diving (or belly-sliding after a dive). The dive keeps all of its momentum
 // and the fist rides along in front of you; the knockback grows with how fast you are moving into the hit.
 const SUPER_PUNCH = { cooldown: 0.75, duration: 0.44, active: [0.03, 0.34], reach: 1.95, halfWidth: 0.85, low: -0.6, high: 1.3,
-  knockback: 15, momentum: 0.5, maxKnockback: 26, lift: 8, stun: 1.2, down: 0.3 };
+  knockback: 15, momentum: 0.5, maxKnockback: 26, lift: 8, stun: 1.2, down: 2.4 };
 // Flung by a punch: little drag in the air (airDrag) so you really fly, a short slide when you land (slideDrag),
 // and nobody can punch you again until you're up plus `guard` seconds, so nobody can juggle you.
 const FLING = { airDrag: 0.3, slideDrag: 4, guard: 0.3 };
@@ -1217,8 +1217,19 @@ const FLING = { airDrag: 0.3, slideDrag: 4, guard: 0.3 };
 // of you; whoever they catch is flung about one block up (flingUp) and a little along the slide (push), tumbling,
 // then `down` seconds on the ground. One every `cooldown` seconds.
 const TACKLE = { speed: 11, friction: 2.8, slide: 0.62, dur: 1.0, active: [0.04, 0.6], reach: 1.2, halfWidth: 0.7, high: 1.0,
-  flingUp: Math.sqrt(2 * G_UP * BLOCK_H * 1.03), push: 3, stun: 1.2, down: 0.35, cooldown: 0.8 };   // (×1.03: the stepped flight peaks a touch low)
-const TUMBLE_C = 0.85;                                   // how high above the feet a tumbling runner turns about (m)
+  flingUp: Math.sqrt(2 * G_UP * BLOCK_H * 1.03), push: 3, stun: 1.2, down: 1.6, cooldown: 0.8 };   // (×1.03: the stepped flight peaks a touch low)
+// Knocked down: after a punch's (or a tackle's) flight you land on your back and lie there for its `down` seconds
+// (a rival's punch keeps you down for `youDown` of that), the last `getUp` of them getting up, with stars round
+// your head. Nobody can punch you while you're down, but anyone can walk into you and shove you along the floor:
+// you slide at `shove` × their speed, into a laser or off the edge if they like, and that knock-out is theirs.
+const KNOCKDOWN = { getUp: 0.35, youDown: 0.4, shove: 1.1, reach: 1.0 };
+// Hug (the HUG emote): grab whoever's in front of you, within `range` and `cone` (radians either side of where you
+// run or look), turn to face them and hold them for `hold` seconds. You can walk about with them (at `speed` of
+// your pace) and they can't move: they're held `dist` in front of you, feet `lift` off the floor. A punch lets go
+// (and lands), and so does a hit, a wall or a drop. Then they can't be grabbed again for `again` seconds.
+const HUG = { range: 2.3, cone: 1.0, hold: 2.5, dist: 0.8, lift: 0.22, speed: 0.8, again: 1.2 };
+const TUMBLE_C = 0.85;
+const STAR_GEO = new THREE.OctahedronGeometry(0.12);    // (shared by every runner's dizzy stars)                                   // how high above the feet a tumbling runner turns about (m)
 const SPIKE_PAD = 0.3;                                    // the spikes reach this far out of the cube's faces before they knock you
 const JUMP_APEX = JUMP_V ** 2 / (2 * G_UP);
 const AIR_TIME = JUMP_V / G_UP + Math.sqrt((2 * JUMP_APEX) / G_DOWN);
@@ -3186,11 +3197,13 @@ const lasers = (() => {
   return {
     // Side (-1 / 1) of the fence the player's body is touching, or 0.
     check(p) {
-      const ax = Math.abs(p.x);
+      let px = p.x;
+      if (p.lyingDown) { const hx = p.x + Math.sin(p.knockYaw) * 1.4; if (Math.abs(hx) > Math.abs(px)) px = hx; }   // (lying down, the head can get there first)
+      const ax = Math.abs(px);
       if (ax + P_HALF_W < LASER_X || ax - P_HALF_W > LASER_X) return 0;
       if (p.y > top + 0.05 || p.y + p.height < LASER_BEAMS[0] - 0.05) return 0;
       if (p.z < Z_FAR || p.z > Z_NEAR) return 0;
-      return p.x < 0 ? -1 : 1;
+      return px < 0 ? -1 : 1;
     },
   };
 })();
@@ -3320,9 +3333,10 @@ const EMOTES = [
     },
     fx: [[0.02, (r) => emoteFx.slide(r)], [0.12, (r) => emoteFx.dust(r)], [0.22, (r) => emoteFx.dust(r)], [0.32, (r) => emoteFx.dust(r)],
       [0.42, (r) => emoteFx.dust(r)], [0.52, (r) => emoteFx.dust(r)]] },
-  // Hug: arms flung wide, a lean in, arms wrapped round whoever's close (or round yourself), a happy squeeze with a
-  // sway and hearts, and let go.
-  { id: 'hug', name: 'HUG', group: 'hostile', c: ['#ff9cc9', '#ff4f8f', '#a3224f'], dur: 2.3, target: 'hug', reach: 0.6, sound: 'hug',
+  // Hug: whoever's in front of you, within reach, gets grabbed and held (see HUG, grab and the two below): you turn
+  // to face them, wrap your arms round them and can walk about with them for 2.5 s while they kick their legs.
+  // Nobody there: arms flung wide, a lean in, a hug for yourself with a sway and hearts, and let go.
+  { id: 'hug', name: 'HUG', group: 'hostile', grab: true, c: ['#ff9cc9', '#ff4f8f', '#a3224f'], dur: 2.3, sound: 'hug',
     chan: {
       aLX: both([[0, 0], [0.32, 0.55, 'out'], [0.64, 1.3, 'out'], [1.75, 1.3], [2.05, 0.1], [2.3, 0]]),
       aRX: both([[0, 0], [0.32, 0.55, 'out'], [0.64, 1.3, 'out'], [1.75, 1.3], [2.05, 0.1], [2.3, 0]]),
@@ -3344,21 +3358,27 @@ const EMOTES = [
       P.bob = Math.sin((t - 0.64) * 14) * 0.012 * k;
       if (!e.target) { P.aLZ -= 0.2 * env(t, 0.4, 2.05, 0.25); P.aRZ -= 0.2 * env(t, 0.4, 2.05, 0.25); P.aLX -= 0.2; P.aRX -= 0.2; }   // nobody there: a hug for yourself
     },
-    fx: [[0.48, (r, e) => emoteFx.hugReact(r, e)], [0.7, (r, e) => emoteFx.heart(r, e, 0)], [1.05, (r, e) => emoteFx.heart(r, e, 1)], [1.4, (r, e) => emoteFx.heart(r, e, 2)]] },
-  // Hugged: what the other runner does when you hug them.
-  { id: 'hugged', name: 'HUGGED', hidden: true, c: ['#ff9cc9', '#ff4f8f', '#a3224f'], dur: 1.85, target: 'given', reach: 0.4,
+    fx: [[0.7, (r, e) => emoteFx.heart(r, e, 0)], [1.05, (r, e) => emoteFx.heart(r, e, 1)], [1.4, (r, e) => emoteFx.heart(r, e, 2)]] },
+  // Holding someone (a hug that caught somebody): the arms wrapped round them with a squeeze now and then. The legs
+  // and the body are left to walk; it lasts as long as the hold.
+  { id: 'hugHold', name: 'HUG', hidden: true, hold: true, c: ['#ff9cc9', '#ff4f8f', '#a3224f'], dur: HUG.hold + 0.6,
     chan: {
-      aLX: [[0, 0], [0.3, 1.15, 'out'], [1.4, 1.15], [1.7, 0.1], [1.85, 0]],
-      aRX: [[0, 0], [0.3, 1.15, 'out'], [1.4, 1.15], [1.7, 0.1], [1.85, 0]],
-      aLZ: [[0, 0.12], [0.3, -0.35, 'out'], [1.4, -0.35], [1.7, 0.15], [1.85, 0.12]],
-      aRZ: [[0, 0.12], [0.3, -0.35, 'out'], [1.4, -0.35], [1.7, 0.15], [1.85, 0.12]],
-      lean: [[0, 0], [0.3, 0.18, 'out'], [1.4, 0.16], [1.78, 0]],
-      reach: [[0, 0], [0.3, 1, 'out'], [1.4, 1], [1.78, 0]],
-      headZ: [[0, 0], [0.3, -0.28], [1.4, -0.22], [1.78, 0]],
-      eyes: [[0, 1], [0.25, 0.12], [1.45, 0.12], [1.72, 1]],
-      mouth: [[0, 0], [0.3, 0.3], [1.5, 0.3], [1.78, 0]],
+      aLX: [[0, 0], [0.16, 1.3, 'out']], aRX: [[0, 0], [0.16, 1.3, 'out']],
+      aLZ: [[0, 0.12], [0.16, -0.45, 'out']], aRZ: [[0, 0.12], [0.16, -0.45, 'out']],
+      aLY: [[0, 0], [0.16, 0.3]], aRY: [[0, 0], [0.16, 0.3]],
+      eyes: [[0, 1], [0.2, 0.15]], mouth: [[0, 0], [0.2, 0.3]], face: [[0, 0]],
     },
-    proc: (P, t) => { const k = env(t, 0.3, 1.4, 0.2); P.tilt = -Math.sin((t - 0.3) * 7) * 0.1 * k; } },
+    proc: (P, t) => { const sq = Math.max(0, Math.sin(t * 6)); P.headZ = 0.22 + sq * 0.08; P.aLZ -= sq * 0.1; P.aRZ -= sq * 0.1; },
+    fx: [[0.25, (r, e) => emoteFx.heart(r, e, 0)], [0.95, (r, e) => emoteFx.heart(r, e, 1)], [1.65, (r, e) => emoteFx.heart(r, e, 2)]] },
+  // Held: what the one you've grabbed does: arms round you, feet off the floor and legs kicking to get away.
+  { id: 'held', name: 'HELD', hidden: true, hold: true, c: ['#ff9cc9', '#ff4f8f', '#a3224f'], dur: HUG.hold + 0.6,
+    chan: {
+      aLX: [[0, 0], [0.16, 1.15, 'out']], aRX: [[0, 0], [0.16, 1.15, 'out']],
+      aLZ: [[0, 0.12], [0.16, -0.35, 'out']], aRZ: [[0, 0.12], [0.16, -0.35, 'out']],
+      lean: [[0, 0], [0.2, 0.12]], headZ: [[0, 0], [0.2, -0.25]],
+      eyes: [[0, 1], [0.15, 0.12]], mouth: [[0, 0], [0.15, 0.55]], face: [[0, 0]],
+    },
+    proc: (P, t) => { const k = Math.min(1, t / 0.3), kick = Math.sin(t * 15); P.lLX = kick * 0.55 * k; P.lRX = -kick * 0.55 * k; P.tilt = Math.sin(t * 7) * 0.08 * k; } },
   // Boxing: fists up, a bounce on the toes with a weave, a left jab, a right jab, then a crouch and a big uppercut
   // with a hop and a POW. It squares up to whoever's within reach, and they flinch.
   { id: 'boxing', name: 'BOXING', group: 'hostile', c: ['#ff9a8a', '#ff3b4f', '#a3162b'], dur: 2.2, turn: 0.9, target: 'spar', reach: 0.35,
@@ -3529,9 +3549,9 @@ function setEmoteSlot(i, id) {                           // (if it was in anothe
   saveEmotes();
   return true;
 }
-// Who an emote is aimed at: the closest runner within a step for a hug, within reach for boxing, anyone within 16 m
-// for a point. (A tackle isn't aimed: it goes the way you run.)
-const EMOTE_RANGE = { hug: 2.6, spar: 2.4, point: 16 };
+// Who an emote is aimed at: the closest runner within reach for boxing, anyone within 16 m for a point. (A tackle
+// isn't aimed: it goes the way you run; a hug grabs whoever's in front of you, see hugTarget.)
+const EMOTE_RANGE = { spar: 2.4, point: 16 };
 function emoteTarget(r, def) {
   const range = EMOTE_RANGE[def.target];
   if (!range) return null;
@@ -3617,6 +3637,16 @@ function createRunner(opts = {}) {
   fistGlow.visible = false;
   arms[1].userData.hand.add(fistGlow);
   const _fist = new THREE.Vector3();
+  const stars = new THREE.Group();                       // dizzy stars round the head, while knocked down
+  stars.visible = false;
+  root.add(stars);
+  const starMat = new THREE.MeshBasicMaterial({ color: 0xffe066, toneMapped: false });
+  for (let i = 0; i < 3; i++) {
+    const st = new THREE.Mesh(STAR_GEO, starMat), a = (i * Math.PI * 2) / 3;
+    st.position.set(Math.cos(a) * 0.42, 0, Math.sin(a) * 0.42);
+    st.scale.y = 1.5;
+    stars.add(st);
+  }
   const legs = [-1, 1].map((s) => {
     const hip = new THREE.Group();
     hip.position.set(s * 0.11, 0, 0);
@@ -3880,11 +3910,16 @@ function createRunner(opts = {}) {
     downed: false, downStarted: false, downFor: 0, guardT: 0, hitFace: 0, knockYaw: 0,
     emote: null, emotes: 0,                              // the emote playing (see EMOTES), and how many so far
     tackleT: -1, tackleCd: 0, tackleDirX: 0, tackleDirZ: -1, tackleHits: new Set(),   // a slide tackle: time into it, cooldown, way, who it caught
+    holding: null, heldBy: null, holdT: 0, grabCd: 0,   // a hug: who you're holding (or who's holding you), time left, no re-grab yet
+    downBlend: 0, shovedT: 9,                            // lying down (0–1, for the drawing); time since someone shoved you
     diving: false, dived: false, slideT: 0, stunT: 0, pushT: 9, knockT: 9, spinX: 0, diveBlend: 0, diveBroke: new Set(),
     squash: 0, lean: 0, yaw: 0, punchTurn: 0, runPhase: 0, blinkT: 2, blink: 0, t: 0, ko: null, flicker: 0,
     showYaw: null,                                       // set while the runner poses on the skins podium
     get visible() { return root.visible; },
-    get height() { return this.diving || this.slideT > 0 || this.tackleT >= 0 ? P_HEIGHT_FLAT : P_HEIGHT; },
+    get height() { return this.diving || this.slideT > 0 || this.tackleT >= 0 || this.lyingDown ? P_HEIGHT_FLAT : P_HEIGHT; },
+    get lyingDown() { return this.downed && this.downStarted && this.stunT > KNOCKDOWN.getUp; },   // flat on the floor after a punch or a tackle
+    get shovable() { return this.downed && this.downStarted && this.stunT > 0.08 && this.grounded; },   // down (or still getting up): you can push them about
+    lieCenter(v) { return v.set(this.x + Math.sin(this.knockYaw) * 0.75, this.y, this.z + Math.cos(this.knockYaw) * 0.75); },   // (lying, the body is behind the feet)
     get untouchable() { return (this.downed && this.stunT > 0) || this.guardT > 0; },  // flung (or just up again): can't be punched
 
     applySkin(def, colors) {
@@ -3931,6 +3966,8 @@ function createRunner(opts = {}) {
       this.punchedT = 9; this.lastHitBy = null; this.lastHitSuper = false;
       this.downed = this.downStarted = false; this.downFor = this.guardT = this.hitFace = 0;
       this.emote = null; this.tackleT = -1; this.tackleCd = 0; this.tackleHits.clear();
+      if (this.holding || this.heldBy) this.letGo();
+      this.holdT = this.grabCd = this.downBlend = 0; this.shovedT = 9;
       botCtl.moveX = botCtl.moveZ = botCtl.aimX = botCtl.aimZ = 0; this.windup = 0;
       visual.rotation.set(0, 0, 0);
       visual.position.set(0, 0, 0);
@@ -3941,12 +3978,14 @@ function createRunner(opts = {}) {
     hide() { root.visible = false; },
     requestJump() { this.jumpBuf = JUMP_BUFFER; },
     // Emotes: only standing on something, not mid-punch, mid-dive, mid-tackle or knocked about. A new one replaces the last.
-    canEmote() { return this.visible && !this.ko && this.grounded && !this.diving && this.slideT <= 0 && this.stunT <= 0 && this.punchT < 0 && this.tackleT < 0; },
+    canEmote() { return this.visible && !this.ko && this.grounded && !this.diving && this.slideT <= 0 && this.stunT <= 0 && this.punchT < 0 && this.tackleT < 0 && !this.holding && !this.heldBy; },
     playEmote(id, opts = {}) {
       const def = EMOTE_BY_ID[id];
       if (!def || !this.canEmote()) return false;
       const sliding = def.tackle && this.showYaw === null;
       if (sliding && !this.startTackle()) return false;   // (still cooling down from the last one)
+      const grab = def.grab && this.showYaw === null ? this.hugTarget() : null;
+      if (grab) { this.grab(grab); return true; }       // somebody in front of you: hold on to them
       const target = opts.target !== undefined ? opts.target : emoteTarget(this, def);
       const reach = target && def.reach ? clamp((Math.hypot(target.x - this.x, target.z - this.z) - 0.9) * def.reach, 0, 0.45) : 0;
       this.emote = { def, t: 0, fade: 0, fx: 0, target, reach, faceYaw: sliding ? this.yaw : emoteFaceYaw(this, def, target) };
@@ -3979,6 +4018,44 @@ function createRunner(opts = {}) {
       this.tackleDirX = dx; this.tackleDirZ = dz; this.tackleT = 0; this.tackleHits.clear();
       this.yaw = Math.atan2(-dx, -dz);
       return true;
+    },
+    // Who a hug grabs: the closest runner in front of you (the way you run, or where you look standing still), within
+    // reach, standing or knocked down, not in the air, not held already and not just let go.
+    hugTarget() {
+      let fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw);
+      const ix = this.ctl.moveX, iz = this.ctl.moveZ, il = Math.hypot(ix, iz);
+      if (il >= 0.1) { fx = ix / il; fz = iz / il; }
+      else if (local) { fx = -Math.sin(camCtl.yaw); fz = -Math.cos(camCtl.yaw); }
+      else if (botCtl.aimX || botCtl.aimZ) { const l = Math.hypot(botCtl.aimX, botCtl.aimZ); fx = botCtl.aimX / l; fz = botCtl.aimZ / l; }
+      let best = null, bd = HUG.range;
+      for (const o of combat.runners()) {
+        if (o === this || o.heldBy || o.holding || o.grabCd > 0 || !o.grounded || Math.abs(o.y - this.y) > 1.2) continue;
+        const dx = o.x - this.x, dz = o.z - this.z, d = Math.hypot(dx, dz);
+        if (d > bd || d < 1e-3 || Math.acos(clamp((dx * fx + dz * fz) / d, -1, 1)) > HUG.cone) continue;
+        best = o; bd = d;
+      }
+      return best;
+    },
+    // Grab them: turn to face them, pick them up (out of whatever they were doing, even lying down) and hold on.
+    grab(t) {
+      this.yaw = Math.atan2(-(t.x - this.x), -(t.z - this.z));
+      this.vx *= 0.3; this.vz *= 0.3;
+      t.emote = null; t.tackleT = -1; t.diving = false; t.slideT = 0; t.punchT = -1; t.punchBuf = 0; t.jumpBuf = 0; t.windup = 0;
+      t.downed = t.downStarted = false; t.stunT = 0; t.vx = t.vz = t.vy = 0;
+      t.lastHitBy = this; t.punchedT = 0;
+      this.holding = t; t.heldBy = this; this.holdT = HUG.hold;
+      this.emote = { def: EMOTE_BY_ID.hugHold, t: 0, fade: 0, fx: 0, target: t, reach: 0, faceYaw: this.yaw };
+      t.emote = { def: EMOTE_BY_ID.held, t: 0, fade: 0, fx: 0, target: this, reach: 0, faceYaw: this.yaw + Math.PI };
+      this.emotes++;
+      game.onEmote(this, EMOTE_BY_ID.hug);
+    },
+    // Let go (or be let go of): whoever was held drops where they are, with the holder's momentum.
+    letGo() {
+      const h = this.holding ? this : this.heldBy, t = h && h.holding;
+      this.holding = this.heldBy = null;
+      if (!h || !t) return;
+      h.holding = null; t.heldBy = null; h.holdT = 0; t.grabCd = HUG.again;
+      for (const r of [h, t]) if (r.emote && r.emote.def.hold) r.stopEmote();
     },
     tackleBox() {                                        // where the sliding feet sweep (null when they don't)
       if (this.tackleT < TACKLE.active[0] || this.tackleT > TACKLE.active[1]) return null;
@@ -4068,13 +4145,31 @@ function createRunner(opts = {}) {
     stun(time, vx, vy, vz) {
       this.stunT = time; this.downed = this.downStarted = false;
       this.emote = null; this.tackleT = -1;              // knocked about: whatever you were doing stops
+      if (this.holding || this.heldBy) this.letGo();
       this.vx = vx; this.vy = vy; this.vz = vz;
       this.grounded = false; this.platform = null; this.carry = 0;
       this.diving = false; this.slideT = 0; this.dived = true;
     },
 
     step(h, control) {
-      this.pushT += h; this.knockT += h; this.punchedT += h;
+      this.pushT += h; this.knockT += h; this.punchedT += h; this.shovedT += h;
+      if (this.grabCd > 0) this.grabCd -= h;
+      if (this.heldBy) {                                  // held in a hug: right in front of whoever holds you, feet off the floor
+        const H = this.heldBy;
+        if (!H.visible || H.ko || H.stunT > 0 || H.holding !== this || this.pushT < 0.05) this.letGo();
+        else {
+          const fx = -Math.sin(H.yaw), fz = -Math.cos(H.yaw);
+          this.x = H.x + fx * HUG.dist; this.z = H.z + fz * HUG.dist; this.y = H.y + HUG.lift;
+          this.vx = H.vx; this.vz = H.vz + H.carry; this.vy = 0;
+          this.grounded = false; this.platform = null; this.carry = 0; this.coyote = 0;
+          this.punchedT = 0;                              // (into a laser from here: down to whoever's holding you)
+          return;
+        }
+      }
+      if (this.holding) {                                 // holding someone: until the time's up, or you drop off something
+        this.holdT -= h;
+        if (this.holdT <= 0 || !this.grounded || this.holding.heldBy !== this) this.letGo();
+      }
       const stunned = this.stunT > 0;
       if (stunned) this.stunT -= h;
       if (this.guardT > 0) this.guardT -= h;
@@ -4088,7 +4183,10 @@ function createRunner(opts = {}) {
         this.punchT += h;
         if (this.punchT >= (this.punchSuper ? SUPER_PUNCH.duration : PUNCH.duration)) this.punchT = -1;
       }
-      if (control && !stunned && this.punchBuf > 0 && this.punchCd <= 0 && this.punchT < 0 && this.tackleT < 0) this.startPunch();
+      if (control && !stunned && this.punchBuf > 0 && this.punchCd <= 0 && this.punchT < 0 && this.tackleT < 0) {
+        if (this.holding) this.letGo();                   // a punch lets go of a hug, and lands on them
+        this.startPunch();
+      }
       if (this.diving || stunned) {
         const k = stunned && this.downed ? (this.grounded ? FLING.slideDrag : FLING.airDrag)   // flung by a punch: fly far, slide a bit
           : stunned && this.grounded ? 8 : this.diving ? 0.8 : 1.2;
@@ -4106,7 +4204,7 @@ function createRunner(opts = {}) {
       } else {
         // Responsive: full speed in about 0.13 s, quick turns, and a short glide when you let go.
         const ix = control ? this.ctl.moveX : 0, iz = control ? this.ctl.moveZ : 0;
-        const tvx = ix * MOVE_SPEED, tvz = iz * MOVE_SPEED;
+        const pace = MOVE_SPEED * (this.holding ? HUG.speed : 1), tvx = ix * pace, tvz = iz * pace;   // (a bit slower, carrying someone)
         const a = !this.grounded ? AIR_ACCEL : !(ix || iz) ? FRICTION : this.vx * tvx + this.vz * tvz < 0 ? BRAKE : ACCEL;
         let dx = tvx - this.vx, dz = tvz - this.vz;
         const dl = Math.hypot(dx, dz), md = a * h;
@@ -4115,7 +4213,7 @@ function createRunner(opts = {}) {
       }
       this.jumpBuf = Math.max(0, this.jumpBuf - h);
       this.coyote = this.grounded ? COYOTE_TIME : Math.max(0, this.coyote - h);
-      if (control && !stunned && this.slideT <= 0 && this.tackleT < 0 && this.jumpBuf > 0) {
+      if (control && !stunned && this.slideT <= 0 && this.tackleT < 0 && !this.holding && this.jumpBuf > 0) {
         if (this.coyote > 0 && this.y > -0.05) {           // jump
           this.vy = JUMP_V; this.grounded = false; this.platform = null; this.coyote = 0; this.jumpBuf = 0; this.dived = false;
           if (local) game.onJump(); else this.squash = -0.9;
@@ -4156,6 +4254,7 @@ function createRunner(opts = {}) {
 
     // Laser hit: thrown away from the fence, flickering.
     knockOut(side = 0) {
+      if (this.holding || this.heldBy) this.letGo();
       this.flicker = 0.45;
       this.ko = { vx: side * 5.5, vy: 6.5, vz: 0, sx: rand(-4, 4), sz: -side * 9 };
     },
@@ -4190,10 +4289,12 @@ function createRunner(opts = {}) {
       const sp = steering ? Math.hypot(this.vx, ownVz) : 0, k = Math.min(1, sp / MOVE_SPEED);
       const showing = this.showYaw !== null;               // on the skins podium: turn to show off the outfit
       const targetYaw = showing ? this.showYaw + Math.sin(this.t * 0.6) * 0.35
+        : this.heldBy ? this.heldBy.yaw + Math.PI        // held in a hug: facing whoever's got you
         : this.tackleT >= 0 ? Math.atan2(-this.tackleDirX, -this.tackleDirZ)   // sliding: the way of the slide
-        : steering ? Math.atan2(-this.ctl.moveX, -this.ctl.moveZ) : 0;   // idle: face the blocks
+        : steering ? Math.atan2(-this.ctl.moveX, -this.ctl.moveZ)
+        : this.holding ? this.yaw : 0;                   // holding someone: still facing them; idle: face the blocks
       const wrap = (a) => ((((a + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) - Math.PI;
-      this.yaw += wrap(targetYaw - this.yaw) * (1 - Math.exp(-(steering || showing ? 30 : 8) * dt));
+      this.yaw += wrap(targetYaw - this.yaw) * (1 - Math.exp(-(steering || showing || this.heldBy ? 30 : 8) * dt));
       // A punch turns the body toward it, on top of the yaw: only the look changes, never where a dive goes.
       const punchFace = this.punchT >= 0 && !this.punchSuper;
       const turn = punchFace ? wrap(Math.atan2(-this.punchDirX, -this.punchDirZ) - this.yaw) : 0;
@@ -4205,12 +4306,27 @@ function createRunner(opts = {}) {
       if (this.stunT > 0 && !this.grounded) this.spinX += (this.downed ? 9 : 11) * dt;
       else this.spinX = damp(this.spinX, Math.round(this.spinX / (Math.PI * 2)) * Math.PI * 2, 10, dt);
       this.hitFace = damp(this.hitFace, this.downed && this.stunT > 0 ? 1 : 0, 12, dt);
-      const baseYaw = this.yaw + this.punchTurn;
-      visual.rotation.set(lerp(this.lean, -1.42, this.diveBlend) + this.spinX, baseYaw + wrap(this.knockYaw - baseYaw) * this.hitFace, 0);
+      const lying = this.lyingDown && (this.grounded || this.downBlend > 0.5);
+      this.downBlend = damp(this.downBlend, lying ? 1 : 0, lying ? 16 : 7, dt);
+      const baseYaw = this.yaw + this.punchTurn, turnBack = Math.round(this.spinX / (Math.PI * 2)) * Math.PI * 2;
+      visual.rotation.set(lerp(lerp(this.lean, -1.42, this.diveBlend) + this.spinX, 1.45 + turnBack, this.downBlend),   // (lying: flat on your back)
+        baseYaw + wrap(this.knockYaw - baseYaw) * this.hitFace, 0);
       // A tumble turns about the middle of the body, not the feet, so someone flung up really looks up in the air.
-      const sa = Math.sin(this.spinX), vy0 = visual.rotation.y, tx = -TUMBLE_C * sa * Math.sin(vy0), tz = -TUMBLE_C * sa * Math.cos(vy0);
-      visual.position.y = 0.4 * this.diveBlend + TUMBLE_C * (1 - Math.cos(this.spinX));
-      if (this.diveBlend > 0.5) {                        // superhero dive: arms forward, legs straight back
+      const sa = Math.sin(this.spinX) * (1 - this.downBlend), vy0 = visual.rotation.y, tx = -TUMBLE_C * sa * Math.sin(vy0), tz = -TUMBLE_C * sa * Math.cos(vy0);
+      visual.position.y = 0.4 * this.diveBlend + TUMBLE_C * (1 - Math.cos(this.spinX)) * (1 - this.downBlend) + 0.33 * this.downBlend;
+      stars.visible = this.downBlend > 0.3 && root.visible;
+      if (stars.visible) {                               // dizzy stars round the head
+        head.getWorldPosition(_fist); root.worldToLocal(_fist);
+        stars.position.set(_fist.x, _fist.y + 0.42 + Math.sin(this.t * 6) * 0.05, _fist.z);
+        stars.rotation.y += 5 * dt;
+        for (const st of stars.children) st.rotation.y += 9 * dt;
+      }
+      if (this.downBlend > 0.5) {                        // knocked down: flat on your back, arms and legs out
+        const f = Math.sin(this.t * 7) * 0.08;
+        pose(arms, [0.35 + f, 0.35 - f], [1.35, 1.35]);
+        pose(legs, [0.3, -0.12]);
+        hips.position.y = 0.42;
+      } else if (this.diveBlend > 0.5) {                 // superhero dive: arms forward, legs straight back
         pose(arms, [2.95, 2.95], [0.2, 0.2]);
         pose(legs, [-0.2, -0.05]);
         hips.position.y = 0.42;
@@ -4274,7 +4390,7 @@ function createRunner(opts = {}) {
       let ew = 0;
       if (em) {
         const D = em.def;
-        if (!em.fade) {                                  // moving, jumping, punching, a shove or the floor going: stop
+        if (!em.fade && !D.hold) {                       // moving, jumping, punching, a shove or the floor going: stop (a hug's hold ends when it lets go)
           const moving = !D.tackle && (!local || state === 'playing') && Math.hypot(this.ctl.moveX, this.ctl.moveZ) > 0.15;
           const pressed = !D.tackle && (this.jumpBuf > 0 || this.punchBuf > 0);   // (a tackle can't be steered or stopped)
           if (moving || pressed || this.punchT >= 0 || !this.grounded || this.diving || this.stunT > 0 || this.pushT < 0.05) em.fade = 1e-4;
@@ -4509,10 +4625,6 @@ const emoteFx = {
     if (!r.visible || r.tackleT < 0 && r.showYaw === null) return;
     particles.burst(r.x - r.tackleDirX * 0.4, r.y + 0.08, r.z - r.tackleDirZ * 0.4, 5, ['#ffffff', '#e9e1ff', '#cfc6ff'], { speed: 1.4, up: 1.1, size: [0.08, 0.16], life: [0.3, 0.55], grav: 0.25, bounce: 0 });
   },
-  hugReact(r, e) {                                        // whoever you hug hugs you back
-    const o = e.target;
-    if (o && !o.emote) o.playEmote('hugged', { target: r });
-  },
   heart(r, e, i) {
     const o = e.target, x = o ? (r.x + o.x) / 2 : r.x, z = o ? (r.z + o.z) / 2 : r.z;
     pops.spawn(x + (i - 1) * 0.3, r.y + 2.15 + i * 0.12, z, '♥', i === 1 ? '#ff7ab8' : '#ff4f8f', { size: i === 1 ? 0.66 : 0.52, rise: 1.1, life: 1.2, drift: (i - 1) * 0.2 });
@@ -4678,6 +4790,7 @@ const combat = {
     if (sup) kb = Math.min(SUPER_PUNCH.maxKnockback, kb + SUPER_PUNCH.momentum * Math.max(0, a.vx * dx + (a.vz + a.carry) * dz));
     if (b === player && a !== player) { const k = RIVAL_HITS_YOU[levelIx()]; kb *= k; lift *= 0.5 + 0.5 * k; }   // rivals go easier on you
     b.takeHit(a, dx * kb, lift, dz * kb, P.stun, sup);
+    if (b === player && a !== player) b.downFor *= KNOCKDOWN.youDown;   // (and you're up again sooner)
     game.onPunchHit(a, b, sup, kb);
   },
   // Swept off their feet: up about a block, a little along the slide, tumbling, then a moment on the ground.
@@ -4687,11 +4800,31 @@ const combat = {
     game.onTackleHit(a, b);
   },
 };
+// Walking into someone knocked down shoves them along the floor: out of your way, and sliding on as fast as you
+// walk into them. If that ends in a laser or off the edge, the knock-out is yours.
+const _shv = new THREE.Vector3();
+function shove(p, d) {
+  if (!d.grounded || p.heldBy || Math.abs(p.y - d.y) > 0.8) return;
+  const c = d.lieCenter(_shv), dx = c.x - p.x, dz = c.z - p.z, dist = Math.hypot(dx, dz);
+  if (dist > KNOCKDOWN.reach || dist < 1e-4) return;
+  const nx = dx / dist, nz = dz / dist, gap = KNOCKDOWN.reach - dist;
+  d.x += nx * gap; d.z += nz * gap;
+  const along = p.vx * nx + (p.vz + p.carry) * nz;
+  if (along < 0.5) return;                               // (only when you walk into them)
+  const cur = d.vx * nx + d.vz * nz, want = along * KNOCKDOWN.shove;
+  if (cur < want) { d.vx += nx * (want - cur); d.vz += nz * (want - cur); }
+  d.lastHitBy = p; d.punchedT = 0;
+  if (d.shovedT > 0.4) game.onShove(p, d);              // (a thump when it starts, not every step)
+  d.shovedT = 0;
+}
 // Runners don't walk through each other: overlapping bodies are nudged apart.
 function runnersApart() {
   const rs = combat.runners();
   for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) {
-    const a = rs[i], b = rs[j], dx = b.x - a.x, dz = b.z - a.z;
+    const a = rs[i], b = rs[j];
+    if (a.heldBy || b.heldBy) continue;                  // (someone held in a hug is carried, not bumped)
+    if (a.shovable !== b.shovable) { shove(a.shovable ? b : a, a.shovable ? a : b); continue; }
+    const dx = b.x - a.x, dz = b.z - a.z;
     const ox = 2 * P_HALF_W - Math.abs(dx), oz = 2 * P_HALF_D - Math.abs(dz);
     if (ox <= 0 || oz <= 0 || a.y + a.height < b.y + 0.2 || b.y + b.height < a.y + 0.2) continue;
     if (ox < oz) { const sx = Math.sign(dx) || 1; a.x -= sx * ox / 2; b.x += sx * ox / 2; } else { const sz = Math.sign(dz) || 1; a.z -= sz * oz / 2; b.z += sz * oz / 2; }
@@ -5115,12 +5248,12 @@ function updateCamera(dt) {
     c.pivot.set(damp(c.pivot.x, px, kf, dt), damp(c.pivot.y, Math.max(0, py) * 0.35, kf, dt), damp(c.pivot.z, pz, kf, dt));
     // While you emote the camera comes in closer and lower, aimed at you, so the pose reads; it goes back as soon as
     // you move (that ends the emote).
-    c.ez = damp(c.ez || 0, c.mode !== 'over' && player.emoting && !player.emote.def.tackle ? 1 : 0, 3.5, dt);   // (a tackle is a move, not a pose)
+    c.ez = damp(c.ez || 0, c.mode !== 'over' && player.emoting && !player.emote.def.tackle && !player.emote.def.hold ? 1 : 0, 3.5, dt);   // (a tackle or a hold is a move, not a pose)
     c.rad = damp(c.rad || Math.hypot(P.dist, P.height), Math.hypot(P.dist, P.height) * (1 - 0.5 * c.ez) + (c.mode === 'over' ? 4.5 : 0), 3, dt);
     const pv = c.pivot, e0 = camBaseElev();
     const elev = clamp(e0 + c.pitch + (c.mode === 'over' ? 0.08 : 0) - 0.3 * c.ez, CAM_ELEV_MIN, CAM_ELEV_MAX);
     // An emote aimed at someone (a hug, a point): swing round to the side for a moment so you see both of you.
-    const em = player.emote, side = em && em.target && !em.fade ? em.faceYaw : null;
+    const em = player.emote, side = em && em.target && !em.fade && !em.def.hold ? em.faceYaw : null;
     let swing = 0;
     if (side !== null) { const a = wrapAngle(side + 1.75 - c.yaw), b = wrapAngle(side - 1.75 - c.yaw); swing = Math.abs(a) < Math.abs(b) ? a : b; }
     c.eyaw = damp(c.eyaw || 0, swing, 2.4, dt);
@@ -6869,6 +7002,12 @@ const game = {
     }
     if (a === player) { camCtl.shake = Math.max(camCtl.shake, sup ? 0.5 : 0.22); if (sup) hud.flash('gold'); vibrate(sup ? [20, 20, 40] : 18); }
     if (b === player) { camCtl.shake = Math.max(camCtl.shake, sup ? 0.65 : 0.35); hud.flash('hit'); vibrate(sup ? [40, 30, 60] : 30); }
+  },
+  onShove(p, d) {
+    const near = p === player || d === player ? 1 : clamp(1 - Math.hypot(d.x - player.x, d.z - player.z) / 16, 0.1, 1);
+    audio.play('push', near * 0.7);
+    particles.burst(d.x, d.y + 0.2, d.z, 6, ['#ffffff', '#e9e1ff', '#cfc6ff'], { speed: 2, up: 1.2, size: [0.07, 0.13], life: [0.25, 0.45], grav: 0.3, bounce: 0 });
+    if (p === player) vibrate(10);
   },
   onTackleHit(a, b) {
     const you = a === player || b === player, near = you ? 1 : clamp(1 - Math.hypot(b.x - player.x, b.z - player.z) / 16, 0.15, 1);
