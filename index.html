@@ -158,40 +158,20 @@ body.touch[data-state=playing] #touch,body.touch[data-state=countdown] #touch{di
 .punch-hud.ready{color:#fff}
 body[data-state=playing]:not(.touch) .punch-hud{display:flex}
 .chip-rivals{display:none}.chip-rivals.on{display:flex}
-/* ---------- Emotes: the wheel, the EMOTE button (desktop HUD and touch) and a little name pop ---------- */
-.emote-hud{display:none;position:fixed;right:calc(var(--sar) + 18px);bottom:calc(var(--sab) + 60px);z-index:8}
-body[data-state=playing]:not(.touch) .emote-hud{display:block}
-.emote-open{appearance:none;-webkit-appearance:none;border:1px solid var(--line);display:flex;align-items:center;gap:7px;padding:6px 12px 6px 7px;border-radius:10px;
-  background:rgba(14,10,38,.6);color:#fff;font:800 11px var(--ui);letter-spacing:.12em;cursor:pointer;pointer-events:auto;transition:background .15s,transform .15s}
-.emote-open:hover{background:rgba(124,92,255,.55);transform:translateY(-1px)}
-.emote-wheel{--d:min(420px,92vw,92vh);position:fixed;left:50%;top:50%;z-index:15;width:var(--d);height:var(--d);margin:calc(var(--d) / -2) 0 0 calc(var(--d) / -2);
-  pointer-events:none;opacity:0;visibility:hidden;transform:scale(.72) rotate(-8deg);
-  transition:opacity .16s ease,transform .24s cubic-bezier(.3,1.5,.5,1),visibility 0s linear .24s}
-.emote-wheel.open{opacity:1;visibility:visible;transform:none;transition:opacity .16s ease,transform .26s cubic-bezier(.3,1.5,.5,1)}
-.ew-disc{position:absolute;inset:7%;border-radius:50%;background:radial-gradient(circle,rgba(14,10,38,.8) 0 29%,rgba(14,10,38,.52) 30% 100%);
-  border:2px solid rgba(255,255,255,.14);box-shadow:0 20px 50px rgba(0,0,0,.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
-.ew-slot{--s:1;position:absolute;left:50%;top:50%;width:clamp(74px,22%,96px);aspect-ratio:1;border-radius:50%;border:0;padding:0;cursor:pointer;pointer-events:none;
-  transform:translate(-50%,-50%) rotate(var(--a)) translateY(calc(var(--d) * -.335)) rotate(calc(-1 * var(--a))) scale(var(--s));
-  background:linear-gradient(180deg,var(--c1),var(--c2));box-shadow:inset 0 2px 0 rgba(255,255,255,.55),0 5px 0 var(--c3),0 10px 18px rgba(0,0,0,.4);
-  color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font:inherit;transition:transform .14s cubic-bezier(.3,1.6,.5,1),box-shadow .14s}
-.emote-wheel.open .ew-slot{pointer-events:auto;animation:ewIn .32s cubic-bezier(.3,1.5,.5,1) backwards;animation-delay:var(--dl)}
-@keyframes ewIn{from{opacity:0;scale:.3}to{opacity:1;scale:1}}
-.ew-slot.hot{--s:1.16;box-shadow:inset 0 2px 0 rgba(255,255,255,.6),0 5px 0 var(--c3),0 0 0 4px #fff,0 0 26px var(--c1),0 12px 24px rgba(0,0,0,.45)}
-@media (hover:hover){.ew-slot:hover{--s:1.16}}
-.ew-slot.picked{--s:.86}
-.ew-slot.nope{animation:ewNope .32s}
-@keyframes ewNope{20%,60%{translate:-7px 0}40%,80%{translate:7px 0}}
-.ew-slot:focus-visible{outline:3px solid #fff;outline-offset:3px}
-.ew-ico{display:grid;place-items:center}
-.ew-ico svg{width:clamp(30px,9vw,40px);height:clamp(30px,9vw,40px);fill:#fff;filter:drop-shadow(0 2px 0 rgba(0,0,0,.25))}
-.ew-name{font-family:var(--display);font-size:clamp(11px,3vw,13px);letter-spacing:.05em;text-shadow:0 2px 0 var(--c3)}
-.ew-slot kbd{position:absolute;top:-2px;right:-2px;min-width:22px;height:22px;padding:0 5px;border-radius:7px;background:#fff;color:#2b1d5e;font:800 12px/22px var(--ui);box-shadow:0 2px 0 rgba(0,0,0,.3)}
-body.touch .ew-slot kbd{display:none}
-.ew-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:34%;text-align:center;color:#fff;pointer-events:none}
-.ew-center b{display:block;font-family:var(--display);font-weight:400;font-size:clamp(14px,4.4vw,19px);letter-spacing:.06em}
-.ew-center small{display:block;margin-top:3px;font-size:11px;font-weight:700;line-height:1.3;color:var(--muted)}
-.ew-pointer{position:absolute;left:50%;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#fff;box-shadow:0 0 14px #fff,0 0 4px #7c5cff;opacity:0;transition:opacity .12s}
-.emote-wheel.flick .ew-pointer{opacity:1}
+/* ---------- Emotes: your four (chips on the desktop HUD, a tray from the EMOTE button on touch) and a name pop ---------- */
+.emote-hud{display:none;position:fixed;right:calc(var(--sar) + 18px);bottom:calc(var(--sab) + 62px);z-index:8;gap:7px}
+body[data-state=playing]:not(.touch) .emote-hud{display:flex}
+.ec{appearance:none;-webkit-appearance:none;position:relative;width:40px;height:40px;padding:0;border:0;border-radius:12px;cursor:pointer;pointer-events:auto;display:grid;place-items:center;
+  background:linear-gradient(180deg,var(--c1),var(--c2));box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 3px 0 var(--c3),0 6px 12px rgba(0,0,0,.3);opacity:.92;
+  transition:transform .12s cubic-bezier(.3,1.6,.5,1),opacity .12s}
+.ec svg{width:24px;height:24px;fill:#fff;filter:drop-shadow(0 1px 0 rgba(0,0,0,.25))}
+.ec kbd{position:absolute;top:-7px;left:-7px;min-width:18px;height:18px;padding:0 4px;border-radius:6px;background:#fff;color:#2b1d5e;font:800 10px/18px var(--ui);box-shadow:0 2px 0 rgba(0,0,0,.3)}
+.ec kbd:empty{display:none}
+.ec:hover{opacity:1;transform:translateY(-2px)}
+.ec.go{animation:ecGo .34s cubic-bezier(.3,1.6,.5,1)}
+@keyframes ecGo{40%{scale:1.22}}
+.ec.nope,.et.nope{animation:emNope .32s}
+@keyframes emNope{20%,60%{translate:-6px 0}40%,80%{translate:6px 0}}
 .emote-toast{position:fixed;left:50%;bottom:calc(var(--sab) + 26px);z-index:9;transform:translateX(-50%);pointer-events:none;font-family:var(--display);font-size:20px;letter-spacing:.06em;
   color:#fff;padding:6px 18px;border-radius:14px;background:var(--tc,#7c5cff);box-shadow:0 5px 0 rgba(0,0,0,.25),0 10px 20px rgba(0,0,0,.35);opacity:0;text-shadow:0 2px 0 rgba(0,0,0,.2)}
 .emote-toast.show{animation:emToast .9s ease forwards}
@@ -202,7 +182,58 @@ body.touch .ew-slot kbd{display:none}
   font-size:calc(9.5px * var(--joy-scale));letter-spacing:.04em;opacity:.92;box-shadow:0 4px 0 rgba(40,20,110,.6),0 8px 18px rgba(0,0,0,.35);transition:transform .08s}
 .emote-btn svg{width:calc(27px * var(--joy-scale));height:calc(27px * var(--joy-scale));fill:#fff}
 .emote-btn.pressed,.emote-btn.on{transform:translateY(3px) scale(.93)}
-@media (prefers-reduced-motion:reduce){.emote-wheel,.emote-wheel.open,.ew-slot{transition:none}.emote-wheel.open .ew-slot{animation:none}}
+.emote-tray{position:absolute;right:calc(var(--sar) + 36px + 90px * var(--joy-scale));bottom:calc(var(--sab) + 44px + 116px * var(--joy-scale));display:flex;gap:calc(8px * var(--joy-scale));
+  pointer-events:none;opacity:0;visibility:hidden;transform:translateX(18px) scale(.9);transform-origin:right center;
+  transition:opacity .14s ease,transform .2s cubic-bezier(.3,1.5,.5,1),visibility 0s linear .2s}
+.emote-tray.open{pointer-events:auto;opacity:1;visibility:visible;transform:none;transition:opacity .14s ease,transform .22s cubic-bezier(.3,1.5,.5,1)}
+.et{appearance:none;-webkit-appearance:none;width:calc(60px * var(--joy-scale));height:calc(64px * var(--joy-scale));padding:0;border:2px solid rgba(255,255,255,.6);border-radius:18px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;touch-action:none;color:#fff;font-family:var(--display);font-size:calc(9.5px * var(--joy-scale));
+  letter-spacing:.03em;background:linear-gradient(180deg,var(--c1),var(--c2));box-shadow:0 4px 0 var(--c3),0 8px 16px rgba(0,0,0,.35);text-shadow:0 1px 0 var(--c3);transition:transform .08s}
+.et svg{width:calc(28px * var(--joy-scale));height:calc(28px * var(--joy-scale));fill:#fff}
+.et.pressed{transform:translateY(3px) scale(.92)}
+/* ---------- CUSTOMISE: skins and emotes tabs, the four emote slots and the emotes to pick from ---------- */
+.cz-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px;border-radius:16px;background:rgba(0,0,0,.25);border:1px solid var(--line);flex:none}
+.cz-tab{appearance:none;-webkit-appearance:none;border:0;border-radius:12px;padding:9px 6px 8px;cursor:pointer;background:transparent;color:var(--muted);
+  font-family:var(--display);font-size:17px;letter-spacing:.06em;transition:background .15s,color .15s}
+.cz-tab:hover{color:#fff}
+.cz-tab.on{background:linear-gradient(180deg,#ffe56e,#ffb52e);color:#2b1100;box-shadow:inset 0 2px 0 rgba(255,255,255,.6),0 3px 0 #b8560c}
+.cz-tab:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.cz-page{display:flex;flex-direction:column;gap:10px;min-height:0;flex:1 1 auto}
+.cz-page[hidden]{display:none}
+.em-label{margin:0;font-size:12px;font-weight:800;letter-spacing:.16em;color:var(--muted)}
+.em-loadout{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;flex:none}
+.em-slot{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 5px 7px;border-radius:16px;border:2px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.05);transition:border-color .15s,background .15s,box-shadow .15s}
+.em-slot.on{border-color:#fff;background:rgba(255,255,255,.13);box-shadow:0 0 18px rgba(255,255,255,.2)}
+.em-slot-pick{appearance:none;-webkit-appearance:none;border:0;background:none;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;color:#fff;font:inherit;width:100%}
+.em-slot-pick:focus-visible{outline:3px solid #fff;outline-offset:3px;border-radius:12px}
+.em-num{font-size:10px;font-weight:800;letter-spacing:.14em;color:var(--muted)}
+.em-slot.on .em-num{color:#fff}
+.em-ico{display:grid;place-items:center;width:52px;height:52px;border-radius:50%;background:linear-gradient(180deg,var(--c1),var(--c2));
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.55),0 4px 0 var(--c3),0 7px 14px rgba(0,0,0,.3);transition:transform .14s cubic-bezier(.3,1.6,.5,1)}
+.em-ico svg{width:30px;height:30px;fill:#fff;filter:drop-shadow(0 2px 0 rgba(0,0,0,.2))}
+.em-slot-pick:hover .em-ico,.em-card:hover .em-ico{transform:scale(1.08)}
+.em-name{font-family:var(--display);font-size:13px;letter-spacing:.05em;white-space:nowrap}
+.keycap.em-key{min-width:0;width:100%;min-height:30px;padding:3px 6px;font-size:12px;line-height:1.1}
+.keycap.em-key.listening{font-size:9.5px}
+body.touch .keycap.em-key{display:none}
+.em-hint{margin:0;min-height:1.3em;font-size:12px;color:var(--muted);text-align:center;line-height:1.35}
+.em-hint.say{color:var(--gold)}.em-hint.warn{color:#ff8a9a}
+.em-coll{display:flex;flex-direction:column;gap:9px;overflow-y:auto;min-height:0;flex:1 1 auto;padding:2px 4px 4px;margin:0 -4px;overscroll-behavior:contain;touch-action:pan-y}
+.em-gh{display:flex;align-items:baseline;gap:8px;margin:0 2px}
+.em-gh b{font-size:12px;letter-spacing:.16em;color:#fff}
+.em-gh small{font-size:11px;font-weight:700;color:var(--muted)}
+.em-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px;margin-top:6px}
+.em-card{appearance:none;-webkit-appearance:none;position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 4px 7px;border-radius:14px;
+  border:2px solid rgba(255,255,255,.08);background:rgba(255,255,255,.05);color:#fff;font:inherit;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s}
+.em-card .em-ico{width:44px;height:44px}
+.em-card .em-ico svg{width:26px;height:26px}
+.em-card .em-name{font-size:12px}
+.em-card.in{background:rgba(255,255,255,.1)}
+.em-card.sel{border-color:var(--gold);background:rgba(255,210,63,.13);box-shadow:0 0 14px rgba(255,210,63,.3)}
+.em-card:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.em-badge{position:absolute;top:5px;right:6px;min-width:18px;height:18px;padding:0 4px;border-radius:6px;background:#fff;color:#2b1d5e;font:800 10px/18px var(--ui);font-style:normal;display:none}
+.em-card.in .em-badge{display:block}
 .chip-rivals .chip-ico{color:#ff7a8a}
 .feed{position:absolute;top:calc(var(--sat) + 132px);left:calc(var(--sal) + 12px);display:flex;flex-direction:column;gap:5px;align-items:flex-start}
 .feed-item{padding:4px 10px;border-radius:8px;background:rgba(14,10,38,.6);border:1px solid var(--line);font-size:12px;font-weight:800;letter-spacing:.04em;color:#ece8ff;
@@ -486,6 +517,20 @@ body.touch .bld-touch{display:block}
   .skins-layout{flex-direction:column-reverse;gap:8px}
   .skins-panel{width:100%;max-height:64%}
   .skin-grid{max-height:26vh}
+  .em-num,.em-label{display:none}
+  .em-slot{padding:6px 3px 5px;gap:4px}
+  .em-ico{width:44px;height:44px}
+  .em-ico svg{width:26px;height:26px}
+  .em-name{font-size:11.5px}
+  .em-coll{gap:5px}
+  .em-card{padding:5px 2px 4px;gap:2px;border-radius:12px}
+  .em-card .em-ico{width:34px;height:34px}
+  .em-card .em-ico svg{width:20px;height:20px}
+  .em-card .em-name{font-size:10px;letter-spacing:.02em}
+  .em-badge{top:2px;right:2px;min-width:16px;height:16px;font-size:9px;line-height:16px}
+  .em-grid{grid-template-columns:repeat(5,1fr);gap:5px;margin-top:3px}
+  .emote-tray{flex-direction:column;right:calc(var(--sar) + 26px + 28px * var(--joy-scale));bottom:calc(var(--sab) + 54px + 180px * var(--joy-scale));
+    transform:translateY(16px) scale(.9);transform-origin:center bottom}   /* (a column over the EMOTE button, clear of your runner) */
 }
 .menu-hint{margin:0;color:var(--muted);font-size:13px;letter-spacing:.04em;text-shadow:0 2px 8px rgba(0,0,0,.7)}
 .menu-hint kbd{font-family:var(--ui);font-weight:800;color:#fff;background:rgba(255,255,255,.12);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
@@ -648,6 +693,23 @@ body.touch .kbd-hint{display:none}
   .swatches{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;padding:3px 2px;touch-action:pan-x;flex:none}
   .swatch{width:26px;height:26px;flex:none}
   .skin-actions .btn{min-height:38px;padding:6px 10px}
+  .cz-tab{padding:4px 6px 3px;font-size:14px}
+  .cz-page{gap:5px}
+  .em-label,.em-num,.em-gh small{display:none}
+  .em-loadout{gap:6px}
+  .em-slot{padding:4px 3px;gap:3px}
+  .em-ico{width:34px;height:34px}
+  .em-ico svg{width:20px;height:20px}
+  .em-name{font-size:11px}
+  .keycap.em-key{min-height:24px;padding:2px 4px;font-size:11px}
+  .em-hint{font-size:11px}
+  body.touch .em-hint{display:none}
+  .em-card{padding:4px 2px 3px;gap:2px;border-radius:12px}
+  .em-card .em-ico{width:30px;height:30px}
+  .em-card .em-ico svg{width:18px;height:18px}
+  .em-card .em-name{font-size:10px;letter-spacing:.02em}
+  .em-grid{grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:5px;margin-top:2px}
+  .em-coll{gap:4px}
   .bd-panel .skin-grid,.bd-hint{display:none}
   .lt-panel h2,.lt-hint{display:none}
   .lt-brush{padding:5px 7px}
@@ -707,15 +769,11 @@ body.touch .kbd-hint{display:none}
   <button class="jump-btn" id="jump-btn" aria-label="Jump"><span class="jump-ico">▲</span><span class="jump-txt">JUMP</span></button>
   <button class="punch-btn" id="punch-btn" aria-label="Punch"><span class="punch-ico">✸</span><span class="jump-txt">PUNCH</span></button>
   <button class="emote-btn" id="emote-btn" aria-label="Emotes"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 4a20 20 0 1 0 0 40 20 20 0 0 0 0-40zm-7 13a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm14 0a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM13.5 28h21c-1.6 5.6-6 9-10.5 9s-8.9-3.4-10.5-9z"/></svg><span class="jump-txt">EMOTE</span></button>
+  <div class="emote-tray" id="emote-tray" role="group" aria-label="Your emotes"></div>
 </div>
 <div class="punch-hud" id="punch-hud" aria-hidden="true"><span class="punch-key" id="punch-key">F</span><span>PUNCH</span><i id="punch-fill"></i></div>
-<div class="emote-hud" id="emote-hud"><button class="emote-open" id="emote-open" type="button" aria-label="Emotes" title="Emotes"><span class="punch-key" id="emote-key">T</span><span>EMOTE</span></button></div>
+<div class="emote-hud" id="emote-hud" role="group" aria-label="Your emotes"></div>
 <div class="emote-toast" id="emote-toast" aria-hidden="true"></div>
-<div class="emote-wheel" id="emote-wheel" role="dialog" aria-label="Emotes" aria-hidden="true">
-  <div class="ew-disc"></div>
-  <div class="ew-pointer" id="ew-pointer"></div>
-  <div class="ew-center"><b>EMOTES</b><small id="ew-hint">Click one</small></div>
-</div>
 
 <!-- ================= MAIN MENU ================= -->
 <section class="screen" id="screen-menu" aria-label="Main menu">
@@ -743,7 +801,7 @@ body.touch .kbd-hint{display:none}
       <button class="round-btn" id="btn-settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13.1a7.7 7.7 0 0 0 0-2.2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.9-1.1L14.7 3h-4l-.4 2.7a7.6 7.6 0 0 0-1.9 1.1l-2.5-1-2 3.5 2.1 1.6a7.7 7.7 0 0 0 0 2.2l-2.1 1.6 2 3.5 2.5-1c.6.5 1.2.8 1.9 1.1l.4 2.7h4l.4-2.7c.7-.3 1.3-.6 1.9-1.1l2.5 1 2-3.5zM12.7 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/></svg></button>
     </div>
     <nav class="lobby-side" aria-label="Make it yours">
-      <button class="lobby-tile t-skins" id="btn-skins"><span class="tile-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.6 3.2 12 5.1l3.4-1.9 5.6 3.4-2.3 4.3-1.9-1V21H7.2V9.9l-1.9 1L3 6.6z"/></svg></span><span class="tile-txt"><b>SKINS</b><small>Outfits and colours</small></span></button>
+      <button class="lobby-tile t-skins" id="btn-skins"><span class="tile-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.6 3.2 12 5.1l3.4-1.9 5.6 3.4-2.3 4.3-1.9-1V21H7.2V9.9l-1.9 1L3 6.6z"/></svg></span><span class="tile-txt"><b>CUSTOMISE</b><small>Skins and emotes</small></span></button>
       <button class="lobby-tile t-blocks" id="btn-blocks"><span class="tile-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2 20.6 7v10L12 21.8 3.4 17V7z" opacity=".55"/><path d="M12 2.2 20.6 7 12 11.8 3.4 7z"/><path d="M12 11.8v10L3.4 17V7z" opacity=".8"/></svg></span><span class="tile-txt"><b>BLOCKS</b><small>Paint your own</small></span></button>
       <button class="lobby-tile t-waves" id="btn-waves"><span class="tile-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="12" width="5.5" height="9.5" rx="1.4"/><rect x="9.25" y="6.5" width="5.5" height="15" rx="1.4"/><rect x="16" y="2.5" width="5.5" height="19" rx="1.4"/></svg></span><span class="tile-txt"><b>WAVES</b><small>Build your own</small></span></button>
     </nav>
@@ -783,10 +841,10 @@ body.touch .kbd-hint{display:none}
         <div class="ctrl"><span class="k" id="hk-jump">SPACE</span> Jump · press again in the air to <b>&nbsp;dive</b></div>
         <div class="ctrl"><span class="k" id="hk-punch">F</span><span class="k">CLICK</span> Punch, the way you run (or look, standing still) · during a dive: <b>&nbsp;Super Punch</b></div>
         <div class="ctrl"><span class="k">ESC</span><span class="k" id="hk-pause">P</span> Pause</div>
-        <div class="ctrl"><span class="k" id="hk-emote">T</span><span class="k" id="hk-emotes">1–6</span> Emotes: kick, hug, laugh, dance, point, cheer · moving ends one</div>
+        <div class="ctrl"><span class="k" id="hk-emotes">1–4</span> Your four emotes · pick them in <b>&nbsp;CUSTOMISE → EMOTES</b> · moving ends one</div>
         <div class="ctrl"><span class="k">⚙</span> Change any of these keys in Settings → <b>&nbsp;CHANGE KEYS</b></div>
         <div class="ctrl"><span class="k">MOUSE</span> Turn the camera 360° around you. The cursor hides while you play, and <span class="k">ESC</span> frees it. You always run the way the camera faces.</div>
-        <div class="ctrl"><span class="k">TOUCH</span> Joystick (bottom-left) moves · <span class="k">JUMP</span> (bottom-right), tap again in the air to dive · <span class="k">PUNCH</span> beside it · drag anywhere else to turn the camera</div>
+        <div class="ctrl"><span class="k">TOUCH</span> Joystick (bottom-left) moves · <span class="k">JUMP</span> (bottom-right), tap again in the air to dive · <span class="k">PUNCH</span> beside it · <span class="k">EMOTE</span> opens your four emotes · drag anywhere else to turn the camera</div>
       </div>
     </div>
     <h3>OBSTACLES</h3>
@@ -810,15 +868,26 @@ body.touch .kbd-hint{display:none}
 </section>
 
 <!-- ================= SKINS ================= -->
-<section class="screen" id="screen-skins" aria-label="Skins">
+<section class="screen" id="screen-skins" aria-label="Customise">
   <div class="skins-layout">
     <div class="panel skins-panel">
-      <h2>SKINS</h2>
-      <div class="skin-now" id="skin-name">Classic</div>
-      <div class="skin-grid" id="skin-grid" role="listbox" aria-label="Choose a skin"></div>
-      <h3>COLOURS</h3>
-      <div class="slot-row" id="slot-row" role="tablist" aria-label="Part to colour"></div>
-      <div class="swatches" id="swatches" role="radiogroup" aria-label="Colour"></div>
+      <div class="cz-tabs" role="tablist" aria-label="Customise">
+        <button class="cz-tab on" id="cz-tab-skins" data-tab="skins" role="tab" aria-selected="true" aria-controls="cz-skins">SKINS</button>
+        <button class="cz-tab" id="cz-tab-emotes" data-tab="emotes" role="tab" aria-selected="false" aria-controls="cz-emotes">EMOTES</button>
+      </div>
+      <div class="cz-page" id="cz-skins" role="tabpanel" aria-labelledby="cz-tab-skins">
+        <div class="skin-now" id="skin-name">Classic</div>
+        <div class="skin-grid" id="skin-grid" role="listbox" aria-label="Choose a skin"></div>
+        <h3>COLOURS</h3>
+        <div class="slot-row" id="slot-row" role="tablist" aria-label="Part to colour"></div>
+        <div class="swatches" id="swatches" role="radiogroup" aria-label="Colour"></div>
+      </div>
+      <div class="cz-page" id="cz-emotes" role="tabpanel" aria-labelledby="cz-tab-emotes" hidden>
+        <p class="em-label">YOUR 4 EMOTES</p>
+        <div class="em-loadout" id="em-loadout"></div>
+        <p class="em-hint" id="em-hint"></p>
+        <div class="em-coll" id="em-coll"></div>
+      </div>
       <div class="skin-actions">
         <button class="btn" id="btn-skin-random">RANDOM</button>
         <button class="btn" id="btn-skin-reset">RESET</button>
@@ -1932,6 +2001,18 @@ const audio = {
       case 'cheer':                                       // a short fanfare and a sparkle
         for (const [i, f] of [523, 659, 784, 1047].entries()) this.tone({ f0: f, dur: i === 3 ? 0.28 : 0.09, type: 'square', vol: 0.05 * (opt || 1), lp: 2800, delay: i * 0.09 });
         this.noise({ dur: 0.3, vol: 0.05 * (opt || 1), f0: 6000, type: 'highpass', delay: 0.27 });
+        break;
+      case 'beep': {                                      // a robot bleep: two quick square notes
+        const f = [660, 740, 880, 990][Math.floor(Math.random() * 4)];
+        this.tone({ f0: f, dur: 0.06, type: 'square', vol: 0.045 * (opt || 1), lp: 3200 });
+        this.tone({ f0: f * 1.5, dur: 0.05, type: 'square', vol: 0.04 * (opt || 1), lp: 3200, delay: 0.07 });
+        break;
+      }
+      case 'powerdown':                                   // a robot winding down
+        this.tone({ f0: 620, f1: 90, dur: 0.38, type: 'sawtooth', vol: 0.045 * (opt || 1), lp: 1800 });
+        break;
+      case 'reboot':                                      // ... and starting up again
+        for (const [i, f] of [440, 660, 990].entries()) this.tone({ f0: f, dur: 0.06, type: 'square', vol: 0.045 * (opt || 1), lp: 3200, delay: i * 0.07 });
         break;
       case 'swing':                                       // a punch thrown: a short whoosh
         this.noise({ dur: 0.12, vol: 0.1 * (opt || 1), f0: 900, f1: 2400, type: 'bandpass', q: 1.2 });
@@ -3166,10 +3247,12 @@ const skinColors = (id) => ({ ...SKIN_BY_ID[id].colors, ...(skinState.colors[id]
 // 12b. Emotes: short animations any runner plays standing still (original designs). Each is a set of keyframed
 //      joint channels, blended over the normal pose by the runner, plus effects at set times. They only change
 //      how a runner is drawn, never where it is or which way it's going; moving, jumping, punching, being hit or
-//      leaving the ground ends one. Add one by adding an entry here (and to EMOTE_WHEEL to put it on the wheel).
+//      leaving the ground ends one. Add one by adding an entry here: `group` puts it with the hostile ones (aimed at
+//      whoever's close) or the dances and taunts, and it shows up under CUSTOMISE → EMOTES for your four slots.
 //
-//      Channels (radians unless noted): lean (+ forward / − back), tilt (sideways), twist, bob (hip height, m),
-//      headX (+ nods down), headY, headZ (tilts), arm L/R X (+ swings forward and up), Y, Z (+ out to the side),
+//      Channels (radians unless noted): lean (+ forward / − back), tilt (sideways), twist (+ turns left, bringing the
+//      right shoulder forward), bob (hip height, m), headX (+ nods down), headY (+ looks left), headZ (tilts),
+//      arm L/R X (+ swings forward and up), Y, Z (+ out to the side), aLS/aRS (arm stretch 0–1, as in a punch),
 //      leg L/R X (+ forward), Z (+ out), lRS (right leg stretch, 1 = normal: cartoon squash and stretch),
 //      hop (lift off the ground, m), reach (toward whoever it's aimed at, 0–1),
 //      eyes (1 open … 0 shut tight), mouth (0 closed … 1 wide open), face (0–1: turned toward the target or camera).
@@ -3190,7 +3273,7 @@ function kf(keys, t) {
   }
   return keys[keys.length - 1][1];
 }
-const EMOTE_CHANNELS = ['lean', 'tilt', 'twist', 'bob', 'headX', 'headY', 'headZ', 'aLX', 'aLY', 'aLZ', 'aRX', 'aRY', 'aRZ', 'lLX', 'lLZ', 'lRX', 'lRZ', 'lRS', 'hop', 'reach', 'eyes', 'mouth', 'face'];
+const EMOTE_CHANNELS = ['lean', 'tilt', 'twist', 'bob', 'headX', 'headY', 'headZ', 'aLX', 'aLY', 'aLZ', 'aLS', 'aRX', 'aRY', 'aRZ', 'aRS', 'lLX', 'lLZ', 'lRX', 'lRZ', 'lRS', 'hop', 'reach', 'eyes', 'mouth', 'face'];
 const both = (keys) => keys;                              // (the same keys for the left and right side)
 const env = (t, a, b, ramp = 0.12) => clamp(Math.min((t - a) / ramp, (b - t) / ramp), 0, 1);   // 0 → 1 → 0 across [a, b]
 const EMOTE_ICONS = {
@@ -3200,11 +3283,13 @@ const EMOTE_ICONS = {
   dance: '<svg viewBox="0 0 48 48"><path d="M20 8l20-4v26.5a6.5 6.5 0 1 1-4-6V12.6l-12 2.4v19.5a6.5 6.5 0 1 1-4-6z"/></svg>',
   point: '<svg viewBox="0 0 48 48"><rect x="8" y="17" width="22" height="22" rx="7"/><rect x="18" y="17" width="27" height="9" rx="4.5"/><rect x="3" y="20" width="8" height="16" rx="3" opacity=".7"/></svg>',
   celebrate: '<svg viewBox="0 0 48 48"><path d="M24 3l5.6 12.6 13.7 1.4-10.3 9.2 3 13.5L24 32.7l-12 7 3-13.5L4.7 17l13.7-1.4z"/></svg>',
+  boxing: '<svg viewBox="0 0 48 48"><rect x="14" y="4" width="27" height="29" rx="12"/><ellipse cx="13.5" cy="22" rx="6" ry="8.5"/><rect x="16" y="34" width="21" height="10" rx="3" opacity=".75"/><path d="M23 13c3-2.2 8.5-2.2 11.5 0" stroke="#7a0f1f" stroke-opacity=".45" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg>',
+  robot: '<svg viewBox="0 0 48 48"><rect x="22.6" y="5" width="2.8" height="8"/><circle cx="24" cy="5.5" r="3.4"/><rect x="9" y="12.5" width="30" height="26" rx="7"/><rect x="4" y="20.5" width="4" height="10" rx="2"/><rect x="40" y="20.5" width="4" height="10" rx="2"/><rect x="14.5" y="19.5" width="7" height="7" rx="1.6" fill="#0d5a4b"/><rect x="26.5" y="19.5" width="7" height="7" rx="1.6" fill="#0d5a4b"/><rect x="16" y="30.5" width="16" height="3.6" rx="1.8" fill="#0d5a4b"/><rect x="15" y="42" width="18" height="4" rx="2" opacity=".75"/></svg>',
 };
 const EMOTES = [
   // Kick: weight back and the leg cocked, then a snap kick up past the hip with the arms flung out for balance and
   // the body rocking back, a beat at the top, and down again.
-  { id: 'kick', name: 'KICK', c: ['#ffc067', '#ff8a1f', '#a84d00'], dur: 1.2, turn: 1.5, sound: 'kick',
+  { id: 'kick', name: 'KICK', group: 'hostile', c: ['#ffc067', '#ff8a1f', '#a84d00'], dur: 1.2, turn: 1.5, target: 'spar', sound: 'kick',
     chan: {
       lean: [[0, 0], [0.26, 0.16], [0.38, -0.46, 'out'], [0.62, -0.34], [0.98, 0.03], [1.2, 0]],
       bob: [[0, 0], [0.26, -0.06], [0.38, 0.03, 'out'], [0.92, 0], [1.2, 0]],
@@ -3220,10 +3305,10 @@ const EMOTES = [
       eyes: [[0, 1], [0.24, 0.45], [0.4, 0.3], [0.8, 0.5], [1.1, 1]],
       mouth: [[0, 0], [0.3, 0.2], [0.38, 0.8], [0.7, 0.45], [1.04, 0]],
     },
-    fx: [[0.31, (r) => emoteFx.whoosh(r)], [0.345, (r) => emoteFx.whoosh(r)], [0.38, (r) => emoteFx.kick(r)]] },
+    fx: [[0.31, (r) => emoteFx.whoosh(r)], [0.345, (r) => emoteFx.whoosh(r)], [0.38, (r, e) => emoteFx.kick(r, e)]] },
   // Hug: arms flung wide, a lean in, arms wrapped round whoever's close (or round yourself), a happy squeeze with a
   // sway and hearts, and let go.
-  { id: 'hug', name: 'HUG', c: ['#ff9cc9', '#ff4f8f', '#a3224f'], dur: 2.3, target: 'hug', reach: 0.6, sound: 'hug',
+  { id: 'hug', name: 'HUG', group: 'hostile', c: ['#ff9cc9', '#ff4f8f', '#a3224f'], dur: 2.3, target: 'hug', reach: 0.6, sound: 'hug',
     chan: {
       aLX: both([[0, 0], [0.32, 0.55, 'out'], [0.64, 1.3, 'out'], [1.75, 1.3], [2.05, 0.1], [2.3, 0]]),
       aRX: both([[0, 0], [0.32, 0.55, 'out'], [0.64, 1.3, 'out'], [1.75, 1.3], [2.05, 0.1], [2.3, 0]]),
@@ -3260,9 +3345,37 @@ const EMOTES = [
       mouth: [[0, 0], [0.3, 0.3], [1.5, 0.3], [1.78, 0]],
     },
     proc: (P, t) => { const k = env(t, 0.3, 1.4, 0.2); P.tilt = -Math.sin((t - 0.3) * 7) * 0.1 * k; } },
+  // Boxing: fists up, a bounce on the toes with a weave, a left jab, a right jab, then a crouch and a big uppercut
+  // with a hop and a POW. It squares up to whoever's within reach, and they flinch.
+  { id: 'boxing', name: 'BOXING', group: 'hostile', c: ['#ff9a8a', '#ff3b4f', '#a3162b'], dur: 2.2, turn: 0.9, target: 'spar', reach: 0.35,
+    chan: {
+      aLX: [[0, 0], [0.22, 2.05, 'out'], [0.8, 2.05], [0.86, 1.5, 'out'], [1.0, 2.05], [1.4, 2.05], [1.52, 1.75], [1.8, 1.6], [2.15, 0]],
+      aLZ: [[0, 0.12], [0.22, -0.32, 'out'], [0.8, -0.32], [0.86, -0.06, 'out'], [1.0, -0.32], [1.52, -0.18], [1.8, 0.3], [2.15, 0.12]],
+      aLS: [[0, 0], [0.8, 0], [0.86, 1, 'out'], [0.97, 0]],
+      aRX: [[0, 0], [0.22, 2.05, 'out'], [1.02, 2.05], [1.1, 1.5, 'out'], [1.24, 2.05], [1.4, 0.55], [1.52, 2.95, 'out'], [1.74, 2.85], [2.15, 0]],
+      aRZ: [[0, 0.12], [0.22, -0.32, 'out'], [1.02, -0.32], [1.1, -0.06, 'out'], [1.24, -0.32], [1.4, 0.12], [1.52, -0.04], [1.74, 0], [2.15, 0.12]],
+      aRS: [[0, 0], [1.02, 0], [1.1, 1, 'out'], [1.21, 0], [1.42, 0], [1.52, 0.85, 'out'], [1.74, 0.5], [2.0, 0]],
+      twist: [[0, 0], [0.8, 0], [0.86, -0.32, 'out'], [1.0, 0], [1.02, 0], [1.1, 0.36, 'out'], [1.24, 0], [1.4, -0.3], [1.52, 0.34, 'out'], [1.74, 0.24], [2.1, 0]],
+      lean: [[0, 0], [0.22, 0.12], [0.8, 0.12], [0.86, 0.22], [1.0, 0.12], [1.1, 0.24], [1.24, 0.12], [1.4, 0.26], [1.52, -0.16, 'out'], [1.74, -0.12], [2.1, 0]],
+      bob: [[0, 0], [0.22, -0.04], [1.24, -0.04], [1.4, -0.11], [1.52, 0.02, 'out'], [1.74, 0], [2.2, 0]],
+      hop: [[0, 0], [1.42, 0], [1.56, 0.3, 'out'], [1.74, 0, 'in'], [2.2, 0]],
+      headX: [[0, 0], [0.22, 0.16], [1.4, 0.18], [1.52, -0.24, 'out'], [1.74, -0.18], [2.1, 0]],
+      lLX: [[0, 0], [0.22, 0.24], [1.4, 0.24], [1.52, 0.05], [2.1, 0]],
+      lRX: [[0, 0], [0.22, -0.16], [1.4, -0.16], [1.52, 0], [2.1, 0]],
+      reach: [[0, 0], [0.8, 0], [0.86, 0.6, 'out'], [1.0, 0.2], [1.1, 0.7, 'out'], [1.24, 0.2], [1.4, 0.2], [1.52, 0.9, 'out'], [1.8, 0.6], [2.1, 0]],
+      eyes: [[0, 1], [0.22, 0.5], [1.45, 0.45], [1.55, 0.2], [1.8, 0.35], [2.1, 1]],
+      mouth: [[0, 0], [0.22, 0.12], [1.42, 0.12], [1.52, 0.85], [1.8, 0.5], [2.1, 0]],
+    },
+    proc: (P, t) => {
+      const k = env(t, 0.22, 1.36, 0.1), w = env(t, 0.22, 0.82, 0.12);   // bouncing on the toes, and a weave before the jabs
+      P.hop += Math.abs(Math.sin((t - 0.22) * 9)) * 0.045 * k;
+      P.tilt = Math.sin((t - 0.22) * 4.5) * 0.13 * w;
+      P.headZ = -P.tilt * 0.7;
+    },
+    fx: [[0.84, (r) => emoteFx.jab(r, 0)], [1.08, (r) => emoteFx.jab(r, 1)], [1.5, (r, e) => emoteFx.pow(r, e)]] },
   // Laugh: a breath in, then thrown back laughing with the hands on the belly and the shoulders shaking, doubled
   // over forward, and back up wiping it off.
-  { id: 'laugh', name: 'LAUGH', c: ['#ffe36e', '#ffbf1f', '#a87400'], dur: 2.15, sound: 'laugh',
+  { id: 'laugh', name: 'LAUGH', group: 'fun', c: ['#ffe36e', '#ffbf1f', '#a87400'], dur: 2.15, sound: 'laugh',
     chan: {
       lean: [[0, 0], [0.22, 0.12], [0.42, -0.34, 'out'], [0.95, -0.28], [1.22, 0.34], [1.62, 0.28], [1.9, 0.02], [2.15, 0]],
       headX: [[0, 0], [0.22, 0.15], [0.42, -0.36, 'out'], [0.95, -0.3], [1.22, 0.2], [1.62, 0.15], [2.0, 0]],
@@ -3283,7 +3396,7 @@ const EMOTES = [
     },
     fx: [[0.45, (r) => emoteFx.ha(r, 0)], [0.85, (r) => emoteFx.ha(r, 1)], [1.25, (r) => emoteFx.ha(r, 2)]] },
   // Dance: four bouncy bars of hips swinging, arms swapping up and down, knees lifting in turn, head bobbing.
-  { id: 'dance', name: 'DANCE', c: ['#c9a8ff', '#8b5cff', '#4a2aa8'], dur: 2.8, sound: 'dance',
+  { id: 'dance', name: 'DANCE', group: 'fun', c: ['#c9a8ff', '#8b5cff', '#4a2aa8'], dur: 2.8, sound: 'dance',
     chan: { eyes: [[0, 1], [2.8, 1]] },
     proc: (P, t) => {
       const b = (t * Math.PI * 2) / 0.7, s = Math.sin(b), c = Math.cos(b);
@@ -3296,9 +3409,33 @@ const EMOTES = [
       P.mouth = 0.35 + 0.25 * Math.max(0, Math.sin(b * 2)); P.eyes = 0.8;
     },
     fx: [[0.1, (r) => emoteFx.note(r, 0)], [0.8, (r) => emoteFx.note(r, 1)], [1.5, (r) => emoteFx.note(r, 2)], [2.2, (r) => emoteFx.note(r, 3)]] },
+  // Robot: stiff moves that snap from one pose to the next with a little shudder: one arm out, the other, both out
+  // to the sides, both up, then a power-down slump and a reboot. Beeps.
+  { id: 'robot', name: 'ROBOT', group: 'fun', c: ['#a8fff0', '#2fd3b0', '#137a66'], dur: 2.7, turn: 0.35,
+    chan: {
+      aRX: [[0, 0], [0.08, 1.57, 'out'], [0.44, 1.57], [0.52, 0, 'out'], [1.36, 0], [1.44, 2.4, 'out'], [1.84, 2.4], [2.05, 0.25, 'in'], [2.3, 0.25], [2.38, 0, 'out']],
+      aLX: [[0, 0], [0.44, 0], [0.52, 1.57, 'out'], [0.9, 1.57], [0.98, 0, 'out'], [1.36, 0], [1.44, 2.4, 'out'], [1.84, 2.4], [2.05, 0.25, 'in'], [2.3, 0.25], [2.38, 0, 'out']],
+      aRZ: [[0, 0.12], [0.08, 0.04, 'out'], [0.44, 0.04], [0.52, 0.12, 'out'], [0.9, 0.12], [0.98, 1.5, 'out'], [1.36, 1.5], [1.44, 0.45, 'out'], [1.84, 0.45], [2.05, 0.06, 'in'], [2.3, 0.06], [2.38, 0.12, 'out']],
+      aLZ: [[0, 0.12], [0.44, 0.12], [0.52, 0.04, 'out'], [0.9, 0.04], [0.98, 1.5, 'out'], [1.36, 1.5], [1.44, 0.45, 'out'], [1.84, 0.45], [2.05, 0.06, 'in'], [2.3, 0.06], [2.38, 0.12, 'out']],
+      headY: [[0, 0], [0.08, -0.5, 'out'], [0.44, -0.5], [0.52, 0.5, 'out'], [0.9, 0.5], [0.98, 0, 'out']],
+      headX: [[0, 0], [0.9, 0], [0.98, -0.08, 'out'], [1.36, -0.08], [1.44, -0.28, 'out'], [1.84, -0.28], [2.05, 0.6, 'in'], [2.3, 0.6], [2.38, 0, 'out']],
+      twist: [[0, 0], [0.08, -0.18, 'out'], [0.44, -0.18], [0.52, 0.18, 'out'], [0.9, 0.18], [0.98, 0, 'out']],
+      lean: [[0, 0], [1.36, 0], [1.44, -0.1, 'out'], [1.84, -0.1], [2.05, 0.3, 'in'], [2.3, 0.3], [2.38, 0, 'out']],
+      bob: [[0, 0], [0.08, -0.03, 'out'], [1.84, -0.03], [2.05, -0.08, 'in'], [2.3, -0.08], [2.38, 0, 'out']],
+      lLZ: [[0, 0], [0.9, 0], [0.98, 0.16, 'out'], [1.84, 0.16], [2.05, 0.04], [2.38, 0, 'out']],
+      lRZ: [[0, 0], [0.9, 0], [0.98, 0.16, 'out'], [1.84, 0.16], [2.05, 0.04], [2.38, 0, 'out']],
+      eyes: [[0, 1], [0.08, 0.6], [1.84, 0.6], [2.0, 0.08], [2.3, 0.08], [2.38, 1, 'out']],
+    },
+    proc: (P, t) => {                                      // a little shudder after every snap
+      let j = 0;
+      for (const s0 of [0.08, 0.52, 0.98, 1.44, 2.38]) if (t > s0) j += Math.sin((t - s0) * 70) * Math.exp(-(t - s0) * 16);
+      P.twist += j * 0.04; P.headZ = j * 0.06;
+    },
+    fx: [[0.08, (r) => emoteFx.beep(r, 0)], [0.52, (r) => emoteFx.beep(r, 1)], [0.98, (r) => emoteFx.beep(r, 2)], [1.44, (r) => emoteFx.beep(r, 3)],
+      [1.86, (r) => emoteFx.sound(r, 'powerdown')], [2.38, (r) => emoteFx.reboot(r)]] },
   // Point: the arm draws back, then shoots out at whoever's in front (or at you, the camera), the other hand on the
   // hip, chest out, head cocked, and a couple of jabs to make the point.
-  { id: 'point', name: 'POINT', c: ['#8af0ff', '#24b8e8', '#11658a'], dur: 1.8, target: 'point', sound: 'point',
+  { id: 'point', name: 'POINT', group: 'fun', c: ['#8af0ff', '#24b8e8', '#11658a'], dur: 1.8, target: 'point', sound: 'point',
     chan: {
       aRX: [[0, 0], [0.18, -0.45], [0.32, 1.6, 'back'], [1.35, 1.55], [1.65, 0.1], [1.8, 0]],
       aRZ: [[0, 0.12], [0.32, 0.02], [1.35, 0.02], [1.7, 0.12]],
@@ -3317,7 +3454,7 @@ const EMOTES = [
     proc: (P, t) => { P.aRX += Math.sin((t - 0.32) * 18) * 0.07 * env(t, 0.34, 1.0, 0.08); },
     fx: [[0.33, (r, e) => emoteFx.point(r, e)]] },
   // Celebrate: a crouch, a big jump with both arms up, then two fist-pumping hops and confetti.
-  { id: 'celebrate', name: 'CHEER', c: ['#b8f07a', '#3ccf6d', '#1f7a3a'], dur: 2.0, sound: 'cheer',
+  { id: 'celebrate', name: 'CHEER', group: 'fun', c: ['#b8f07a', '#3ccf6d', '#1f7a3a'], dur: 2.0, sound: 'cheer',
     chan: {
       bob: [[0, 0], [0.2, -0.07], [0.36, 0.03, 'out'], [0.62, -0.05], [0.75, 0], [2.0, 0]],
       hop: [[0, 0], [0.2, 0], [0.42, 0.62, 'out'], [0.62, 0, 'in'], [0.95, 0.22, 'out'], [1.12, 0, 'in'], [1.42, 0.22, 'out'], [1.6, 0, 'in'], [2.0, 0]],
@@ -3333,13 +3470,57 @@ const EMOTES = [
       mouth: [[0, 0], [0.35, 0.9], [1.72, 0.7], [1.96, 0]],
     },
     fx: [[0.42, (r) => emoteFx.cheer(r)], [0.95, (r) => emoteFx.sparkle(r)], [1.42, (r) => emoteFx.sparkle(r)]] },
+  // Flinch: what someone does when a kick or an uppercut ends right in front of them: a duck back, arms up.
+  { id: 'flinch', name: 'FLINCH', hidden: true, c: ['#ff9a8a', '#ff3b4f', '#a3162b'], dur: 0.95, target: 'given', reach: 3,
+    chan: {
+      lean: [[0, 0], [0.1, -0.32, 'out'], [0.5, -0.24], [0.95, 0]],
+      reach: [[0, 0], [0.12, -0.6, 'out'], [0.5, -0.5], [0.95, 0]],
+      aLX: [[0, 0], [0.1, 2.3, 'out'], [0.55, 2.2], [0.95, 0]],
+      aRX: [[0, 0], [0.1, 2.3, 'out'], [0.55, 2.2], [0.95, 0]],
+      aLZ: [[0, 0.12], [0.1, -0.3, 'out'], [0.55, -0.3], [0.95, 0.12]],
+      aRZ: [[0, 0.12], [0.1, -0.3, 'out'], [0.55, -0.3], [0.95, 0.12]],
+      headX: [[0, 0], [0.1, 0.3, 'out'], [0.55, 0.25], [0.95, 0]],
+      bob: [[0, 0], [0.1, -0.06], [0.55, -0.04], [0.95, 0]],
+      eyes: [[0, 1], [0.08, 0.08], [0.6, 0.1], [0.9, 1]],
+      mouth: [[0, 0], [0.1, 0.6], [0.6, 0.4], [0.9, 0]],
+    } },
 ];
 const EMOTE_BY_ID = Object.fromEntries(EMOTES.map((d) => [d.id, d]));
-const EMOTE_WHEEL = EMOTES.filter((d) => !d.hidden);      // in wheel order, which is also the 1–6 shortcut order
-// Who an emote is aimed at: the closest runner within a step for a hug, anyone within 16 m for a point.
+const EMOTE_LIST = EMOTES.filter((d) => !d.hidden);       // the ones you can pick, in the order they're shown
+const EMOTE_GROUPS = [
+  { id: 'hostile', name: 'HOSTILE', note: 'Aimed at whoever’s closest' },
+  { id: 'fun', name: 'DANCES & TAUNTS', note: 'Show off' },
+];
+// Your four emotes, picked under CUSTOMISE → EMOTES and played with the Emote 1–4 keys (or the EMOTE button on a
+// touch screen). An emote is only ever in one slot.
+const EMOTE_SLOTS = 4, EMOTES_KEY = 'blockdash.emotes.v1', EMOTE_DEFAULT = ['kick', 'hug', 'laugh', 'dance'];
+const emoteLoadout = (() => {
+  let sv = null;
+  try { sv = JSON.parse(store.get(EMOTES_KEY) || 'null'); } catch { sv = null; }
+  const ok = (id) => typeof id === 'string' && !!EMOTE_BY_ID[id] && !EMOTE_BY_ID[id].hidden;
+  const out = (Array.isArray(sv) ? sv.slice(0, EMOTE_SLOTS) : []).map((id) => (ok(id) ? id : null));
+  for (let i = 0; i < out.length; i++) if (out[i] && out.indexOf(out[i]) !== i) out[i] = null;
+  while (out.length < EMOTE_SLOTS) out.push(null);
+  const spare = [...EMOTE_DEFAULT, ...EMOTE_LIST.map((d) => d.id)];
+  for (let i = 0; i < EMOTE_SLOTS; i++) if (!out[i]) out[i] = spare.find((id) => !out.includes(id));
+  return out;
+})();
+const saveEmotes = () => store.set(EMOTES_KEY, JSON.stringify(emoteLoadout));
+function setEmoteSlot(i, id) {                           // (if it was in another slot, the two swap)
+  if (!EMOTE_BY_ID[id] || EMOTE_BY_ID[id].hidden || !(i >= 0 && i < EMOTE_SLOTS)) return false;
+  const j = emoteLoadout.indexOf(id);
+  if (j >= 0 && j !== i) emoteLoadout[j] = emoteLoadout[i];
+  emoteLoadout[i] = id;
+  saveEmotes();
+  return true;
+}
+// Who an emote is aimed at: the closest runner within a step for a hug, within reach for a kick or boxing, anyone
+// within 16 m for a point.
+const EMOTE_RANGE = { hug: 2.6, spar: 2.4, point: 16 };
 function emoteTarget(r, def) {
-  if (def.target !== 'hug' && def.target !== 'point') return null;
-  let best = null, bd = def.target === 'hug' ? 2.6 : 16;
+  const range = EMOTE_RANGE[def.target];
+  if (!range) return null;
+  let best = null, bd = range;
   for (const o of combat.runners()) {
     if (o === r || Math.abs(o.y - r.y) > 1.2) continue;
     const d = Math.hypot(o.x - r.x, o.z - r.z);
@@ -3758,11 +3939,12 @@ function createRunner(opts = {}) {
     stopEmote() { if (this.emote && !this.emote.fade) this.emote.fade = 1e-4; },   // eases back out of it
     get emoting() { return !!this.emote && !this.emote.fade; },
     rig() { return { visual, hips, head, eyes, mouth, arms, legs }; },   // (for tests: the body's joints)
-    // Where a body part is right now (for effects): the right foot, the right hand or the top of the head.
+    // Where a body part is right now (for effects): the right foot, either hand or the top of the head.
     partWorld(name, v) {
       root.updateMatrixWorld(true);
       if (name === 'footR') return legs[1].localToWorld(v.set(0, -0.4, -0.04));
       if (name === 'handR') return arms[1].userData.hand.localToWorld(v.set(0, 0, 0));
+      if (name === 'handL') return arms[0].userData.hand.localToWorld(v.set(0, 0, 0));
       return head.localToWorld(v.set(0, 0.3, 0));
     },
     requestPunch() { this.punchBuf = PUNCH.buffer; },
@@ -4064,6 +4246,11 @@ function createRunner(opts = {}) {
           const n = i ? 'aR' : 'aL', s = a.userData.s;
           a.rotation.set(pv(n + 'X', a.rotation.x), s * pv(n + 'Y', a.rotation.y * s), s * pv(n + 'Z', a.rotation.z * s));
         });
+        for (let i = 0; i < 2; i++) {                    // a jab: the arm shoots out longer (your own punch owns the right arm)
+          if (i && this.punchT >= 0) continue;
+          const c = i ? 'aRS' : 'aLS', st = Number.isNaN(EP[c]) ? 0 : EP[c] * ew, u = arms[i].userData;
+          u.hand.position.y = -0.29 - 0.2 * st; u.sleeve.scale.y = 1 + 0.9 * st; u.sleeve.position.y = -0.12 - 0.09 * st;
+        }
         legs.forEach((g, i) => {                         // (the feet stay planted when the body leans or tilts)
           const n = i ? 'lR' : 'lL', s = i ? 1 : -1;
           g.rotation.x = pv(n + 'X', g.rotation.x) - hips.rotation.x;
@@ -4076,6 +4263,8 @@ function createRunner(opts = {}) {
         visual.position.x = -Math.sin(em.faceYaw) * rk; visual.position.z = -Math.cos(em.faceYaw) * rk;
       } else {
         hips.rotation.x = hips.rotation.z = 0; head.rotation.set(0, 0, 0); visual.position.x = visual.position.z = 0; legs[1].scale.y = 1;
+        const lu = arms[0].userData;                     // (the right arm is put back by the punch, above)
+        lu.hand.position.y = -0.29; lu.sleeve.scale.y = 1; lu.sleeve.position.y = -0.12;
       }
       animSt.t = this.t; animSt.k = k; animSt.air = !this.grounded;
       for (const a of worn) if (a.tick) a.tick(dt, animSt);
@@ -4206,8 +4395,12 @@ const pops = (() => {
     cv.width = cv.height = 128;
     const g = cv.getContext('2d');
     g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
-    g.font = `900 ${glyph.length > 1 ? 56 : 86}px "Arial Black", "Segoe UI Black", system-ui, sans-serif`;
-    g.lineWidth = 13; g.strokeStyle = 'rgba(20,10,45,.92)';
+    const font = (n) => `900 ${n}px "Arial Black", "Segoe UI Black", system-ui, sans-serif`;
+    let fs = glyph.length > 1 ? 56 : 86;
+    g.font = font(fs);
+    const w = g.measureText(glyph).width;
+    if (w > 104) { fs = Math.floor((fs * 104) / w); g.font = font(fs); }   // (a longer word: smaller, so it fits)
+    g.lineWidth = fs >= 56 ? 13 : Math.max(7, fs * 0.24); g.strokeStyle = 'rgba(20,10,45,.92)';
     g.strokeText(glyph, 64, 70);
     g.fillStyle = color;
     g.fillText(glyph, 64, 70);
@@ -4227,6 +4420,8 @@ const pops = (() => {
   return {
     spawn(x, y, z, glyph, color, { size = 0.55, rise = 1.1, life = 1, drift = 0 } = {}) {
       const p = pool[next = (next + 1) % pool.length];
+      const cx = camera.position.x - x, cz = camera.position.z - z, cl = Math.hypot(cx, cz) || 1;
+      x += (cx / cl) * 0.35; z += (cz / cl) * 0.35;      // (a little toward the camera, so the runner it's for doesn't hide it)
       p.s.material.map = texFor(glyph, color);
       Object.assign(p, { t: 0, life, x, y, z, vx: drift, vy: rise / life, size });
       p.s.visible = true;
@@ -4252,12 +4447,13 @@ const _efx = new THREE.Vector3();
 const emoteFx = {
   near(r) { return r === player ? 1 : clamp(1 - Math.hypot(r.x - player.x, r.z - player.z) / 18, 0, 1); },
   sound(r, name, k = 1) { const n = this.near(r) * k; if (n > 0.04) audio.play(name, n); },
-  kick(r) {                                               // a burst off the foot at the top of the kick
+  kick(r, e) {                                            // a burst off the foot at the top of the kick
     const f = r.partWorld('footR', _efx);
     particles.burst(f.x, f.y, f.z, 14, ['#ffffff', '#ffe066', '#ff9a3c'], { speed: 5, up: 2.2, size: [0.06, 0.14], life: [0.25, 0.5], grav: 0.4, bounce: 0 });
     pops.spawn(f.x, f.y + 0.3, f.z, '!', '#ffb02e', { size: 0.5, rise: 0.6, life: 0.6 });
     this.sound(r, 'kick');
     if (r === player) { camCtl.shake = Math.max(camCtl.shake, 0.12); vibrate(12); }
+    if (e) this.hit(r, e);
   },
   whoosh(r) {                                             // a trail of puffs along the kicking foot's arc
     const f = r.partWorld('footR', _efx);
@@ -4297,6 +4493,37 @@ const emoteFx = {
     this.sound(r, 'cheer');
   },
   sparkle(r) { particles.burst(r.x, r.y + 2.3, r.z, 10, ['#ffd23f', '#ffffff'], { speed: 3, up: 3, size: [0.05, 0.1], life: [0.4, 0.7], grav: 0.4, bounce: 0 }); },
+  hit(r, e, big) {                                        // a kick or an uppercut that ends right in front of someone: they flinch
+    const o = e && e.target;
+    if (!o || !o.visible || Math.hypot(o.x - r.x, o.z - r.z) > 2.6) return;
+    if (o.emote && o.emote.def.group !== 'fun') return;  // (not out of a hug, or a kick of their own)
+    if (!o.playEmote('flinch', { target: r })) return;
+    const h = o.partWorld('head', _efx);                 // (beside the head, clear of a rival's name tag)
+    pops.spawn(h.x + 0.5, h.y - 0.1, h.z, big ? '!!' : '!', '#ff5a6a', { size: 0.58, rise: 0.5, life: 0.8, drift: 0.3 });
+  },
+  jab(r, side) {                                          // a puff off the fist, and a whoosh
+    const h = r.partWorld(side ? 'handR' : 'handL', _efx);
+    particles.burst(h.x, h.y, h.z, 5, ['#ffffff', '#ffd0c8'], { speed: 1.6, up: 0.4, size: [0.05, 0.1], life: [0.15, 0.28], grav: 0, bounce: 0 });
+    this.sound(r, 'swing', 0.7);
+  },
+  pow(r, e) {                                             // the uppercut: POW
+    const h = r.partWorld('handR', _efx);
+    particles.burst(h.x, h.y, h.z, 16, ['#ffffff', '#ffe066', '#ff3b4f'], { speed: 4.5, up: 2.5, size: [0.06, 0.14], life: [0.25, 0.5], grav: 0.3, bounce: 0 });
+    pops.spawn(h.x, h.y + 0.4, h.z, 'POW', '#ff5a3c', { size: 0.85, rise: 0.7, life: 0.9 });
+    this.sound(r, 'punch', 0.7);
+    if (r === player) { camCtl.shake = Math.max(camCtl.shake, 0.14); vibrate(14); }
+    this.hit(r, e, true);
+  },
+  beep(r, i) {                                            // the robot: a bleep on every snap, and a BEEP
+    this.sound(r, 'beep', 1 - i * 0.08);
+    if (i === 1) { const h = r.partWorld('head', _efx); pops.spawn(h.x - 0.45, h.y + 0.3, h.z, 'BEEP', '#5ff5d6', { size: 0.66, rise: 0.8, life: 0.9, drift: -0.3 }); }
+  },
+  reboot(r) {                                             // ... and back on again
+    const h = r.partWorld('head', _efx);
+    particles.burst(h.x, h.y + 0.2, h.z, 10, ['#5ff5d6', '#ffffff'], { speed: 2.4, up: 2, size: [0.05, 0.1], life: [0.25, 0.45], grav: 0.2, bounce: 0 });
+    pops.spawn(h.x + 0.45, h.y + 0.3, h.z, 'BOOP', '#5ff5d6', { size: 0.66, rise: 0.8, life: 0.9, drift: 0.3 });
+    this.sound(r, 'reboot');
+  },
 };
 
 
@@ -4495,6 +4722,7 @@ const levelIx = () => clamp(level.n - 1, 0, 4);
 // A rival's head. Dodging comes first: it heads for a gap in the next wall and hops, dives or climbs what it
 // has to. Now and then, with no wall close, it picks a fight with the nearest runner nobody else is after:
 // it walks up, winds up and punches, or jumps and dives in for a Super Punch. Then it goes back to dodging.
+const RIVAL_SHOWOFFS = ['dance', 'robot', 'point', 'laugh', 'celebrate', 'boxing'];
 function rivalBrain(r, h) {
   const ai = r.ai, C = r.ctl;
   ai.t += h; ai.think -= h; ai.fightCd -= h;
@@ -4520,7 +4748,7 @@ function rivalBrain(r, h) {
   ai.emoteCd -= h;
   if (ai.emoteCd <= 0) {
     ai.emoteCd = rand(10, 20);
-    if (!ai.fight && eta > 3 && Math.random() < 0.4 && r.playEmote(['dance', 'point', 'laugh', 'celebrate'][Math.floor(Math.random() * 4)])) { C.moveX = C.moveZ = 0; return; }
+    if (!ai.fight && eta > 3 && Math.random() < 0.4 && r.playEmote(RIVAL_SHOWOFFS[Math.floor(Math.random() * RIVAL_SHOWOFFS.length)])) { C.moveX = C.moveZ = 0; return; }
   }
   let tx = next && eta < 2.6 ? ai.lane : ai.homeX, tz = P_START_Z + ai.home, wantJump = false, dive = null, steer = null;
   if (next && eta < 2.6) {
@@ -4885,8 +5113,8 @@ const KEY_ACTIONS = [
   { id: 'punch', group: 'ACTIONS', ctx: 'game', label: 'Punch', note: 'During a dive: Super Punch. A left click punches too.', def: ['KeyF', ''] },
   { id: 'pause', group: 'ACTIONS', ctx: 'game', label: 'Pause', note: 'Esc always pauses as well.', def: ['KeyP', ''] },
   { id: 'restart', group: 'ACTIONS', ctx: 'game', label: 'Restart', note: 'On the pause and game-over screens.', def: ['KeyR', ''] },
-  { id: 'emote', group: 'EMOTES', ctx: 'game', label: 'Emote wheel', note: 'Tap it and click one, or hold it, point with the mouse and let go.', def: ['KeyT', ''] },
-  ...EMOTE_WHEEL.map((d, i) => ({ id: 'emote' + (i + 1), group: 'EMOTES', ctx: 'game', label: d.name[0] + d.name.slice(1).toLowerCase(), def: ['Digit' + (i + 1), ''] })),
+  ...Array.from({ length: EMOTE_SLOTS }, (_, i) => ({ id: 'emote' + (i + 1), group: 'EMOTES', ctx: 'game', label: 'Emote ' + (i + 1), def: ['Digit' + (i + 1), ''],
+    get note() { return `Now: ${EMOTE_BY_ID[emoteLoadout[i]].name.toLowerCase()}. Pick your emotes in CUSTOMISE → EMOTES.`; } })),
   { id: 'flyUp', group: 'BUILDING WAVES', ctx: 'build', label: 'Fly up', def: ['Space', 'KeyE'] },
   { id: 'flyDown', group: 'BUILDING WAVES', ctx: 'build', label: 'Fly down', def: ['ShiftLeft', 'KeyQ'] },
 ];
@@ -4927,6 +5155,11 @@ function keyName(code) {
   return code.replace(/(Left|Right)$/, '').toUpperCase();
 }
 const keyLabel = (id, sep = ' / ') => keymap[id].filter(Boolean).map(keyName).join(sep);
+// The Emote 1–4 keys in one go: "1–4" while they're the number keys in a row.
+const emoteKeysLabel = () => {
+  const ns = Array.from({ length: EMOTE_SLOTS }, (_, i) => keyName(keymap['emote' + (i + 1)][0]) || '—');
+  return ns.join('') === '1234'.slice(0, EMOTE_SLOTS) ? `1–${EMOTE_SLOTS}` : ns.join(' ');
+};
 // The four move keys in W A S D order ('' unless all four have a key in that slot).
 const moveKeysLabel = (slot, sep) => { const ks = ['up', 'left', 'down', 'right'].map((id) => keymap[id][slot]); return ks.every(Boolean) ? ks.map(keyName).join(sep) : ''; };
 const escHtml = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -4962,7 +5195,7 @@ function updateMenuHint() {
   const k = (t) => `<kbd>${escHtml(t || '—')}</kbd>`;
   el.innerHTML = touchMode
     ? 'Left thumb: <kbd>JOYSTICK</kbd> to move · Right thumb: <kbd>JUMP</kbd>, tap again to dive · <kbd>PUNCH</kbd> · <kbd>EMOTE</kbd> · drag to turn the camera'
-    : `${k(moveKeysLabel(0, '') || moveKeysLabel(1, ''))} move · <kbd>MOUSE</kbd> camera · ${k(keyName(keymap.jump[0]))} jump, again to dive · ${k(keyName(keymap.punch[0]))} / <kbd>CLICK</kbd> punch · ${k(keyName(keymap.emote[0]))} emotes · <kbd>ESC</kbd> pause`;
+    : `${k(moveKeysLabel(0, '') || moveKeysLabel(1, ''))} move · <kbd>MOUSE</kbd> camera · ${k(keyName(keymap.jump[0]))} jump, again to dive · ${k(keyName(keymap.punch[0]))} / <kbd>CLICK</kbd> punch · ${k(emoteKeysLabel())} emotes · <kbd>ESC</kbd> pause`;
 }
 
 window.addEventListener('keydown', (e) => {
@@ -4978,10 +5211,7 @@ window.addEventListener('keydown', (e) => {
   if (bound('jump', code) && state === 'playing' && !e.repeat) player.requestJump();
   if (!e.repeat) game.onKey(code, e);
 });
-window.addEventListener('keyup', (e) => {
-  keys.delete(normCode(e.code));
-  if (bound('emote', normCode(e.code))) emoteWheel.keyUp();
-});
+window.addEventListener('keyup', (e) => { keys.delete(normCode(e.code)); });
 window.addEventListener('blur', () => {
   keys.clear();
   if (state === 'playing' || state === 'countdown') game.pause();
@@ -5034,6 +5264,7 @@ joyZone.addEventListener('pointerdown', (e) => {
   if (joy.id !== null) return;
   e.preventDefault();
   setTouchMode(true);
+  emoteTray.close();
   joy.id = e.pointerId;
   try { joyZone.setPointerCapture(e.pointerId); } catch { /* ignored */ }
   const home = joyHome(), r = joyRadius();
@@ -5083,77 +5314,47 @@ punchBtn.addEventListener('pointerdown', (e) => {
   punchBtn.classList.add('pressed');
 });
 for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) punchBtn.addEventListener(ev, () => punchBtn.classList.remove('pressed'));
-document.addEventListener('mousedown', (e) => {          // with the cursor hidden, a left click punches (or picks an emote)
+document.addEventListener('mousedown', (e) => {          // with the cursor hidden, a left click punches
   if (!locked() || state !== 'playing') return;
-  if (emoteWheel.open) { if (e.button === 0) emoteWheel.click(); else if (e.button === 2) emoteWheel.hide(); return; }
   if (e.button === 0) player.requestPunch();
 });
-document.addEventListener('contextmenu', (e) => { if (emoteWheel.open) e.preventDefault(); });
-// ---- Emote wheel: T (or an EMOTE button) opens it. With the cursor hidden, point the mouse at one and click, or
-//      hold T, point and let go; with a cursor or a finger, click or tap one. 1–6 play one straight away. ----
-const emoteWheel = (() => {
-  const el = $('emote-wheel'), N = EMOTE_WHEEL.length, slots = [];
-  let open = false, hot = -1, vx = 0, vy = 0, held = false, heldAt = 0;
-  const setHot = (i) => { hot = i; slots.forEach((b, k) => b.classList.toggle('hot', k === i)); };
-  EMOTE_WHEEL.forEach((d, i) => {
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'ew-slot';
-    b.style.cssText = `--a:${(i * 360) / N}deg;--dl:${(i * 0.035).toFixed(3)}s;--c1:${d.c[0]};--c2:${d.c[1]};--c3:${d.c[2]}`;
-    b.innerHTML = `<span class="ew-ico" aria-hidden="true">${EMOTE_ICONS[d.id]}</span><span class="ew-name">${d.name}</span><kbd>${i + 1}</kbd>`;
-    b.setAttribute('aria-label', `${d.name.toLowerCase()} emote`);
-    b.addEventListener('click', (e) => { e.preventDefault(); api.pick(i); });
-    b.addEventListener('pointerenter', () => { if (!locked()) setHot(i); });
-    b.addEventListener('pointerleave', () => { if (!locked() && hot === i) setHot(-1); });
-    el.appendChild(b);
-    slots.push(b);
-  });
-  const nope = (i) => { const b = slots[i]; b.classList.remove('nope'); void b.offsetWidth; b.classList.add('nope'); audio.play('nope'); };
+// ---- Your four emotes in a run: the Emote 1–4 keys (1–4 unless you change them), the chips over PUNCH on the
+//      desktop HUD (click one when the cursor is free), or on a touch screen the EMOTE button, which opens a tray of
+//      the four. They're picked under CUSTOMISE → EMOTES. ----
+function flashEmote(def) {                               // the name of the emote you just did
+  const t = $('emote-toast');
+  t.textContent = def.name; t.style.setProperty('--tc', def.c[1]);
+  t.classList.remove('show'); void t.offsetWidth; t.classList.add('show');
+}
+const emoteButtons = { hud: [], tray: [] };
+const blip = (el, cls) => { el.classList.remove('go', 'nope'); void el.offsetWidth; el.classList.add(cls); };
+function playEmoteSlot(i) {                              // play the emote in a slot (or a shake: not now)
+  const id = emoteLoadout[i];
+  if (!id || state !== 'playing') return false;
+  const ok = player.playEmote(id);
+  for (const b of [emoteButtons.hud[i], emoteButtons.tray[i]]) if (b) blip(b, ok ? 'go' : 'nope');
+  if (!ok) audio.play('nope');
+  return ok;
+}
+const emoteTray = (() => {
+  const el = $('emote-tray'), btn = $('emote-btn');
+  let open = false, timer = 0;
   const api = {
     get open() { return open; },
     show() {
       if (open || state !== 'playing') return;
-      open = true; vx = vy = 0; setHot(-1);
-      el.classList.add('open'); el.classList.toggle('flick', locked()); el.setAttribute('aria-hidden', 'false');
-      $('ew-pointer').style.transform = '';
-      $('ew-hint').textContent = touchMode ? 'Tap one' : locked() ? 'Point with the mouse, then click' : 'Click one';
-      slots.forEach((b, k) => { b.querySelector('kbd').textContent = keyName(keymap['emote' + (k + 1)][0]) || ''; });
-      $('emote-btn').classList.add('on');
+      open = true;
+      el.classList.add('open'); btn.classList.add('on');
       audio.play('click');
+      clearTimeout(timer); timer = setTimeout(() => api.close(), 4500);   // (it puts itself away if you don't pick one)
     },
-    hide() {
+    close() {
       if (!open) return;
-      open = false; held = false; setHot(-1);
-      el.classList.remove('open', 'flick'); el.setAttribute('aria-hidden', 'true');
-      $('emote-btn').classList.remove('on');
+      open = false; clearTimeout(timer);
+      el.classList.remove('open'); btn.classList.remove('on');
     },
-    toggle() { if (open) api.hide(); else api.show(); },
-    pick(i) {                                             // play it (a little press on the slot), or shake: not now
-      const d = EMOTE_WHEEL[i], b = slots[i];
-      if (!d) return;
-      if (!player.playEmote(d.id)) { nope(i); return; }
-      b.classList.add('picked');
-      setTimeout(() => b.classList.remove('picked'), 180);
-      setTimeout(() => api.hide(), 110);
-    },
-    shortcut(i) { if (open) api.pick(i); else if (!player.playEmote(EMOTE_WHEEL[i].id)) audio.play('nope'); },
-    click() { if (hot >= 0) api.pick(hot); else api.hide(); },
-    steer(dx, dy) {                                       // the mouse, with the cursor hidden, points at a slot
-      vx += dx; vy += dy;
-      const l = Math.hypot(vx, vy);
-      if (l > 110) { vx *= 110 / l; vy *= 110 / l; }
-      $('ew-pointer').style.transform = `translate(${vx}px, ${vy}px)`;
-      if (l > 26) setHot(((Math.round((Math.atan2(vx, -vy) / (Math.PI * 2)) * N) % N) + N) % N);
-    },
-    keyDown() { if (open) api.hide(); else { api.show(); held = true; heldAt = performance.now(); } },
-    keyUp() { if (open && held && performance.now() - heldAt > 260 && hot >= 0) api.pick(hot); held = false; },
-    flash(def) {                                          // the name of the emote you just did
-      const t = $('emote-toast');
-      t.textContent = def.name; t.style.setProperty('--tc', def.c[1]);
-      t.classList.remove('show'); void t.offsetWidth; t.classList.add('show');
-    },
+    toggle() { if (open) api.close(); else api.show(); },
   };
-  $('emote-open').addEventListener('click', () => api.toggle());
-  const btn = $('emote-btn');
   btn.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     setTouchMode(true);
@@ -5164,6 +5365,38 @@ const emoteWheel = (() => {
   btn.addEventListener('contextmenu', (e) => e.preventDefault());
   return api;
 })();
+// The HUD chips and the tray show what's in your slots, and the HUD its keys: made once, kept up to date.
+function syncEmoteHud() {
+  if (!emoteButtons.hud.length) {
+    for (let i = 0; i < EMOTE_SLOTS; i++) {
+      const c = document.createElement('button');
+      c.type = 'button'; c.className = 'ec';
+      c.addEventListener('mousedown', (e) => e.preventDefault());   // (no focus left on it for Space to press again)
+      c.addEventListener('click', () => playEmoteSlot(i));
+      $('emote-hud').appendChild(c);
+      const t = document.createElement('button');
+      t.type = 'button'; t.className = 'et';
+      t.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        t.classList.add('pressed');
+        if (playEmoteSlot(i)) setTimeout(() => emoteTray.close(), 110);
+      });
+      for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) t.addEventListener(ev, () => t.classList.remove('pressed'));
+      t.addEventListener('contextmenu', (e) => e.preventDefault());
+      $('emote-tray').appendChild(t);
+      emoteButtons.hud.push(c); emoteButtons.tray.push(t);
+    }
+  }
+  emoteLoadout.forEach((id, i) => {
+    const d = EMOTE_BY_ID[id], k = keyName(keymap['emote' + (i + 1)][0]), c = emoteButtons.hud[i], t = emoteButtons.tray[i];
+    for (const b of [c, t]) b.style.cssText = `--c1:${d.c[0]};--c2:${d.c[1]};--c3:${d.c[2]}`;
+    c.innerHTML = `${EMOTE_ICONS[id]}<kbd>${escHtml(k)}</kbd>`;
+    c.title = `${d.name}${k ? ' · ' + k : ''}`;
+    c.setAttribute('aria-label', `${d.name.toLowerCase()} emote${k ? ', key ' + k : ''}`);
+    t.innerHTML = `${EMOTE_ICONS[id]}<span>${d.name}</span>`;
+    t.setAttribute('aria-label', `${d.name.toLowerCase()} emote`);
+  });
+}
 const endJumpBtn = () => jumpBtn.classList.remove('pressed');
 jumpBtn.addEventListener('pointerup', endJumpBtn);
 jumpBtn.addEventListener('pointercancel', endJumpBtn);
@@ -5205,14 +5438,13 @@ document.addEventListener('pointerlockchange', () => {
 document.addEventListener('mousemove', (e) => {
   if (!locked() || !lookActive()) return;
   const dx = e.movementX || 0, dy = e.movementY || 0;
-  if (emoteWheel.open) { if (Math.abs(dx) < 250 && Math.abs(dy) < 250) emoteWheel.steer(dx, dy); return; }
   if (lockFresh) { lockFresh = false; return; }         // the first event after locking can carry a jump
   if (Math.abs(dx) > 250 || Math.abs(dy) > 250) return; // some browsers report the odd bogus spike
   turnCamera(dx, dy, 0.006 * settings.mouseSens);
 });
 function attachCanvasInput(cv) {
   cv.addEventListener('pointerdown', (e) => {
-    if (emoteWheel.open) emoteWheel.hide();
+    emoteTray.close();
     if (!lookActive()) return;
     const isTouch = e.pointerType === 'touch';
     if (!isTouch) {
@@ -5354,7 +5586,7 @@ function showScreen(name) {
   if (name === 'blocks' && prev !== 'blocks') openBlocks();
   if (prev === 'waves' && name !== 'waves') closeWaves();
   if (name === 'waves' && prev !== 'waves') openWaves();
-  if (prev === 'keys' && name !== 'keys') keyCapture.active = false;
+  if ((prev === 'keys' && name !== 'keys') || (prev === 'skins' && name !== 'skins')) keyCapture.active = false;
   if (name === 'menu' && state === 'menu') enterLobby();
   for (const s of SCREENS) $('screen-' + s).classList.toggle('active', s === name);
   // A button on a screen that just closed can keep the focus (MAIN MENU after a game over did),
@@ -5415,12 +5647,16 @@ function buildSkinUI() {
     row.appendChild(b);
   }
   $('btn-skin-random').addEventListener('click', () => {
+    if (czUI.tab === 'emotes') { randomEmotes(); return; }
     const c = { ...(skinState.colors[skinState.id] || {}) };
     for (const sl of SKIN_SLOTS) if (sl.key !== 'skin') c[sl.key] = pick(SKIN_PALETTE);
     skinState.colors[skinState.id] = c;
     skinChanged(); audio.play('click');
   });
-  $('btn-skin-reset').addEventListener('click', () => { delete skinState.colors[skinState.id]; skinChanged(); audio.play('click'); });
+  $('btn-skin-reset').addEventListener('click', () => {
+    if (czUI.tab === 'emotes') { resetEmotes(); return; }
+    delete skinState.colors[skinState.id]; skinChanged(); audio.play('click');
+  });
   $('btn-skin-done').addEventListener('click', () => { audio.play('click'); showScreen('menu'); });
   // drag beside the panel to turn the runner on its podium
   const stageEl = $('skin-stage'), drag = { id: null, x: 0 };
@@ -5459,6 +5695,101 @@ function syncSkinUI() {
     sw.appendChild(b);
   }
 }
+// ---- CUSTOMISE → EMOTES: your four slots, each with its key, and every emote to pick from: the hostile ones (aimed
+//      at whoever's closest) and the dances and taunts. Pick a slot, then the emote for it; your runner shows it off. ----
+const czUI = { tab: 'skins', slot: 0 };
+function setCzTab(tab) {
+  if (czUI.tab !== tab) keyCapture.active = false;
+  czUI.tab = tab;
+  for (const b of document.querySelectorAll('.cz-tab')) { const on = b.dataset.tab === tab; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); }
+  $('cz-skins').hidden = tab !== 'skins';
+  $('cz-emotes').hidden = tab !== 'emotes';
+  if (tab === 'emotes') { syncEmoteUI(); emoteHint(); }
+}
+function emoteHint(text = '', kind = '') {
+  const el = $('em-hint');
+  el.textContent = text || (touchMode ? 'Tap a slot, then an emote to put in it.'
+    : 'Click a slot, then the emote for it. Click a key under a slot to change it.');
+  el.className = 'em-hint' + (text && kind ? ' ' + kind : '');
+}
+function buildEmoteUI() {
+  for (let i = 0; i < EMOTE_SLOTS; i++) {
+    const w = document.createElement('div'), pickB = document.createElement('button'), key = document.createElement('button');
+    w.className = 'em-slot';
+    pickB.type = 'button'; pickB.className = 'em-slot-pick';
+    pickB.addEventListener('click', () => { czUI.slot = i; syncEmoteUI(); previewEmote(emoteLoadout[i]); audio.play('click'); });
+    key.type = 'button'; key.className = 'keycap em-key'; key.dataset.a = 'emote' + (i + 1); key.dataset.i = '0';
+    key.addEventListener('click', () => { czUI.slot = i; startKeyCapture('emote' + (i + 1), 0); });
+    w.append(pickB, key);
+    $('em-loadout').appendChild(w);
+  }
+  for (const g of EMOTE_GROUPS) {
+    const sec = document.createElement('section'), grid = document.createElement('div');
+    sec.className = 'em-group';
+    sec.innerHTML = `<div class="em-gh"><b>${g.name}</b><small>${escHtml(g.note)}</small></div>`;
+    grid.className = 'em-grid';
+    for (const d of EMOTE_LIST.filter((e) => e.group === g.id)) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'em-card'; b.dataset.id = d.id;
+      b.style.cssText = `--c1:${d.c[0]};--c2:${d.c[1]};--c3:${d.c[2]}`;
+      b.innerHTML = `<span class="em-ico" aria-hidden="true">${EMOTE_ICONS[d.id]}</span><span class="em-name">${d.name}</span><i class="em-badge" aria-hidden="true"></i>`;
+      b.addEventListener('click', () => pickEmote(d.id));
+      grid.appendChild(b);
+    }
+    sec.appendChild(grid);
+    $('em-coll').appendChild(sec);
+  }
+  for (const b of document.querySelectorAll('.cz-tab')) b.addEventListener('click', () => { if (czUI.tab !== b.dataset.tab) { setCzTab(b.dataset.tab); audio.play('click'); } });
+}
+function previewEmote(id) { if (player.showYaw !== null) player.playEmote(id); }   // your runner does it on the podium
+function emotesChanged() { saveEmotes(); syncEmoteUI(); syncEmoteHud(); }
+function pickEmote(id) {
+  const i = czUI.slot, was = emoteLoadout[i], j = emoteLoadout.indexOf(id);
+  setEmoteSlot(i, id);
+  emotesChanged();
+  previewEmote(id);
+  audio.play('click');
+  if (was === id) emoteHint(`${EMOTE_BY_ID[id].name} is emote ${i + 1}.`, 'say');
+  else if (j >= 0) emoteHint(`${EMOTE_BY_ID[id].name} is now emote ${i + 1}, and ${EMOTE_BY_ID[was].name} moved to emote ${j + 1}.`, 'say');
+  else emoteHint(`${EMOTE_BY_ID[id].name} is now emote ${i + 1}.`, 'say');
+}
+function randomEmotes() {
+  const ids = EMOTE_LIST.map((d) => d.id).sort(() => Math.random() - 0.5);
+  emoteLoadout.splice(0, EMOTE_SLOTS, ...ids.slice(0, EMOTE_SLOTS));
+  emotesChanged();
+  previewEmote(emoteLoadout[czUI.slot]);
+  emoteHint('Four at random.', 'say');
+  audio.play('click');
+}
+function resetEmotes() {
+  emoteLoadout.splice(0, EMOTE_SLOTS, ...EMOTE_DEFAULT);
+  emotesChanged();
+  emoteHint('Back to the first four.', 'say');
+  audio.play('click');
+}
+function syncEmoteUI() {
+  const slots = $('em-loadout').children;
+  if (!slots.length) return;
+  emoteLoadout.forEach((id, i) => {
+    const d = EMOTE_BY_ID[id], w = slots[i], [pickB, key] = w.children, code = keymap['emote' + (i + 1)][0], on = i === czUI.slot;
+    const listening = keyCapture.active && keyCapture.id === 'emote' + (i + 1) && keyCapture.slot === 0;
+    w.classList.toggle('on', on);
+    w.style.cssText = `--c1:${d.c[0]};--c2:${d.c[1]};--c3:${d.c[2]}`;
+    pickB.innerHTML = `<span class="em-num">EMOTE ${i + 1}</span><span class="em-ico" aria-hidden="true">${EMOTE_ICONS[id]}</span><span class="em-name">${d.name}</span>`;
+    pickB.setAttribute('aria-pressed', String(on));
+    pickB.setAttribute('aria-label', `Emote ${i + 1}: ${d.name.toLowerCase()}. Choose this slot, then an emote to put in it.`);
+    key.className = 'keycap em-key' + (code ? '' : ' empty') + (listening ? ' listening' : '');
+    key.textContent = listening ? 'PRESS A KEY' : code ? keyName(code) : 'NO KEY';
+    key.setAttribute('aria-label', `Key for emote ${i + 1}: ${code ? keyName(code) : 'none'}. Press to change it.`);
+  });
+  for (const b of $('em-coll').querySelectorAll('.em-card')) {
+    const k = emoteLoadout.indexOf(b.dataset.id);
+    b.classList.toggle('in', k >= 0);
+    b.classList.toggle('sel', k === czUI.slot);
+    b.querySelector('.em-badge').textContent = k >= 0 ? String(k + 1) : '';
+    b.setAttribute('aria-label', `${EMOTE_BY_ID[b.dataset.id].name.toLowerCase()}${k >= 0 ? ', in emote ' + (k + 1) : ''}. Put it in emote ${czUI.slot + 1}.`);
+  }
+}
 // The lobby (main menu): your runner on its podium, turning to show off; drag to spin it, tap for a bounce.
 function enterLobby() {
   camCtl.mode = 'menu';
@@ -5481,6 +5812,7 @@ function openSkins() {
   player.yaw = SHOW.yaw;
   if (!skinUI.thumbsDone) { skinUI.thumbsDone = true; skinUI.thumbQueue.push(...SKINS.map((sk) => sk.id)); }
   syncSkinUI();
+  syncEmoteUI(); emoteHint();
 }
 function closeSkins() {
   podium.visible = false;
@@ -6128,10 +6460,8 @@ function refreshKeyHints() {
   set('hk-punch', keyLabel('punch'));
   set('hk-pause', keyLabel('pause'));
   $('punch-key').textContent = keyName(keymap.punch[0]) || '—';
-  $('emote-key').textContent = keyName(keymap.emote[0]) || '—';
-  set('hk-emote', keyLabel('emote'));
-  const ek = EMOTE_WHEEL.map((d, i) => keyName(keymap['emote' + (i + 1)][0])).filter(Boolean);
-  set('hk-emotes', ek.length === EMOTE_WHEEL.length && ek.join('') === '123456' ? '1–6' : ek.join(' '));
+  set('hk-emotes', emoteKeysLabel());
+  syncEmoteHud();
   const pk = keyLabel('pause'), rk = keyLabel('restart');
   $('pause-hint').textContent = `Esc${pk ? ' / ' + pk : ''} to resume${rk ? ` · ${rk} to restart` : ''}`;
   $('keys-summary').textContent = `Move ${moveKeysLabel(0, '') || moveKeysLabel(1, '') || '—'} · Jump ${keyName(keymap.jump[0]) || '—'} · Punch ${keyName(keymap.punch[0]) || '—'}`;
@@ -6141,6 +6471,7 @@ function keysNote(text, warn = false) {
   const el = $('keys-note');
   el.textContent = text;
   el.classList.toggle('warn', warn);
+  if (currentScreen === 'skins') emoteHint(text, warn ? 'warn' : 'say');   // (changing an emote's key from its slot)
 }
 function renderKeys() {
   const list = $('keys-list');
@@ -6183,12 +6514,12 @@ function renderKeys() {
 }
 function startKeyCapture(id, slot) {
   Object.assign(keyCapture, { active: true, id, slot });
-  renderKeys();
+  renderKeys(); syncEmoteUI();
   keysNote(`Press the new key for “${KEY_BY_ID[id].label}”. Esc cancels, Backspace takes the key off.`);
-  const b = $('keys-list').querySelector(`.keycap[data-a="${id}"][data-i="${slot}"]`);
+  const b = document.querySelector(`.screen.active .keycap[data-a="${id}"][data-i="${slot}"]`);
   if (b) b.focus({ preventScroll: true });
 }
-function stopKeyCapture() { keyCapture.active = false; renderKeys(); }
+function stopKeyCapture() { keyCapture.active = false; renderKeys(); syncEmoteUI(); }
 // Put a key on an action (or take it off, with ''). A key does one thing at a time: if something else that's in
 // use at the same time had it, it comes off there.
 function setKey(id, slot, code) {
@@ -6304,7 +6635,7 @@ const OBSTACLE_NAME = { '#': 'block', J: 'low barrier', M: 'crusher' };
 const OBSTACLE_COLOR = { J: '#ffd23f', M: '#c46bff' };
 function setState(s) {
   state = s;
-  if (s !== 'playing') emoteWheel.hide();
+  if (s !== 'playing') emoteTray.close();
   document.body.dataset.state = s;
   audio.applySettings();
 }
@@ -6447,7 +6778,7 @@ const game = {
     if (r !== player) return;
     audio.play('emote');
     vibrate(8);
-    emoteWheel.flash(def);
+    if (state === 'playing') flashEmote(def);           // (on the podium, the runner says it all)
   },
   onPunch(sup) {
     audio.play(sup ? 'superswing' : 'swing');
@@ -6532,11 +6863,9 @@ const game = {
       if ((state === 'paused' && currentScreen === 'pause') || state === 'gameover') this.start(run.practice);
     } else if (bound('punch', code)) {
       if (state === 'playing') player.requestPunch();
-    } else if (bound('emote', code)) {
-      if (state === 'playing') emoteWheel.keyDown();
     } else if (state === 'playing') {
-      const i = EMOTE_WHEEL.findIndex((d, k) => bound('emote' + (k + 1), code));
-      if (i >= 0) emoteWheel.shortcut(i);
+      const i = emoteLoadout.findIndex((id, k) => bound('emote' + (k + 1), code));   // Emote 1–4: the emotes you picked
+      if (i >= 0) playEmoteSlot(i);
     }
   },
   onJump() {
@@ -6766,8 +7095,9 @@ function frame(now) {
 // 21. Wiring & start-up
 // ---------------------------------------------------------------------
 function wireLobby() {
-  // drag across the lobby (away from its buttons) to spin your runner; a tap gives it a bounce
+  // drag across the lobby (away from its buttons) to spin your runner; a tap shows off one of your emotes
   const el = $('screen-menu'), drag = { id: null, x: 0, moved: 0 };
+  let taps = 0;
   el.addEventListener('pointerdown', (e) => {
     if (e.target.closest('button, input, label, a, .diff-pick, .best-card') || currentScreen !== 'menu') return;
     drag.id = e.pointerId; drag.x = e.clientX; drag.moved = 0;
@@ -6783,7 +7113,7 @@ function wireLobby() {
     if (e.pointerId !== drag.id) return;
     drag.id = null;
     if (e.type === 'pointerup' && drag.moved < 6 && player.showYaw !== null && !player.emote) {   // a tap: an emote, for fun
-      if (!player.playEmote(EMOTE_WHEEL[(player.emotes + Math.floor(Math.random() * 3)) % EMOTE_WHEEL.length].id)) { player.squash = 0.8; audio.play('jump'); }
+      if (!player.playEmote(emoteLoadout[taps++ % EMOTE_SLOTS])) { player.squash = 0.8; audio.play('jump'); }   // (your four, in turn)
     }
   };
   el.addEventListener('pointerup', end);
@@ -6822,6 +7152,7 @@ function init() {
   hud.init();
   renderPatternLibrary();
   buildSkinUI();
+  buildEmoteUI();
   applyCurrentSkin();
   buildBlockUI();
   buildLayoutUI();
@@ -6853,7 +7184,7 @@ function init() {
       designs, meshCounts: () => ({ hash: MESH['#'].count, ghost: MESH.ghost.count, spikes: MESH.spikes.count, bars: MESH.bar.count, breakables: MESH.brk.count }), layouts, layoutOpts,
       checkLayouts: () => layouts.forEach((L, i) => checkLayout(i)),
       layoutBlockCount: () => layoutView.meshes.map((m) => m.count),
-      rivals, combat, createRunner, PUNCH, SUPER_PUNCH, blockedBetween, EMOTES, EMOTE_WHEEL, emoteWheel, pops, keymap, setKey, resetKeys, keyName, keyCapture, heldKeys: () => ({ keys: [...keys], bkeys: [...bkeys] }),
+      rivals, combat, createRunner, PUNCH, SUPER_PUNCH, blockedBetween, EMOTES, EMOTE_LIST, emoteLoadout, setEmoteSlot, playEmoteSlot, emoteTray, czUI: () => czUI, setCzTab, pops, keymap, setKey, resetKeys, keyName, keyCapture, heldKeys: () => ({ keys: [...keys], bkeys: [...bkeys] }),
       build, voxAt, voxRay, buildPlace, buildRemove, buildAim, buildAimRay, buildDir, enterBuild, leaveBuild, buildTool, VOX_H,
       setLayoutCells: (i, rows) => { layouts[i].vox = cellsToVox(rows.map((r) => (typeof r === 'string' ? [...r] : r))); checkLayout(i); },
       fogNear: () => scene.fog.near,

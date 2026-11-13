@@ -4,7 +4,7 @@ A single-player 3D obstacle survival game in one file: `index.html` (HTML, CSS a
 
 Walls of cube blocks sweep across a small floating 12-lane arena with a slightly slippery checkered floor, one wave at a time and at most one new wall every 7 seconds. Slip through the holes, jump or dive over single cubes, or climb on top and ride. A wall that catches you pushes you toward the edge, so slide into a hole before you run out of floor. The always-on laser fences stand right beside the outer lanes, so there is no way around a wall at the sides: every wall reaches from fence to fence. Every wave you fully survive adds one to the **WAVE SURVIVED** counter.
 
-The main menu is a lobby: your runner stands on a podium just off the near end of the arena, with the walls rolling in behind it. Drag across the lobby to spin your runner and tap it to see an emote; the plate underneath names its outfit. **SKINS**, **BLOCKS** and **WAVES** are down the left, **?** (How to play) and the gear (Settings) are at the top right, and your best, the difficulty and **PLAY** are on the right. On a phone held upright everything sits above and below your runner instead.
+The main menu is a lobby: your runner stands on a podium just off the near end of the arena, with the walls rolling in behind it. Drag across the lobby to spin your runner and tap it to see your emotes one after another; the plate underneath names its outfit. **CUSTOMISE** (skins and emotes), **BLOCKS** and **WAVES** are down the left, **?** (How to play) and the gear (Settings) are at the top right, and your best, the difficulty and **PLAY** are on the right. On a phone held upright everything sits above and below your runner instead.
 
 Pick a **difficulty** on the main menu with the slider, from Very easy to Very hard. On Normal and harder, some walls are three blocks high with no hole at all: you get over them with a little parkour, up a lane of steps in front of the wall.
 
@@ -31,7 +31,7 @@ Then open <http://localhost:8000>.
 | Dive | `Space` again while in the air | Tap **JUMP** again while in the air |
 | Punch | `F`, or left click while the cursor is hidden | **PUNCH** button, left of **JUMP** |
 | Super Punch | Punch during a dive (or the belly-slide right after it) | The same, with **PUNCH** |
-| Emotes | `T` opens the emote wheel; `1`–`6` play one straight away | **EMOTE** button, above **JUMP** |
+| Emotes | `1`–`4` play your four emotes (or click their chips over **PUNCH** when the cursor is free) | **EMOTE** button, above **JUMP**, then tap one of your four |
 | Pause | `Esc` or `P`, or the ❚❚ button | ❚❚ button |
 | Camera | Move the mouse: the camera turns 360° around the runner | Drag anywhere away from the joystick and **JUMP** |
 | Restart / menu | `R` / `Enter` / `Esc` on the pause and game-over screens | Buttons |
@@ -58,22 +58,35 @@ There is no online multiplayer. Every runner's punches are settled in one place,
 
 ## Emotes
 
-Six emotes, all original animations: **Kick**, **Hug**, **Laugh**, **Dance**, **Point** and **Cheer**. Press `T` (or the **EMOTE** button) for the emote wheel. With the cursor hidden, point the mouse toward one and click, or hold `T`, point and let go; with a cursor or a finger, click or tap one. `1`–`6` play one without the wheel (Kick, Hug, Laugh, Dance, Point, Cheer), and every one of these keys can be changed under **CHANGE KEYS**. Tap your runner in the lobby to see one.
+Eight emotes, all original animations, in two groups. You take **four** of them into a run.
 
-- **Kick:** the weight goes back and the leg cocks, then a snap kick above the hip (the leg stretches a little, cartoon-style) with the arms flung out and the body rocking back, a puff trail along the foot and a burst at the top.
+**Your four:** on the main menu open **CUSTOMISE** and pick the **EMOTES** tab. The four slots across the top are your emotes; the ones in them are marked 1–4 below. Click (or tap) a slot, then the emote you want in it: it goes in, and if it was already in another slot the two swap. Your runner shows it off on the podium. **RANDOM** picks four for you and **RESET** brings back the first four (Kick, Hug, Laugh, Dance). Your four are saved.
+
+**Their keys:** in a run `1`, `2`, `3` and `4` play emote 1 to 4. To change one, click the key under its slot and press the new one (**Esc** cancels, **Backspace** takes it off); they're also listed as Emote 1–4 under **Settings → CHANGE KEYS**. While you play, your four sit over the **PUNCH** chip at the bottom right with their keys, and you can click one when the cursor is free. On a touch screen the **EMOTE** button above **JUMP** opens a tray of your four: tap one (the tray puts itself away after a few seconds if you don't).
+
+**Hostile** (aimed at whoever's closest):
+
+- **Kick:** the weight goes back and the leg cocks, then a snap kick above the hip (the leg stretches a little, cartoon-style) with the arms flung out and the body rocking back, a puff trail along the foot and a burst at the top. A runner within reach gets it aimed at them and flinches.
 - **Hug:** the arms fling wide, then wrap round whoever is within a step (they hug you back, the two of you lean in, and hearts float up) or round yourself if nobody is.
+- **Boxing:** fists up, a bounce on the toes with a weave, a left jab and a right jab (the arms shoot out, like a punch), then a crouch and a big uppercut with a hop and a **POW**. It squares up to a runner within reach, and they flinch back.
+
+**Dances & taunts:**
+
 - **Laugh:** thrown back laughing with the hands on the belly and the shoulders shaking, then doubled over, with HA HA floating up.
 - **Dance:** four bouncy bars of swinging hips, arms swapping up and down and knees lifting in turn, with music notes.
+- **Robot:** stiff moves that snap from pose to pose with a little shudder (one arm out, the other, both out to the sides, both up), then a power-down slump and a reboot, with bleeps and a BEEP and a BOOP.
 - **Point:** the arm draws back and shoots out at the nearest runner (a question mark pops over them) or at the camera, the other hand on the hip and the head cocked, with a couple of jabs.
 - **Cheer:** a crouch, a big jump with both arms up, two fist-pumping hops, and confetti.
 
-Each emote moves the body's parts: arms, legs, hips, head, eyes and an opening mouth. They are keyframed with anticipation and follow-through and blended smoothly in and out of the normal pose. The runner turns to face the camera (three-quarters on) or whoever the emote is aimed at, and the camera comes in a little closer and lower while you emote; for a hug or a point it swings round to the side so you see both of you. Nothing about where you are or which way you're going changes. You can only emote standing on something, and moving, jumping, punching, being hit, being pushed by a wall or leaving the ground ends one (it eases out in 0.2 s); a new one replaces the one playing. Rivals emote too: they hug back, now and then show off when no wall is coming, and laugh or cheer after knocking someone out or surviving a wave. They stop for it only while no wall is close.
+A flinch is only for show: nobody is pushed or knocked about by an emote. Your **PUNCH** (`F`) is what hits.
 
-New emotes go in `EMOTES` in the script: a list of joint channels with keyframes (and optional extra motion and timed effects). Adding one to the list puts it on the wheel and gives it a key.
+Each emote moves the body's parts: arms, legs, hips, head, eyes and an opening mouth. They are keyframed with anticipation and follow-through and blended smoothly in and out of the normal pose. The runner turns to face the camera (three-quarters on) or whoever the emote is aimed at, and the camera comes in a little closer and lower while you emote; when it's aimed at someone (a kick, a hug, boxing or a point) it swings round to the side so you see both of you. Nothing about where you are or which way you're going changes. You can only emote standing on something, and moving, jumping, punching, being hit, being pushed by a wall or leaving the ground ends one (it eases out in 0.2 s); a new one replaces the one playing. Rivals emote too: they hug back and flinch, now and then show off when no wall is coming, and laugh or cheer after knocking someone out or surviving a wave. They stop for it only while no wall is close.
+
+New emotes go in `EMOTES` in the script: a list of joint channels with keyframes (and optional extra motion and timed effects), with a `group` (`hostile` or `fun`). Adding one to the list puts it under **CUSTOMISE → EMOTES**, ready to go in a slot.
 
 ## Changing the keys
 
-**Settings → CHANGE KEYS** lists every keyboard control: run forward, back, left and right, jump (and dive), punch, pause and restart, the emote wheel and each emote, and flying up and down while you build waves. Each one can have two keys. Click a key, then press the new one; **Esc** cancels and **Backspace** takes the key off. A key does one thing at a time: give it to a new action and it comes off the old one, and the screen says so. One key can still mean one thing in a run and another while building (Space jumps in a run and flies up in the builder). An action with no key is marked in red. **RESET KEYS** puts the defaults back.
+**Settings → CHANGE KEYS** lists every keyboard control: run forward, back, left and right, jump (and dive), punch, pause and restart, Emote 1–4 (with the emote that's in each), and flying up and down while you build waves. Each one can have two keys. Click a key, then press the new one; **Esc** cancels and **Backspace** takes the key off. A key does one thing at a time: give it to a new action and it comes off the old one, and the screen says so. One key can still mean one thing in a run and another while building (Space jumps in a run and flies up in the builder). An action with no key is marked in red. **RESET KEYS** puts the defaults back.
 
 Keys are kept by their place on the keyboard, not the letter printed on them, so they stay put on any layout; where the browser shares it, the screen shows your keyboard's own letters (Z for the W position on AZERTY). Every hint follows your keys: the menu line, How to Play, the PUNCH meter, the pause screen and the builder's help line. `Esc` always pauses and goes back, the mouse turns the camera, a left click (with the cursor hidden) also punches, and `1`–`5` pick blocks in the builder; those can't be changed. The keys are saved in `localStorage` under `blockdash.keys.v1`.
 
@@ -141,7 +154,7 @@ Append an entry to `PATTERN_DEFS` in `index.html`:
 
 ## Skins
 
-Pick an outfit under **SKINS** on the main menu. There are 30 original outfits: Classic, Ninja, Astronaut, Robot, Pirate, Chef, Royal, Wizard, Kitty, Bunny, Teddy, Dino, Viking, Cowboy, Knight, Swimmer, Propeller, Party, Super, Alien, Angel, Devil, Froggy, Unicorn, Shark, Snowy, Firefighter, Detective, Jetpack and Sporty. Each is a head, face and back item on the runner, built from simple shapes. Every outfit has six colours you can change: skin, top, bottom, hat, shoes and detail. **RANDOM** rolls new colours and **RESET** goes back to the outfit's own.
+Pick an outfit under **CUSTOMISE** on the main menu (the **SKINS** tab; your emotes are on the **EMOTES** tab, see above). There are 30 original outfits: Classic, Ninja, Astronaut, Robot, Pirate, Chef, Royal, Wizard, Kitty, Bunny, Teddy, Dino, Viking, Cowboy, Knight, Swimmer, Propeller, Party, Super, Alien, Angel, Devil, Froggy, Unicorn, Shark, Snowy, Firefighter, Detective, Jetpack and Sporty. Each is a head, face and back item on the runner, built from simple shapes. Every outfit has six colours you can change: skin, top, bottom, hat, shoes and detail. **RANDOM** rolls new colours and **RESET** goes back to the outfit's own.
 
 The runner shows off the outfit on a podium beside the arena; drag beside the panel to turn it. Some items move: capes and tails sway, propellers spin, wings flap and the jetpack fires while you're in the air.
 
