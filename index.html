@@ -1218,6 +1218,7 @@ const FLING = { airDrag: 0.3, slideDrag: 4, guard: 0.3 };
 // then `down` seconds on the ground. One every `cooldown` seconds.
 const TACKLE = { speed: 11, friction: 2.8, slide: 0.62, dur: 1.0, active: [0.04, 0.6], reach: 1.2, halfWidth: 0.7, high: 1.0,
   flingUp: Math.sqrt(2 * G_UP * BLOCK_H * 1.03), push: 3, stun: 1.2, down: 0.35, cooldown: 0.8 };   // (×1.03: the stepped flight peaks a touch low)
+const TUMBLE_C = 0.85;                                   // how high above the feet a tumbling runner turns about (m)
 const SPIKE_PAD = 0.3;                                    // the spikes reach this far out of the cube's faces before they knock you
 const JUMP_APEX = JUMP_V ** 2 / (2 * G_UP);
 const AIR_TIME = JUMP_V / G_UP + Math.sqrt((2 * JUMP_APEX) / G_DOWN);
@@ -4206,7 +4207,9 @@ function createRunner(opts = {}) {
       this.hitFace = damp(this.hitFace, this.downed && this.stunT > 0 ? 1 : 0, 12, dt);
       const baseYaw = this.yaw + this.punchTurn;
       visual.rotation.set(lerp(this.lean, -1.42, this.diveBlend) + this.spinX, baseYaw + wrap(this.knockYaw - baseYaw) * this.hitFace, 0);
-      visual.position.y = 0.4 * this.diveBlend;
+      // A tumble turns about the middle of the body, not the feet, so someone flung up really looks up in the air.
+      const sa = Math.sin(this.spinX), vy0 = visual.rotation.y, tx = -TUMBLE_C * sa * Math.sin(vy0), tz = -TUMBLE_C * sa * Math.cos(vy0);
+      visual.position.y = 0.4 * this.diveBlend + TUMBLE_C * (1 - Math.cos(this.spinX));
       if (this.diveBlend > 0.5) {                        // superhero dive: arms forward, legs straight back
         pose(arms, [2.95, 2.95], [0.2, 0.2]);
         pose(legs, [-0.2, -0.05]);
@@ -4311,9 +4314,9 @@ function createRunner(opts = {}) {
         visual.rotation.y += wrap(em.faceYaw - visual.rotation.y) * ew * (Number.isNaN(EP.face) ? 1 : EP.face);
         if (!Number.isNaN(EP.hop)) visual.position.y += EP.hop * ew;
         const rk = Number.isNaN(EP.reach) ? 0 : EP.reach * em.reach * ew;   // leaning in toward whoever you hug
-        visual.position.x = -Math.sin(em.faceYaw) * rk; visual.position.z = -Math.cos(em.faceYaw) * rk;
+        visual.position.x = tx - Math.sin(em.faceYaw) * rk; visual.position.z = tz - Math.cos(em.faceYaw) * rk;
       } else {
-        hips.rotation.x = hips.rotation.z = 0; head.rotation.set(0, 0, 0); visual.position.x = visual.position.z = 0; legs[1].scale.y = 1;
+        hips.rotation.x = hips.rotation.z = 0; head.rotation.set(0, 0, 0); visual.position.x = tx; visual.position.z = tz; legs[1].scale.y = 1;
         const lu = arms[0].userData;                     // (the right arm is put back by the punch, above)
         lu.hand.position.y = -0.29; lu.sleeve.scale.y = 1; lu.sleeve.position.y = -0.12;
       }
