@@ -958,15 +958,17 @@ const KNOCK_BACK = 6.5, KNOCK_UP = 6.5, KNOCK_STUN = 0.45, KNOCK_COOLDOWN = 0.35
 const BAR_H = 0.8, BAR_D = 0.8;                           // a bar lies on the floor across two squares: hop over it
 // Punch: a jab straight ahead, the same for every runner. Times in seconds from the button press; the hit
 // lands during `active`; reach and halfWidth shape the hitbox in front of the body (low/high: its height).
-const PUNCH = { buffer: 0.12, cooldown: 0.55, duration: 0.32, active: [0.06, 0.2], reach: 1.2, halfWidth: 0.55, low: 0.35, high: 1.45,
-  knockback: 8.5, lift: 4.2, stun: 0.32, down: 1.1 };
+// knockback and lift fling whoever it hits; they have no control until they land (at most `stun`), then
+// `down` more seconds to get up.
+const PUNCH = { buffer: 0.12, cooldown: 0.55, duration: 0.34, active: [0.05, 0.24], reach: 1.6, halfWidth: 0.8, low: 0.1, high: 1.75,
+  knockback: 12, lift: 6.5, stun: 1.2, down: 0.2 };
 // Super Punch: the punch button while diving (or belly-sliding after a dive). The dive keeps all of its momentum
 // and the fist rides along in front of you; the knockback grows with how fast you are moving into the hit.
-const SUPER_PUNCH = { cooldown: 0.75, duration: 0.42, active: [0.03, 0.32], reach: 1.55, halfWidth: 0.62, low: -0.5, high: 1.1,
-  knockback: 11, momentum: 0.42, maxKnockback: 20, lift: 6, stun: 0.5, down: 1.6 };
-// Knocked down by a punch: you fly, land, and lie on your back for `down` seconds (the last GETUP of them getting
-// back up), then can't be punched for GUARD more. Nobody can punch you while you're down, so there's no stun-lock.
-const KNOCKDOWN = { getUp: 0.35, guard: 0.45 };
+const SUPER_PUNCH = { cooldown: 0.75, duration: 0.44, active: [0.03, 0.34], reach: 1.95, halfWidth: 0.85, low: -0.6, high: 1.3,
+  knockback: 15, momentum: 0.5, maxKnockback: 26, lift: 8, stun: 1.2, down: 0.3 };
+// Flung by a punch: little drag in the air (airDrag) so you really fly, a short slide when you land (slideDrag),
+// and nobody can punch you again until you're up plus `guard` seconds, so nobody can juggle you.
+const FLING = { airDrag: 0.3, slideDrag: 4, guard: 0.3 };
 const SPIKE_PAD = 0.3;                                    // the spikes reach this far out of the cube's faces before they knock you
 const JUMP_APEX = JUMP_V ** 2 / (2 * G_UP);
 const AIR_TIME = JUMP_V / G_UP + Math.sqrt((2 * JUMP_APEX) / G_DOWN);
@@ -3276,16 +3278,6 @@ function createRunner(opts = {}) {
       add(g, new THREE.BoxGeometry(0.1, 0.24, 0.04), M.cap, 0.08, 0.36, 0.23).rotation.z = 0.2;
     }],
   };
-  const stars = new THREE.Group();                       // dizzy stars, shown while knocked down
-  stars.visible = false;
-  root.add(stars);
-  const starMat = new THREE.MeshBasicMaterial({ color: 0xffe066, toneMapped: false });
-  for (let i = 0; i < 3; i++) {
-    const st = new THREE.Mesh(new THREE.OctahedronGeometry(0.12), starMat), a = (i * Math.PI * 2) / 3;
-    st.position.set(Math.cos(a) * 0.42, 0, Math.sin(a) * 0.42);
-    st.scale.y = 1.5;
-    stars.add(st);
-  }
   const accs = {};                                       // built items, by id
   let worn = [];                                         // items of the current skin
   const animSt = { t: 0, k: 0, air: false };
@@ -3296,14 +3288,13 @@ function createRunner(opts = {}) {
     grounded: true, coyote: 0, jumpBuf: 0, platform: null, carry: 0,
     punchT: -1, punchCd: 0, punchBuf: 0, punchSuper: false, punchDirX: 0, punchDirZ: -1, punchHits: new Set(), punchPrev: null,
     punchedT: 9, lastHitBy: null, lastHitSuper: false, windup: 0,
-    downed: false, downStarted: false, downFor: 0, guardT: 0, downBlend: 0, hitFace: 0, knockYaw: 0,
+    downed: false, downStarted: false, downFor: 0, guardT: 0, hitFace: 0, knockYaw: 0,
     diving: false, dived: false, slideT: 0, stunT: 0, pushT: 9, knockT: 9, spinX: 0, diveBlend: 0, diveBroke: new Set(),
     squash: 0, lean: 0, yaw: 0, punchTurn: 0, runPhase: 0, blinkT: 2, blink: 0, t: 0, ko: null, flicker: 0,
     showYaw: null,                                       // set while the runner poses on the skins podium
     get visible() { return root.visible; },
-    get height() { return this.diving || this.slideT > 0 || this.lyingDown ? P_HEIGHT_FLAT : P_HEIGHT; },
-    get lyingDown() { return this.downStarted && this.stunT > KNOCKDOWN.getUp; },   // flat on the ground after a punch
-    get untouchable() { return (this.downed && this.stunT > 0) || this.guardT > 0; },  // knocked down (or just up): can't be punched
+    get height() { return this.diving || this.slideT > 0 ? P_HEIGHT_FLAT : P_HEIGHT; },
+    get untouchable() { return (this.downed && this.stunT > 0) || this.guardT > 0; },  // flung (or just up again): can't be punched
 
     applySkin(def, colors) {
       M.skin.color.set(colors.skin); M.shirt.color.set(colors.top); M.shorts.color.set(colors.bottom);
@@ -3346,7 +3337,7 @@ function createRunner(opts = {}) {
       this.ko = null; this.flicker = 0;
       this.punchT = -1; this.punchCd = 0; this.punchBuf = 0; this.punchSuper = false; this.punchHits.clear(); this.punchPrev = null;
       this.punchedT = 9; this.lastHitBy = null; this.lastHitSuper = false;
-      this.downed = this.downStarted = false; this.downFor = this.guardT = this.downBlend = this.hitFace = 0;
+      this.downed = this.downStarted = false; this.downFor = this.guardT = this.hitFace = 0;
       botCtl.moveX = botCtl.moveZ = botCtl.aimX = botCtl.aimZ = 0; this.windup = 0;
       visual.rotation.set(0, 0, 0);
       visual.position.set(0, 0, 0);
@@ -3402,11 +3393,11 @@ function createRunner(opts = {}) {
         z0: Math.min(box.z0, prev.z0), z1: Math.max(box.z1, prev.z1) };
     },
     bodyBox() { return { x0: this.x - P_HALF_W, x1: this.x + P_HALF_W, y0: this.y, y1: this.y + this.height, z0: this.z - P_HALF_D, z1: this.z + P_HALF_D }; },
-    // Punched: thrown along the punch with a little lift and a tumble, then knocked down when you land.
+    // Punched: flung along the punch, tumbling, with no control until you land and pick yourself up.
     takeHit(from, vx, vy, vz, stunTime, sup) {
       this.stun(stunTime, vx, vy, vz);
       this.downed = true; this.downFor = sup ? SUPER_PUNCH.down : PUNCH.down;
-      this.knockYaw = Math.atan2(vx, vz);                   // (you end up on your back, facing whoever hit you)
+      this.knockYaw = Math.atan2(vx, vz);                   // (you fly backwards, facing whoever hit you)
       this.punchedT = 0; this.lastHitBy = from; this.lastHitSuper = sup; this.knockT = 0;
       this.punchT = -1; this.punchBuf = 0;                  // a punch you were throwing is lost
       this.squash = 0.5;
@@ -3427,7 +3418,7 @@ function createRunner(opts = {}) {
     touchDown(impact) {
       this.dived = false;
       if (this.diving) { this.diving = false; this.slideT = DIVE_SLIDE; }   // belly-slide after a dive
-      if (this.downed && !this.downStarted && this.stunT > 0) { this.downStarted = true; this.stunT = this.downFor; }   // punched: down you go
+      if (this.downed && !this.downStarted && this.stunT > 0) { this.downStarted = true; this.stunT = this.downFor; }   // flung: landed, up in a moment
       if (local) game.onLand(impact); else this.squash = 0.3 + clamp(impact / 12, 0, 0.6);
     },
     // Knocked about by a crusher: no control for a moment, tumbling through the air.
@@ -3443,7 +3434,7 @@ function createRunner(opts = {}) {
       const stunned = this.stunT > 0;
       if (stunned) this.stunT -= h;
       if (this.guardT > 0) this.guardT -= h;
-      if (this.downed && this.stunT <= 0) { this.downed = this.downStarted = false; this.guardT = KNOCKDOWN.guard; }   // back on your feet
+      if (this.downed && this.stunT <= 0) { this.downed = this.downStarted = false; this.guardT = FLING.guard; }   // back on your feet
       // Punching never touches the movement: a punch works standing, running and jumping, and a Super Punch
       // keeps the dive's momentum. Only the cooldown and being knocked about stop you throwing one.
       if (this.punchCd > 0) this.punchCd -= h;
@@ -3454,7 +3445,9 @@ function createRunner(opts = {}) {
       }
       if (control && !stunned && this.punchBuf > 0 && this.punchCd <= 0 && this.punchT < 0) this.startPunch();
       if (this.diving || stunned) {
-        const drag = Math.max(0, 1 - (stunned && this.grounded ? 8 : this.diving ? 0.8 : 1.2) * h);   // keep the momentum
+        const k = stunned && this.downed ? (this.grounded ? FLING.slideDrag : FLING.airDrag)   // flung by a punch: fly far, slide a bit
+          : stunned && this.grounded ? 8 : this.diving ? 0.8 : 1.2;
+        const drag = Math.max(0, 1 - k * h);               // keep the momentum
         this.vx *= drag; this.vz *= drag;
       } else if (this.slideT > 0) {
         this.slideT -= h;
@@ -3557,29 +3550,14 @@ function createRunner(opts = {}) {
       const flat = this.diving || this.slideT > 0;
       this.diveBlend = damp(this.diveBlend, flat ? 1 : 0, flat ? 18 : 9, dt);
       this.lean = damp(this.lean, this.grounded ? -0.2 * k : 0.05, 10, dt);
-      // Tumble while stunned in the air, then roll back upright, or (punched) lie flat on your back for a while.
-      if (this.stunT > 0 && !this.grounded) this.spinX += 11 * dt;
+      // Tumble while stunned in the air (flung by a punch: backwards, facing whoever hit you), then roll back upright.
+      if (this.stunT > 0 && !this.grounded) this.spinX += (this.downed ? 9 : 11) * dt;
       else this.spinX = damp(this.spinX, Math.round(this.spinX / (Math.PI * 2)) * Math.PI * 2, 10, dt);
-      const lying = this.lyingDown && (this.grounded || this.downBlend > 0.5);
-      this.downBlend = damp(this.downBlend, lying ? 1 : 0, lying ? 16 : 9, dt);
       this.hitFace = damp(this.hitFace, this.downed && this.stunT > 0 ? 1 : 0, 12, dt);
-      const baseYaw = this.yaw + this.punchTurn, turnBack = Math.round(this.spinX / (Math.PI * 2)) * Math.PI * 2;
-      visual.rotation.set(lerp(lerp(this.lean, -1.42, this.diveBlend) + this.spinX, 1.45 + turnBack, this.downBlend),
-        baseYaw + wrap(this.knockYaw - baseYaw) * this.hitFace, 0);
-      visual.position.y = 0.4 * this.diveBlend + 0.33 * this.downBlend;
-      stars.visible = this.downed && this.stunT > 0 && root.visible;
-      if (stars.visible) {                               // dizzy stars round the head
-        head.getWorldPosition(_fist); root.worldToLocal(_fist);
-        stars.position.set(_fist.x, _fist.y + 0.5 - 0.15 * this.downBlend + Math.sin(this.t * 6) * 0.05, _fist.z);
-        stars.rotation.y += 5 * dt;
-        for (const st of stars.children) st.rotation.y += 9 * dt;
-      }
-      if (this.downBlend > 0.5) {                        // knocked down: flat on your back, arms and legs out
-        const f = Math.sin(this.t * 7) * 0.08;
-        pose(arms, [0.35 + f, 0.35 - f], [1.35, 1.35]);
-        pose(legs, [0.3, -0.12]);
-        hips.position.y = 0.42;
-      } else if (this.diveBlend > 0.5) {                 // superhero dive: arms forward, legs straight back
+      const baseYaw = this.yaw + this.punchTurn;
+      visual.rotation.set(lerp(this.lean, -1.42, this.diveBlend) + this.spinX, baseYaw + wrap(this.knockYaw - baseYaw) * this.hitFace, 0);
+      visual.position.y = 0.4 * this.diveBlend;
+      if (this.diveBlend > 0.5) {                        // superhero dive: arms forward, legs straight back
         pose(arms, [2.95, 2.95], [0.2, 0.2]);
         pose(legs, [-0.2, -0.05]);
         hips.position.y = 0.42;
@@ -3824,7 +3802,7 @@ const combat = {
       const box = a.punchSweep();
       if (!box) continue;
       for (const b of rs) {
-        if (b === a || a.punchHits.has(b.id) || b.untouchable) continue;   // (nobody gets punched while they're down)
+        if (b === a || a.punchHits.has(b.id) || b.untouchable) continue;   // (nobody gets punched again while they're flying)
         const bb = b.bodyBox();
         if (box.x1 < bb.x0 || box.x0 > bb.x1 || box.y1 < bb.y0 || box.y0 > bb.y1 || box.z1 < bb.z0 || box.z0 > bb.z1) continue;
         const fy = a.y + Math.min(1, a.height * 0.6);    // the fist's height, and the nearest part of the body at that height
@@ -3837,9 +3815,10 @@ const combat = {
   // Knockback goes the way the punch goes. A Super Punch adds the attacker's own speed into the hit.
   hit(a, b) {
     const sup = a.punchSuper, P = sup ? SUPER_PUNCH : PUNCH, dx = a.punchDirX, dz = a.punchDirZ;
-    let kb = P.knockback;
+    let kb = P.knockback, lift = P.lift;
     if (sup) kb = Math.min(SUPER_PUNCH.maxKnockback, kb + SUPER_PUNCH.momentum * Math.max(0, a.vx * dx + (a.vz + a.carry) * dz));
-    b.takeHit(a, dx * kb, P.lift, dz * kb, P.stun, sup);
+    if (b === player && a !== player) { const k = RIVAL_HITS_YOU[levelIx()]; kb *= k; lift *= 0.5 + 0.5 * k; }   // rivals go easier on you
+    b.takeHit(a, dx * kb, lift, dz * kb, P.stun, sup);
     game.onPunchHit(a, b, sup, kb);
   },
 };
@@ -3938,7 +3917,10 @@ const rivals = {
 // How long each rival waits between fights, by level (Very easy … Very hard), in seconds.
 const RIVAL_FIGHT_GAP = [[9, 15], [7, 12], [5.5, 10], [4, 7.5], [3, 5.5]];
 const fightGap = () => rand(...RIVAL_FIGHT_GAP[clamp(level.n - 1, 0, 4)]);
-const RIVAL_PICKS_YOU = [0.1, 0.2, 0.3, 0.4, 0.5];  // when you're the one closest, the chance a rival goes for you (else it lets it be)
+const RIVAL_PICKS_YOU = [0.1, 0.15, 0.25, 0.35, 0.45];  // when you're the one closest, the chance a rival goes for you (else it lets it be)
+const RIVAL_DIVES_AT_YOU = [0, 0, 0.06, 0.12, 0.18];   // the chance such a fight is a dive-in Super Punch (between rivals: 0.45)
+const RIVAL_HITS_YOU = [0.5, 0.6, 0.7, 0.85, 1];        // how hard a rival's punch flings you, against the full fling between rivals
+const levelIx = () => clamp(level.n - 1, 0, 4);
 // A rival's head. Dodging comes first: it heads for a gap in the next wall and hops, dives or climbs what it
 // has to. Now and then, with no wall close, it picks a fight with the nearest runner nobody else is after:
 // it walks up, winds up and punches, or jumps and dives in for a Super Punch. Then it goes back to dodging.
@@ -3991,7 +3973,7 @@ function rivalBrain(r, h) {
   r.windup = 0;
   if (f && (eta < 1.4 || r.downed || !f.target.visible || f.target.ko || ai.t - f.since > 3.5 || (f.done && !r.punching && ai.t - f.doneAt > 0.2))) {
     ai.fight = f = null; ai.fightCd = fightGap();
-  } else if (f && !f.done && f.target.untouchable) { ai.fight = f = null; ai.fightCd = rand(0.8, 1.6); }   // someone else knocked them down
+  } else if (f && !f.done && f.target.untouchable) { ai.fight = f = null; ai.fightCd = rand(0.8, 1.6); }   // someone else flung them
   if (!f && ai.fightCd <= 0) {
     ai.fightCd = 0.5;                                     // (looks again in a moment if there's nobody to fight)
     if (eta > 2.4 && r.grounded && !r.platform && ai.t - ai.glassAt > 1.2) {
@@ -4001,9 +3983,9 @@ function rivalBrain(r, h) {
         const d = Math.hypot(o.x - r.x, o.z - r.z) + (o === player ? 1.5 : 0);   // (they'd rather fight each other than you)
         if (d < bd) { bd = d; best = o; }
       }
-      if (best === player && Math.random() > RIVAL_PICKS_YOU[clamp(level.n - 1, 0, 4)]) { best = null; ai.fightCd = fightGap() * 0.6; }
-      // a dive-in Super Punch now and then (rarely at you: it can throw you a long way)
-      if (best) f = ai.fight = { target: best, since: ai.t, dive: bd > 3 && Math.random() < (best === player ? 0.15 : 0.45), phase: 'go', done: false, doneAt: 0 };
+      if (best === player && Math.random() > RIVAL_PICKS_YOU[levelIx()]) { best = null; ai.fightCd = fightGap() * 0.6; }
+      // a dive-in Super Punch now and then (rarely at you, and never on the easy levels: it throws you a long way)
+      if (best) f = ai.fight = { target: best, since: ai.t, dive: bd > 3 && Math.random() < (best === player ? RIVAL_DIVES_AT_YOU[levelIx()] : 0.45), phase: 'go', done: false, doneAt: 0 };
     }
   }
   if (f) {
@@ -4024,8 +4006,8 @@ function rivalBrain(r, h) {
         else if (!r.diving && ai.t - f.diveAt > 0.1) { f.done = true; f.doneAt = ai.t; }   // missed
       }
     } else if (!f.done) {
-      // Walk round to the side away from the nearest edge, so the punch sends them toward it.
-      const ex = Math.abs(o.x) > 5 ? Math.sign(o.x) : 0, ez = !ex && o.z > 2 ? 1 : 0;
+      // Walk round to the side away from the nearest edge, so the punch sends them toward it (rivals don't do that to you).
+      const sly = o !== player, ex = sly && Math.abs(o.x) > 5 ? Math.sign(o.x) : 0, ez = sly && !ex && o.z > 2 ? 1 : 0;
       const px = ex || ez ? ex : ux, pz = ex || ez ? ez : uz;   // the way the punch will send them
       const sx = o.x - px * 1.35 - r.x, sz = o.z - pz * 1.35 - r.z, sd = Math.hypot(sx, sz);
       if (d < 2 * P_HALF_D + PUNCH.reach - 0.25 && (sd < 0.7 || ai.t - f.since > 2)) {   // in place: stop, wind up, punch
