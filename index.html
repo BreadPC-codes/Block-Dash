@@ -1199,16 +1199,21 @@ const G_UP = 34, G_DOWN = 50, JUMP_V = 12.6;           // apex ≈ 2.33: lands o
 // Spikes and bars knock you backwards: a short tumble away from them (toward the near edge if they're coming at you).
 const KNOCK_BACK = 6.5, KNOCK_UP = 6.5, KNOCK_STUN = 0.45, KNOCK_COOLDOWN = 0.35;
 const BAR_H = 0.8, BAR_D = 0.8;                           // a bar lies on the floor across two squares: hop over it
+// Momentum: every runner has a hidden one, a speedometer that builds up over a run-up (`rise`) and drains fast
+// when you slow down or stop (`fall`), in m/s. A punch flings whoever it hits harder the more momentum you carry
+// into it (the part going the punch's way): from a standstill only about one square (2 m), at a full run about
+// two and a half, and a Super Punch out of a dive the farthest.
+const MOMENTUM = { rise: 2.2, fall: 7 };
 // Punch: a jab straight ahead, the same for every runner. Times in seconds from the button press; the hit
 // lands during `active`; reach and halfWidth shape the hitbox in front of the body (low/high: its height).
-// knockback and lift fling whoever it hits; they have no control until they land (at most `stun`), then
-// `down` more seconds to get up.
+// It flings whoever it hits at knockback + perMomentum × your momentum (at most maxKnockback), lift + liftPer ×
+// momentum up; they have no control until they land (at most `stun`), then `down` more seconds to get up.
 const PUNCH = { buffer: 0.12, cooldown: 0.55, duration: 0.34, active: [0.05, 0.24], reach: 1.6, halfWidth: 0.8, low: 0.1, high: 1.75,
-  knockback: 12, lift: 6.5, stun: 1.2, down: 2.0 };
+  knockback: 4.2, perMomentum: 0.55, maxKnockback: 11, lift: 4, liftPer: 0.2, stun: 1.2, down: 2.0 };
 // Super Punch: the punch button while diving (or belly-sliding after a dive). The dive keeps all of its momentum
-// and the fist rides along in front of you; the knockback grows with how fast you are moving into the hit.
+// and the fist rides along in front of you; it hits harder than a punch for the same momentum.
 const SUPER_PUNCH = { cooldown: 0.75, duration: 0.44, active: [0.03, 0.34], reach: 1.95, halfWidth: 0.85, low: -0.6, high: 1.3,
-  knockback: 15, momentum: 0.5, maxKnockback: 26, lift: 8, stun: 1.2, down: 2.4 };
+  knockback: 6, perMomentum: 0.7, maxKnockback: 18, lift: 6, liftPer: 0.12, stun: 1.2, down: 2.4 };
 // Flung by a punch: little drag in the air (airDrag) so you really fly, a short slide when you land (slideDrag),
 // and nobody can punch you again until you're up plus `guard` seconds, so nobody can juggle you.
 const FLING = { airDrag: 0.3, slideDrag: 4, guard: 0.3 };
@@ -3912,6 +3917,7 @@ function createRunner(opts = {}) {
     tackleT: -1, tackleCd: 0, tackleDirX: 0, tackleDirZ: -1, tackleHits: new Set(),   // a slide tackle: time into it, cooldown, way, who it caught
     holding: null, heldBy: null, holdT: 0, grabCd: 0,   // a hug: who you're holding (or who's holding you), time left, no re-grab yet
     downBlend: 0, shovedT: 9,                            // lying down (0–1, for the drawing); time since someone shoved you
+    momentum: 0,                                         // the hidden speedometer (see MOMENTUM)
     diving: false, dived: false, slideT: 0, stunT: 0, pushT: 9, knockT: 9, spinX: 0, diveBlend: 0, diveBroke: new Set(),
     squash: 0, lean: 0, yaw: 0, punchTurn: 0, runPhase: 0, blinkT: 2, blink: 0, t: 0, ko: null, flicker: 0,
     showYaw: null,                                       // set while the runner poses on the skins podium
@@ -3967,7 +3973,7 @@ function createRunner(opts = {}) {
       this.downed = this.downStarted = false; this.downFor = this.guardT = this.hitFace = 0;
       this.emote = null; this.tackleT = -1; this.tackleCd = 0; this.tackleHits.clear();
       if (this.holding || this.heldBy) this.letGo();
-      this.holdT = this.grabCd = this.downBlend = 0; this.shovedT = 9;
+      this.holdT = this.grabCd = this.downBlend = this.momentum = 0; this.shovedT = 9;
       botCtl.moveX = botCtl.moveZ = botCtl.aimX = botCtl.aimZ = 0; this.windup = 0;
       visual.rotation.set(0, 0, 0);
       visual.position.set(0, 0, 0);
@@ -4066,6 +4072,10 @@ function createRunner(opts = {}) {
         x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z);
       }
       return { x0, x1, y0: this.y - 0.1, y1: this.y + TACKLE.high, z0, z1 };
+    },
+    momentumInto(dx, dz) {                               // your momentum, the part going the way (dx, dz)
+      const sp = Math.hypot(this.vx, this.vz);
+      return this.momentum * (sp > 0.5 ? clamp((this.vx * dx + this.vz * dz) / sp, 0, 1) : 1);
     },
     requestPunch() { this.punchBuf = PUNCH.buffer; },
     get punching() { return this.punchT >= 0; },
@@ -4211,6 +4221,8 @@ function createRunner(opts = {}) {
         if (dl > md) { dx *= md / dl; dz *= md / dl; }
         this.vx += dx; this.vz += dz;
       }
+      const ownSp = Math.hypot(this.vx, this.vz);          // the hidden speedometer: builds up running, drains stopping
+      this.momentum += (ownSp - this.momentum) * (1 - Math.exp(-(ownSp > this.momentum ? MOMENTUM.rise : MOMENTUM.fall) * h));
       this.jumpBuf = Math.max(0, this.jumpBuf - h);
       this.coyote = this.grounded ? COYOTE_TIME : Math.max(0, this.coyote - h);
       if (control && !stunned && this.slideT <= 0 && this.tackleT < 0 && !this.holding && this.jumpBuf > 0) {
@@ -4783,11 +4795,11 @@ const combat = {
       }
     }
   },
-  // Knockback goes the way the punch goes. A Super Punch adds the attacker's own speed into the hit.
+  // Knockback goes the way the punch goes, and grows with the momentum the attacker carries into it.
   hit(a, b) {
     const sup = a.punchSuper, P = sup ? SUPER_PUNCH : PUNCH, dx = a.punchDirX, dz = a.punchDirZ;
-    let kb = P.knockback, lift = P.lift;
-    if (sup) kb = Math.min(SUPER_PUNCH.maxKnockback, kb + SUPER_PUNCH.momentum * Math.max(0, a.vx * dx + (a.vz + a.carry) * dz));
+    const m = a.momentumInto(dx, dz);                    // the harder you were going, the farther they go
+    let kb = Math.min(P.maxKnockback, P.knockback + P.perMomentum * m), lift = P.lift + P.liftPer * m;
     if (b === player && a !== player) { const k = RIVAL_HITS_YOU[levelIx()]; kb *= k; lift *= 0.5 + 0.5 * k; }   // rivals go easier on you
     b.takeHit(a, dx * kb, lift, dz * kb, P.stun, sup);
     if (b === player && a !== player) b.downFor *= KNOCKDOWN.youDown;   // (and you're up again sooner)
@@ -4806,6 +4818,7 @@ const _shv = new THREE.Vector3();
 function shove(p, d) {
   if (!d.grounded || p.heldBy || Math.abs(p.y - d.y) > 0.8) return;
   if (d === player && p !== player) return;               // (rivals don't push you about while you're down)
+  if (p.diving || p.slideT > 0 || p.tackleT >= 0) return;  // (diving or sliding, you go over them: only feet shove)
   const c = d.lieCenter(_shv), dx = c.x - p.x, dz = c.z - p.z, dist = Math.hypot(dx, dz);
   if (dist > KNOCKDOWN.reach || dist < 1e-4) return;
   const nx = dx / dist, nz = dz / dist, gap = KNOCKDOWN.reach - dist;
@@ -4824,6 +4837,7 @@ function runnersApart() {
   for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) {
     const a = rs[i], b = rs[j];
     if (a.heldBy || b.heldBy) continue;                  // (someone held in a hug is carried, not bumped)
+    if ((a.downed && !a.grounded) || (b.downed && !b.grounded)) continue;   // (flying from a hit, nobody bumps into you)
     if (a.shovable !== b.shovable) { shove(a.shovable ? b : a, a.shovable ? a : b); continue; }
     const dx = b.x - a.x, dz = b.z - a.z;
     const ox = 2 * P_HALF_W - Math.abs(dx), oz = 2 * P_HALF_D - Math.abs(dz);
