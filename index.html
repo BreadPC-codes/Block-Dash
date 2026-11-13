@@ -5357,6 +5357,10 @@ function showScreen(name) {
   if (prev === 'keys' && name !== 'keys') keyCapture.active = false;
   if (name === 'menu' && state === 'menu') enterLobby();
   for (const s of SCREENS) $('screen-' + s).classList.toggle('active', s === name);
+  // A button on a screen that just closed can keep the focus (MAIN MENU after a game over did),
+  // and then Enter pressed it again instead of starting a run. Let go of it.
+  const ae = document.activeElement;
+  if (ae && ae !== document.body && ae.closest('.screen') && !(name && ae.closest('#screen-' + name))) ae.blur();
   if (name) {
     const el = $('screen-' + name);
     const sc = el.querySelector('.panel, .menu-wrap');
@@ -6858,7 +6862,7 @@ function init() {
         const v = new THREE.Vector3(laneX(l), y, voxRowZ(k)).project(camera), r = renderer.domElement.getBoundingClientRect();
         return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height, front: v.z < 1 };
       },
-      info() { return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, pixelRatio: renderer.getPixelRatio() }; },
+      info() { const i = renderer.info; return { calls: i.render.calls, triangles: i.render.triangles, pixelRatio: renderer.getPixelRatio(), programs: i.programs ? i.programs.length : 0, geometries: i.memory.geometries, textures: i.memory.textures }; },
       consts: { P_START_Z, P_HALF_W, P_HALF_D, P_HEIGHT, ROW_HALF_D, BLOCK_H, BLOCK_W, BLOCK_D, HIT_HALF_D, JUMP_V, G_UP, G_DOWN, AIR_TIME, MOVE_SPEED, CRUSH_UP, LANES, Z_SPAWN, Z_NEAR, Z_FAR, FALL_HANG, HALF_W, ARENA_HALF, LASER_X },
     };
   }
