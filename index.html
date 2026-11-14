@@ -37,6 +37,7 @@
   --sar:env(safe-area-inset-right,0px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--ui);
   overscroll-behavior:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-text-size-adjust:100%}
 body{position:fixed;inset:0}
@@ -54,8 +55,12 @@ b{font-weight:800}
 
 /* ---------- HUD ---------- */
 body.practice #chip-best{display:none}
-.chip-falls{display:none}
-body.respawn .chip-falls{display:flex}
+body.net #chip-best{display:none}                       /* (a round in a room doesn't count for your best) */
+.chip.chip-players{display:none}                        /* (.chip.…: over .chip's own display, below) */
+body.net .chip.chip-players{display:flex}
+.chip-players .chip-ico{color:#c9b2ff}
+.chip.chip-falls{display:none}
+body.respawn .chip.chip-falls{display:flex}
 body.respawn #chip-best{display:none}                   /* (a respawn run never counts for your best) */
 #hud{position:fixed;inset:0;z-index:10;pointer-events:none;opacity:0;transition:opacity .4s ease;touch-action:none}
 body[data-state=playing] #hud,body[data-state=paused] #hud,body[data-state=dying] #hud,body[data-state=countdown] #hud{opacity:1}
@@ -346,6 +351,8 @@ body.fx-lite .best-card,body.fx-lite .diff-pick,body.fx-lite .lobby-plate{backgr
 .t-skins{--t1:#ff94cb;--t2:#ff4fa3;--t3:#a3226a}
 .t-blocks{--t1:#86e6ff;--t2:#2aa6ee;--t3:#11608f}
 .t-waves{--t1:#bdf27e;--t2:#5ec42f;--t3:#2f7a12}
+.t-rooms{--t1:#c9b2ff;--t2:#8a5cff;--t3:#4a2aa8}
+.lobby-tile:nth-child(4){--tilt:1deg}
 .lobby-plate{grid-area:plate;justify-self:center;align-self:end;display:flex;flex-direction:column;align-items:center;gap:1px;padding:7px 22px 8px;border-radius:16px;
   background:rgba(14,10,38,.62);border:2px solid rgba(255,255,255,.2);box-shadow:0 6px 18px rgba(0,0,0,.35);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .lobby-plate small{font-size:10px;font-weight:800;letter-spacing:.18em;color:var(--muted)}
@@ -385,6 +392,7 @@ body.fx-lite .mode-pick{-webkit-backdrop-filter:none;backdrop-filter:none;backgr
 .screen.active .lobby-tile:nth-child(1){animation-delay:.08s}
 .screen.active .lobby-tile:nth-child(2){animation-delay:.16s}
 .screen.active .lobby-tile:nth-child(3){animation-delay:.24s}
+.screen.active .lobby-tile:nth-child(4){animation-delay:.32s}
 .screen.active .lobby-go{animation:lobbyInRight .55s .12s cubic-bezier(.3,1.4,.5,1) both}
 .screen.active .lobby-plate{animation:lobbyIn .5s .3s cubic-bezier(.3,1.4,.5,1) both}
 @keyframes lobbyIn{from{opacity:0;translate:0 -16px;scale:.92}to{opacity:1;translate:0 0;scale:1}}
@@ -399,11 +407,12 @@ body.fx-lite .mode-pick{-webkit-backdrop-filter:none;backdrop-filter:none;backgr
   .lobby .tagline{display:none}
   .round-btn{width:48px;height:48px;font-size:23px}
   .round-btn svg{width:26px;height:26px}
-  .lobby-side{flex-direction:row;width:100%;gap:10px}
-  .lobby-tile{flex:1;min-width:0;flex-direction:column;gap:6px;padding:9px 6px 11px;text-align:center}
-  .tile-ico{width:42px;height:42px;border-radius:13px}
-  .tile-ico svg{width:26px;height:26px}
-  .tile-txt b{font-size:16px}
+  .lobby-side{display:grid;grid-template-columns:1fr 1fr;width:100%;gap:10px}
+  .lobby-tile{min-width:0;gap:8px;padding:6px 8px 8px 6px;border-radius:16px}
+  .tile-ico{width:36px;height:36px;border-radius:11px}
+  .tile-ico svg{width:23px;height:23px}
+  .tile-txt{min-width:0}
+  .tile-txt b{font-size:clamp(12px,3.7vw,16px);white-space:nowrap}
   .tile-txt small{display:none}
   .lobby-go{width:100%;justify-self:stretch;gap:8px}
   .lobby .diff-about{display:none}
@@ -420,11 +429,11 @@ body.fx-lite .mode-pick{-webkit-backdrop-filter:none;backdrop-filter:none;backgr
   .lobby .tagline{display:none}
   .round-btn{width:42px;height:42px;font-size:20px;box-shadow:0 4px 0 #7a6bc6,0 6px 12px rgba(0,0,0,.35)}
   .round-btn svg{width:22px;height:22px}
-  .lobby-side{gap:10px;width:min(210px,100%)}
-  .lobby-tile{padding:6px 12px 8px 8px;gap:9px;border-radius:16px}
-  .tile-ico{width:36px;height:36px;border-radius:11px}
-  .tile-ico svg{width:23px;height:23px}
-  .tile-txt b{font-size:17px}
+  .lobby-side{gap:8px;width:min(210px,100%)}
+  .lobby-tile{padding:4px 12px 6px 7px;gap:9px;border-radius:15px}
+  .tile-ico{width:32px;height:32px;border-radius:10px}
+  .tile-ico svg{width:21px;height:21px}
+  .tile-txt b{font-size:16px}
   .tile-txt small{font-size:10.5px}
   .lobby-go{gap:7px;width:min(290px,100%)}
   .lobby .best-card{padding:5px 12px;white-space:nowrap}
@@ -627,6 +636,102 @@ input[type=range]:focus-visible{outline:2px solid var(--cyan);outline-offset:6px
 .pgrid .c.k{background:#bff3ff;box-shadow:inset 0 0 0 2px #2b6f8f}.pgrid .c.k2{background:#79d3ec;box-shadow:inset 0 0 0 3px #2b6f8f}.pgrid .c.bar{background:#ffc93c;transform:scaleY(.55)}
 .pgrid .c.s{background:#ff4d5e}.pgrid .c.s3{background:#c22a3d}.pgrid .c.st{background:#ffc2c8}.pgrid .c.j{background:#ffa3ab}.pgrid .c.m{background:#b44dff;box-shadow:0 0 5px rgba(180,77,255,.7)}
 
+/* Rooms: the spectator bar once you're out, and the pause menu in a room (the round goes on behind it) */
+.watch-bar{position:absolute;left:50%;bottom:calc(var(--sab) + 18px);transform:translate(-50%,12px);display:flex;align-items:center;gap:10px;padding:6px;
+  border-radius:20px;background:rgba(14,10,38,.78);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.35);opacity:0;visibility:hidden;
+  transition:opacity .3s,transform .3s,visibility 0s linear .3s}
+body.watching .watch-bar{opacity:1;visibility:visible;transform:translate(-50%,0);transition:opacity .3s,transform .3s}
+body.watching .lock-hint{bottom:calc(var(--sab) + 10vh + 52px)}   /* (above the bar) */
+.watch-bar .icon-btn{width:44px;height:44px;font-size:17px;color:#fff;font-family:var(--display)}
+.watch-txt{min-width:150px;text-align:center;padding:0 4px}
+.watch-txt small{display:block;font-size:10px;font-weight:800;letter-spacing:.16em;color:var(--muted)}
+.watch-txt b{display:block;font-family:var(--display);font-weight:400;font-size:18px;letter-spacing:.04em;white-space:nowrap}
+body.netout #touch,body.netout .emote-hud,body.netout .punch-hud{visibility:hidden}   /* (out: nothing to steer or throw) */
+.pause-note{display:none;margin:-2px 0 6px!important;font-size:13px!important;color:var(--gold)!important;font-weight:700}
+body.net .pause-note{display:block}
+body.net #btn-restart{display:none}
+#btn-end-round{display:none}
+body.net.net-host #btn-end-round{display:block}
+
+/* ---------- ROOMS: play together on your Wi-Fi (served by server.js) ---------- */
+.rooms-panel{width:min(640px,100%);text-align:left}
+.rooms-panel h2{margin-bottom:12px}
+.srv-bar{display:flex;align-items:center;gap:12px;padding:10px 12px 10px 14px;border-radius:16px;background:var(--panel-2);border:1px solid rgba(255,255,255,.08)}
+.srv-dot{flex:none;width:12px;height:12px;border-radius:50%;background:#7a7399;box-shadow:0 0 0 3px rgba(255,255,255,.08)}
+.srv-bar[data-s=on] .srv-dot{background:var(--green);box-shadow:0 0 12px rgba(74,222,128,.85)}
+.srv-bar[data-s=off] .srv-dot{background:var(--red);box-shadow:0 0 12px rgba(255,77,109,.75)}
+.srv-bar[data-s=wait] .srv-dot{animation:srvWait 1s ease-in-out infinite}
+@keyframes srvWait{50%{opacity:.3}}
+.srv-txt{flex:1;min-width:0}
+.srv-txt b{display:block;font-family:var(--display);font-weight:400;font-size:15px;letter-spacing:.05em}
+.srv-txt small{display:block;color:var(--muted);font-size:12.5px;line-height:1.4;margin-top:2px;overflow-wrap:anywhere;user-select:text;-webkit-user-select:text}
+.srv-txt small b{display:inline;font-family:var(--ui);font-weight:800;font-size:inherit;letter-spacing:0;color:#fff}
+.power{flex:none;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:0;padding:0;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.14em}
+.power .toggle{pointer-events:none}
+.power[aria-checked=true] .toggle{background:linear-gradient(90deg,#14a08a,#3fe0c5)}
+.power[aria-checked=true] .toggle::after{transform:translateX(26px)}
+.power:focus-visible{outline:3px solid var(--cyan);outline-offset:3px;border-radius:12px}
+.power:disabled{opacity:.5}
+.pin-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(255,210,63,.08);border:1px solid rgba(255,210,63,.3)}
+.pin-row label{font-weight:800;font-size:12px;letter-spacing:.14em;color:var(--gold)}
+.pin-row input{flex:1 1 80px;min-width:64px;width:auto}
+.pin-row .btn{min-width:0;min-height:40px;padding:8px 14px;font-size:12px}
+.net-input{appearance:none;-webkit-appearance:none;font:inherit;font-weight:700;font-size:16px;color:#fff;background:rgba(0,0,0,.3);border:1px solid var(--line);
+  border-radius:12px;padding:9px 12px;min-height:42px;user-select:text;-webkit-user-select:text;touch-action:manipulation}
+.net-input:focus{outline:2px solid var(--cyan);outline-offset:1px}
+.net-input::placeholder{color:rgba(179,172,223,.6)}
+.rooms-msg{min-height:0;margin:8px 0 0!important;font-size:13.5px!important;font-weight:700;color:#ffb3c0!important}
+.rooms-msg:empty{display:none}
+.rooms-msg.ok{color:var(--green)!important}
+.rooms-help{margin-top:12px}
+.rooms-help ol{margin:6px 0 0;padding-left:22px;color:#ddd8ff;line-height:1.55;font-size:14px}
+.rooms-help code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:7px;padding:1px 6px;color:#fff;
+  user-select:text;-webkit-user-select:text}
+.name-row{display:flex;align-items:center;gap:12px;margin-top:12px}
+.name-row label{font-weight:800;font-size:12px;letter-spacing:.14em;color:var(--muted);flex:none}
+.name-row .net-input{flex:1;min-width:0;text-transform:uppercase}
+.room-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.room-item{display:flex;align-items:center;gap:12px;padding:10px 10px 10px 14px;border-radius:14px;background:var(--panel-2);border:1px solid rgba(255,255,255,.08)}
+.room-item .ri-txt{flex:1;min-width:0}
+.room-item b{display:block;font-family:var(--display);font-weight:400;font-size:15px;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.room-item small{display:block;color:var(--muted);font-size:12px;font-weight:700;letter-spacing:.06em;margin-top:2px}
+.room-item small .live{color:var(--gold)}
+.room-item .btn{min-width:0;min-height:42px;padding:9px 18px;font-size:13px}
+.room-empty{padding:16px 14px;border-radius:14px;border:1px dashed rgba(255,255,255,.18);color:var(--muted);font-size:14px;text-align:center;line-height:1.45}
+.room-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:14px}
+.room-head b{font-family:var(--display);font-weight:400;font-size:19px;letter-spacing:.04em;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.room-head span{flex:none;color:var(--muted);font-weight:800;font-size:12px;letter-spacing:.12em}
+.room-players{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:10px}
+.rp{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:12px;background:var(--panel-2);border:1px solid rgba(255,255,255,.08);min-width:0}
+.rp.me{border-color:rgba(65,226,255,.5);box-shadow:0 0 0 1px rgba(65,226,255,.2)}
+.rp i{flex:none;width:22px;height:22px;border-radius:7px;background:linear-gradient(160deg,var(--c1,#23c3ff),var(--c2,#3a3fa8));box-shadow:inset 0 0 0 2px rgba(255,255,255,.35)}
+.rp b{flex:1;min-width:0;font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rp em{flex:none;font-style:normal;font-size:10px;font-weight:800;letter-spacing:.12em;color:var(--gold)}
+.room-set{margin-top:12px;background:var(--panel-2);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:2px 14px}
+.room-set .seg button{min-width:0;padding:8px 9px}
+@media (max-width:640px){                                /* (a phone: the five levels share the width, smaller) */
+  .room-set .setting .ctl{justify-content:stretch}
+  .room-set .seg{width:100%}
+  .room-set .seg button{flex:1 1 0;padding:8px 2px;font-size:11px;letter-spacing:.03em}
+}
+@media (max-width:380px){.room-set .seg button{font-size:10px;letter-spacing:0}}
+.room-set .seg button:disabled{cursor:default}
+.room-set .seg button:disabled:not(.on){opacity:.45}
+.room-wait{margin:12px 0 0!important;text-align:center;color:var(--muted)!important;font-size:14px!important;font-weight:700}
+.room-wait:empty{display:none}
+.room-results{margin-top:4px;border-color:rgba(255,210,63,.4)}
+.room-results h3{margin:0 0 8px;color:var(--gold);font-size:14px}
+.res-row{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:10px;padding:6px 4px;border-top:1px solid rgba(255,255,255,.07)}
+.res-row:first-of-type{border-top:0}
+.res-row .pl{font-family:var(--display);font-size:16px;color:var(--muted);text-align:center}
+.res-row:first-of-type .pl{color:var(--gold)}
+.res-row b{font-weight:800;font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.res-row b em{font-style:normal;font-size:10px;letter-spacing:.12em;color:var(--gold);margin-left:6px}
+.res-row.me b{color:var(--cyan)}
+.res-row span{color:var(--muted);font-size:12.5px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.res-row span i{font-style:normal;color:#fff}
+body.fx-lite .rooms-panel .srv-bar{background:rgba(255,255,255,.07)}
+
 /* Pause / Game over */
 .pause-panel,.go-panel{width:min(440px,100%);text-align:center}
 .pause-panel .btn,.go-panel .btn{width:100%;margin-top:10px}
@@ -773,6 +878,7 @@ body.touch .kbd-hint{display:none}
     <div class="chip chip-best" id="chip-best" title="Personal best"><span class="chip-ico">★</span><span class="chip-lbl">BEST</span><b id="hud-best">0</b></div>
     <div class="chip chip-falls" id="chip-falls" title="Times you fell off (or got zapped) and dropped back in"><span class="chip-ico">↻</span><span class="chip-lbl">FALLS</span><b id="hud-falls">0</b></div>
     <div class="chip chip-rivals" id="chip-rivals" title="Rival runners still in"><span class="chip-ico">✸</span><span class="chip-lbl">RIVALS</span><b id="hud-rivals">0</b></div>
+    <div class="chip chip-players" id="chip-players" title="Players in the room still in the round"><span class="chip-ico">●</span><span class="chip-lbl" id="hud-players-lbl">STILL IN</span><b id="hud-players">0</b></div>
     <div class="chip chip-diff" id="chip-diff" title="Current difficulty"><span class="diff-dot"></span><span id="hud-diff">EASY</span><span class="chip-sub" id="hud-speed">SPD 1.0×</span></div>
   </div>
   <div class="hud-center">
@@ -791,6 +897,11 @@ body.touch .kbd-hint{display:none}
   </div>
   <div class="banner" id="banner"><div class="b1" id="banner-1"></div><div class="b2" id="banner-2"></div></div>
   <div class="countdown" id="countdown"></div>
+  <div class="watch-bar" id="watch-bar">
+    <button class="icon-btn" id="watch-prev" aria-label="Watch the one before" title="Watch the one before (←)">◀</button>
+    <div class="watch-txt"><small id="watch-lbl">YOU'RE OUT · WATCHING</small><b id="watch-name">—</b></div>
+    <button class="icon-btn" id="watch-next" aria-label="Watch the next one" title="Watch the next one (→)">▶</button>
+  </div>
   <div class="lock-hint" id="lock-hint"><span class="mouse-ico" aria-hidden="true"></span><span id="lock-hint-txt">Click to control the camera with your mouse</span></div>
 </div>
 
@@ -837,6 +948,7 @@ body.touch .kbd-hint{display:none}
       <button class="lobby-tile t-skins" id="btn-skins"><span class="tile-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.6 3.2 12 5.1l3.4-1.9 5.6 3.4-2.3 4.3-1.9-1V21H7.2V9.9l-1.9 1L3 6.6z"/></svg></span><span class="tile-txt"><b>CUSTOMISE</b><small>Skins and emotes</small></span></button>
       <button class="lobby-tile t-blocks" id="btn-blocks"><span class="tile-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2 20.6 7v10L12 21.8 3.4 17V7z" opacity=".55"/><path d="M12 2.2 20.6 7 12 11.8 3.4 7z"/><path d="M12 11.8v10L3.4 17V7z" opacity=".8"/></svg></span><span class="tile-txt"><b>BLOCKS</b><small>Paint your own</small></span></button>
       <button class="lobby-tile t-waves" id="btn-waves"><span class="tile-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="12" width="5.5" height="9.5" rx="1.4"/><rect x="9.25" y="6.5" width="5.5" height="15" rx="1.4"/><rect x="16" y="2.5" width="5.5" height="19" rx="1.4"/></svg></span><span class="tile-txt"><b>WAVES</b><small>Build your own</small></span></button>
+      <button class="lobby-tile t-rooms" id="btn-rooms"><span class="tile-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="7.2" r="3.4"/><circle cx="16.6" cy="8.4" r="2.8" opacity=".8"/><path d="M1.6 20.4c.4-4.5 3-6.9 6.4-6.9s6 2.4 6.4 6.9z"/><path d="M15.4 20.4c-.2-2.5-1-4.4-2.3-5.7.9-.6 2-.9 3.4-.9 3 0 5.1 2.1 5.5 6.6z" opacity=".8"/></svg></span><span class="tile-txt"><b>ROOMS</b><small>Play on your Wi-Fi</small></span></button>
     </nav>
     <div class="lobby-plate" id="lobby-plate"><small>YOUR RUNNER</small><b id="lobby-skin">Classic</b></div>
     <div class="lobby-go">
@@ -869,7 +981,8 @@ body.touch .kbd-hint{display:none}
       <div class="card">
         <h3>GOAL</h3>
         <p>The floor is a little slippery: you get up to speed fast but glide a short way when you let go. Walls of blocks sweep toward you in <b>waves</b> of eight rows. Get past all eight and <b>WAVE SURVIVED</b> goes up by one.</p>
-        <p>On the main menu, pick your outfit under <b>SKINS</b>, paint your own blocks under <b>BLOCKS</b>, and build your own waves under <b>WAVES</b>: fly over the arena and stack the blocks yourself.</p>
+        <p>On the main menu, pick your outfit under <b>CUSTOMISE</b>, paint your own blocks under <b>BLOCKS</b>, and build your own waves under <b>WAVES</b>: fly over the arena and stack the blocks yourself.</p>
+        <p>Under <b>ROOMS</b>, everyone on your Wi-Fi plays together on the same walls, each on their own device: one computer runs <b>node server.js</b> (it comes with the game) and everyone opens the address it prints. Host a room or join one; the last one standing wins.</p>
         <p>Slip through the holes, jump the low parts, dive, or <b>jump on top</b> and ride. A wall that catches you <b>pushes you</b> toward the edge. Fall off the front or back edge, or touch a laser fence on the sides, and the run is over.</p>
         <p><b>Rival runners</b> (set how many in Settings) dodge the same walls and pick fights. <b>Punch</b> them off the arena or into a laser before they do it to you. Punch in the middle of a dive for a <b>Super Punch</b>: you keep all your speed and hit much harder.</p>
       </div>
@@ -1097,13 +1210,69 @@ body.touch .kbd-hint{display:none}
 <!-- ================= PAUSE ================= -->
 <section class="screen dim" id="screen-pause" aria-label="Paused">
   <div class="panel pause-panel">
-    <h2>PAUSED</h2>
+    <h2 id="pause-title">PAUSED</h2>
     <div class="pause-stat">WAVES SURVIVED <b id="pause-waves">0</b></div>
+    <p class="pause-note">The round goes on while this is open!</p>
     <button class="btn primary" id="btn-resume">RESUME</button>
     <button class="btn" id="btn-restart">RESTART</button>
+    <button class="btn" id="btn-end-round">END THE ROUND</button>
     <button class="btn" id="btn-pause-settings">SETTINGS</button>
     <button class="btn danger" id="btn-pause-menu">MAIN MENU</button>
     <div class="kbd-hint" id="pause-hint">Esc / P to resume · R to restart</div>
+  </div>
+</section>
+
+<!-- ================= ROOMS: play together on your Wi-Fi ================= -->
+<section class="screen dim" id="screen-rooms" aria-label="Rooms">
+  <div class="panel rooms-panel">
+    <h2>ROOMS</h2>
+    <div class="srv-bar" id="srv-bar" data-s="wait">
+      <span class="srv-dot" aria-hidden="true"></span>
+      <div class="srv-txt"><b id="srv-state">LOOKING FOR THE SERVER…</b><small id="srv-info"></small></div>
+      <button class="power" id="btn-power" role="switch" aria-checked="false" aria-label="Rooms on or off" title="Switch the rooms on or off for everyone" hidden><span class="toggle" aria-hidden="true"></span><span id="power-lbl">OFF</span></button>
+    </div>
+    <div class="pin-row" id="pin-row" hidden>
+      <label for="pin-input">PIN</label>
+      <input class="net-input" id="pin-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" placeholder="0000">
+      <button class="btn primary" id="btn-pin-ok">OK</button>
+      <button class="btn" id="btn-pin-cancel">CANCEL</button>
+    </div>
+    <p class="rooms-msg" id="rooms-msg" role="status" aria-live="polite"></p>
+    <div class="card rooms-help" id="rooms-help" hidden>
+      <h3>PLAY TOGETHER ON YOUR WI-FI</h3>
+      <p>Rooms need the little Block Dash server running on one computer on your Wi-Fi:</p>
+      <ol>
+        <li>Put <code>server.js</code> in the same folder as <code>index.html</code>.</li>
+        <li>Install Node.js (version 18 or newer) on that computer, open a terminal in that folder and run <code>node server.js</code></li>
+        <li>Open the address it prints (like <code>http://192.168.1.20:8080</code>) on every phone, tablet or computer that wants to play, and come here.</li>
+      </ol>
+    </div>
+    <div id="rooms-browse" hidden>
+      <div class="name-row"><label for="net-name">YOUR NAME</label><input class="net-input" id="net-name" maxlength="14" autocomplete="nickname" spellcheck="false" placeholder="PLAYER"></div>
+      <div class="room-list" id="room-list"></div>
+    </div>
+    <div id="room-view" hidden>
+      <div class="card room-results" id="room-results" hidden></div>
+      <div class="room-head"><b id="room-name">ROOM</b><span id="room-count">1/8</span></div>
+      <div class="room-players" id="room-players"></div>
+      <div class="room-set">
+        <div class="setting"><div class="lbl">Difficulty<small id="room-diff-about"></small></div>
+          <div class="ctl"><div class="seg" id="room-diff" role="radiogroup" aria-label="Difficulty">
+            <button data-v="1" role="radio">V.EASY</button><button data-v="2" role="radio">EASY</button><button data-v="3" role="radio">NORMAL</button><button data-v="4" role="radio">HARD</button><button data-v="5" role="radio">V.HARD</button>
+          </div></div></div>
+        <div class="setting"><div class="lbl">Mode<small id="room-mode-about"></small></div>
+          <div class="ctl"><div class="seg" id="room-mode" role="radiogroup" aria-label="Game mode">
+            <button data-v="regular" role="radio">REGULAR</button><button data-v="respawn" role="radio">RESPAWN</button>
+          </div></div></div>
+      </div>
+      <p class="room-wait" id="room-wait"></p>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btn-rooms-back">BACK</button>
+      <button class="btn danger" id="btn-room-leave" hidden>LEAVE ROOM</button>
+      <button class="btn primary" id="btn-host" hidden>HOST A ROOM</button>
+      <button class="btn primary" id="btn-room-start" hidden>START</button>
+    </div>
   </div>
 </section>
 
@@ -1190,6 +1359,17 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const damp = (a, b, k, dt) => a + (b - a) * (1 - Math.exp(-k * dt));
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+// Seeded random numbers (mulberry32): the same seed gives the same numbers on every device (a room's walls).
+function seededRandom(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 const easeOutBack = (t) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2; };
 const easeInOutQuad = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 const easeOutCubic = (t) => 1 - (1 - t) ** 3;
@@ -1839,10 +2019,10 @@ for (const def of PATTERN_DEFS) {
 }
 const LIB_BY_ID = Object.fromEntries(LIBRARY.map((p) => [p.id, p]));
 
-function choosePattern(index, demo, lastId) {
+function choosePattern(index, demo, lastId, rnd = Math.random) {
   if (debug.forcePattern && LIB_BY_ID[debug.forcePattern]) return LIB_BY_ID[debug.forcePattern];
   if (!demo && run.practice !== null && layouts[run.practice].pattern) return layouts[run.practice].pattern;   // TRY IT
-  const mine = demo ? [] : layoutsInGame();
+  const mine = demo || run.net ? [] : layoutsInGame();   // (a room plays the built-in walls: everyone has to have the same)
   if (mine.length && layoutOpts.only) return mine[index % mine.length];   // only my layouts, in slot order
   if (!demo && !mine.length && level.opening && index < FIXED_OPENING.length && LIB_BY_ID[FIXED_OPENING[index]]) return LIB_BY_ID[FIXED_OPENING[index]];
   const climbOk = level.climb > 0 && index >= level.climbFrom;
@@ -1858,7 +2038,7 @@ function choosePattern(index, demo, lastId) {
     const w = p.id === lastId ? 0.07 : 2.4;
     pool.push(p); weights.push(w); total += w;
   }
-  let r = Math.random() * total;
+  let r = rnd() * total;
   for (let i = 0; i < pool.length; i++) { r -= weights[i]; if (r <= 0) return pool[i]; }
   return pool[pool.length - 1];
 }
@@ -2836,6 +3016,8 @@ const world = {
   lastRowZ: null, lastSolidZ: null, prev: null, lastPatternId: null, rowSeq: 0,
   speed: DEMO_SPEED, targetSpeed: DEMO_SPEED, time: 0, firstZ: -14, emergeDelay: 0, flash: 0, demoColor: 0, demoDesign: 0, lastWave: null,
   paused: false,                                         // the WAVES editor stops and hides the background walls
+  seed: 0,                                               // a room's round: every wave's random choices come from this
+  syncSpeed: false,                                      // ... and the walls speed up as each wave passes the start line, not as you pass it
 
   reset(mode) {
     for (const r of this.rows) if (r.emerged && !r.falling && !r.sinking) { r.sinking = true; r.sinkT = 0; }
@@ -2868,9 +3050,11 @@ const world = {
   queueWave() {
     const demo = this.mode !== 'game';
     const index = demo ? -1 : this.nextIndex++;
-    const pattern = choosePattern(Math.max(0, index), demo, this.lastPatternId);
+    // (in a room every wave draws from its own seeded stream, so all the devices build exactly the same one)
+    const rnd = !demo && this.seed ? seededRandom((this.seed ^ Math.imul(index + 1, 0x9e3779b1)) >>> 0) : Math.random;
+    const pattern = choosePattern(Math.max(0, index), demo, this.lastPatternId, rnd);
     this.lastPatternId = pattern.id;
-    const mirrored = demo ? Math.random() < 0.5 : index >= level.mirrorFrom && Math.random() < 0.5;
+    const mirrored = demo ? Math.random() < 0.5 : index >= level.mirrorFrom && rnd() < 0.5;
     const speed = demo ? DEMO_SPEED : speedForWave(index);
     const vDesign = speed * 1.06;
     const wallGap = WALL_GAP * speed;                      // distance that keeps walls WALL_GAP seconds apart
@@ -2982,7 +3166,7 @@ const world = {
           continue;
         }
         // stacks of whole blocks; '#' in the built-in patterns is 2 or 3 high, in your own layouts exactly 2
-        const units = c === '3' || c === 'S' ? 3 : c === '#' ? (pattern.custom ? 2 : Math.random() < 0.25 ? 3 : 2) : c === 'Y' || c === 'G' ? 2 : 1;
+        const units = c === '3' || c === 'S' ? 3 : c === '#' ? (pattern.custom ? 2 : rnd() < 0.25 ? 3 : 2) : c === 'Y' || c === 'G' ? 2 : 1;
         const spiked = c === 'X' || c === 'Y', breakable = c === 'K' || c === 'G';
         const h = units * BLOCK_H + (spiked ? 0.6 : 0), tint = c === 'M' || breakable ? WHITE : c === 'S' ? stepColor : spiked ? SPIKE_BASE : color;
         const part = (oz, n) => ({ ox: 0, oz, w: BLOCK_W, d: BLOCK_D, y0: 0, h: n * BLOCK_H, units: n, color: tint, climb: c === 'S' });
@@ -3049,6 +3233,10 @@ const world = {
         continue;
       }
       row.z += dz;
+      if (this.syncSpeed && !row.wave.demo && !row.wave.cleared && row === row.wave.rows[row.wave.rows.length - 1] && row.z - ROW_HALF_D > P_START_Z + P_HALF_D) {
+        row.wave.cleared = true;                          // a room: the next wave's speed once this one is past the start line
+        this.targetSpeed = speedForWave(row.wave.index + 1);
+      }
       if (!row.emerged) {
         if (row.z < Z_SPAWN || this.emergeDelay > 0) continue;
         row.emerged = true;
@@ -3078,6 +3266,18 @@ const world = {
     this.ensureQueue();
   },
 
+  // A room: someone else smashed a glass block (wave, row, lane, height): it breaks here too.
+  breakShared(e) {
+    const row = this.rows.find((r) => r.wave.index === e.w && r.idx === e.r && !r.wave.demo);
+    if (!row) return;
+    const b = row.blocks.find((bk) => bk.lane === e.l && bk.parts[0].breakable && Math.abs(bk.parts[0].y0 - e.y) < 0.05);
+    if (!b) return;
+    b.broken = true;
+    row.blocks = row.blocks.filter((bk) => bk !== b);
+    if (player.platform && player.platform.block === b) player.leavePlatform();
+    const part = b.parts[0], base = row.falling ? b.fy : b.y;
+    game.onRivalBreak({ x: b.x + part.ox, y: base + part.y0, z: row.z + part.oz, h: part.h });
+  },
   // Keep a riding player on the block they stand on; drop them once they walk off it.
   support(p) {
     const pf = p.platform;
@@ -3251,11 +3451,11 @@ const world = {
       return;
     }
     // Sight lines from the camera to the runner's head and feet (stopping just short of the runner).
-    const see = camCtl.mode === 'follow' && player.visible && player.y > -3;
+    const who = camSubject(), see = (camCtl.mode === 'follow' || camCtl.mode === 'watch') && who.visible && who.y > -3;
     if (see) {
       const cp = camera.position;
       for (const [i, hy] of [[0, 1.45], [1, 0.2]]) {
-        const ex = player.x, ey = player.y + hy, ez = player.z, l = Math.hypot(cp.x - ex, cp.y - ey, cp.z - ez) || 1, k = Math.min(0.6, l) / l;
+        const ex = who.x, ey = who.y + hy, ez = who.z, l = Math.hypot(cp.x - ex, cp.y - ey, cp.z - ez) || 1, k = Math.min(0.6, l) / l;
         SIGHT[i].set(cp.x, cp.y, cp.z, ex + (cp.x - ex) * k, ey + (cp.y - ey) * k, ez + (cp.z - ez) * k);
       }
     }
@@ -4367,6 +4567,7 @@ function createRunner(opts = {}) {
       t.emote = { def: EMOTE_BY_ID.held, t: 0, fade: 0, fx: 0, target: this, reach: 0, faceYaw: this.yaw + Math.PI };
       this.emotes++;
       game.onEmote(this, EMOTE_BY_ID.hug);
+      if (t.ghost && this === player) net.ev(t.netId, { k: 'grab' });   // (a room: they're held on their own device)
     },
     // Let go (or be let go of): whoever was held drops where they are, with the holder's momentum.
     letGo() {
@@ -4375,6 +4576,7 @@ function createRunner(opts = {}) {
       if (!h || !t) return;
       h.holding = null; t.heldBy = null; h.holdT = 0; t.grabCd = HUG.again;
       for (const r of [h, t]) if (r.emote && r.emote.def.hold) r.stopEmote();
+      if (h.ghost || t.ghost) net.letGo(h, t);
     },
     tackleBox() {                                        // where the sliding feet sweep (null when they don't)
       if (this.tackleT < TACKLE.active[0] || this.tackleT > TACKLE.active[1]) return null;
@@ -4757,7 +4959,7 @@ function createRunner(opts = {}) {
       let ew = 0;
       if (em) {
         const D = em.def;
-        if (!em.fade && !D.hold) {                       // moving, jumping, punching, a shove or the floor going: stop (a hug's hold ends when it lets go)
+        if (!em.fade && !D.hold && !this.ghost) {        // moving, jumping, punching, a shove or the floor going: stop (a hug's hold ends when it lets go)
           if (em.air && this.grounded) em.air = false;   // (out of a dive in the air: down now, the usual rules from here)
           const committed = D.tackle || em.t < (em.commit || 0);   // (a tackle can't be steered or stopped, nor a spatula out of a dive till it swats)
           const moving = !committed && !(em.t < (em.lock || 0)) && (!local || state === 'playing') && Math.hypot(this.ctl.moveX, this.ctl.moveZ) > 0.15;
@@ -5027,10 +5229,11 @@ const emoteFx = {
   sparkle(r) { particles.burst(r.x, r.y + 2.3, r.z, 10, ['#ffd23f', '#ffffff'], { speed: 3, up: 3, size: [0.05, 0.1], life: [0.4, 0.7], grav: 0.4, bounce: 0 }); },
   hit(r, e, big) {                                        // an uppercut that ends right in front of someone: they flinch
     const o = e && e.target;
-    if (!o || !o.visible || Math.hypot(o.x - r.x, o.z - r.z) > 2.6) return;
+    if (r.ghost || !o || !o.visible || Math.hypot(o.x - r.x, o.z - r.z) > 2.6) return;   // (theirs is settled on their own device)
     if (o.emote && o.emote.def.group !== 'fun') return;  // (not out of a hug, or a tackle of their own)
     if (o.taunting) { if (big) combat.blocked(r, o); return; }   // (a taunt shrugs it off)
-    if (!o.playEmote('flinch', { target: r })) return;
+    if (o.ghost) net.ev(o.netId, { k: 'flinch', big: big ? 1 : 0 });   // (they flinch on their own device)
+    else if (!o.playEmote('flinch', { target: r })) return;
     const h = o.partWorld('head', _efx);                 // (beside the head, clear of a rival's name tag)
     pops.spawn(h.x + 0.5, h.y - 0.1, h.z, big ? '!!' : '!', '#ff5a6a', { size: 0.58, rise: 0.5, life: 0.8, drift: 0.3 });
   },
@@ -5125,10 +5328,13 @@ function blockedBetween(ax, ay, az, bx, by, bz) {          // is there a block o
   return false;
 }
 const combat = {
-  runners() { return [player, ...rivals.alive()].filter((r) => r.visible && !r.ko); },
+  runners() { return [player, ...rivals.alive(), ...ghosts.list].filter((r) => r.visible && !r.ko); },
+  // (Someone else in your room is a "ghost" here: what they throw is settled on their own device, and what you
+  //  land on them is sent to them, see net.onEvent.)
   step() {
     const rs = this.runners();
     for (const a of rs) {                                // slide tackles: whoever the feet catch goes up
+      if (a.ghost) continue;
       const box = a.tackleBox();
       if (!box) continue;
       for (const b of rs) {
@@ -5142,6 +5348,7 @@ const combat = {
       }
     }
     for (const a of rs) {
+      if (a.ghost) continue;
       const box = a.punchSweep();
       if (!box) continue;
       for (const b of rs) {
@@ -5162,14 +5369,17 @@ const combat = {
     const m = a.momentumInto(dx, dz);                    // the harder you were going, the farther they go
     let kb = Math.min(P.maxKnockback, P.knockback + P.perMomentum * m), lift = P.lift + P.liftPer * m;
     if (b === player && a !== player) { const k = RIVAL_HITS_YOU[levelIx()]; kb *= k; lift *= 0.5 + 0.5 * k; }   // rivals go easier on you
-    b.takeHit(a, dx * kb, lift, dz * kb, P.stun, sup);
-    if (b === player && a !== player) b.downFor *= KNOCKDOWN.youDown;   // (and you're up again sooner)
+    if (b.ghost) net.ev(b.netId, { k: 'hit', v: [R2(dx * kb), R2(lift), R2(dz * kb)], st: P.stun, sup: sup ? 1 : 0, kb: R2(kb) });
+    else {
+      b.takeHit(a, dx * kb, lift, dz * kb, P.stun, sup);
+      if (b === player && a !== player) b.downFor *= KNOCKDOWN.youDown;   // (and you're up again sooner)
+    }
     game.onPunchHit(a, b, sup, kb);
   },
   // The SPATULA's swat (an emote effect, at the moment it comes down): a box a little longer and wider than a punch's,
   // the way it's aimed. Whoever it catches drops flat where they stand: no push. Not through walls; a taunt shrugs it off.
   spatula(a, e) {
-    if (state !== 'playing' || a.showYaw !== null || !a.visible || a.ko) return;
+    if (state !== 'playing' || a.showYaw !== null || !a.visible || a.ko || a.ghost) return;
     // Aimed again as it comes down: at whoever it was aimed at, if they're still in reach, or else whoever's nearest
     // (a dive's momentum may have carried you past them, or above them). Nobody in reach: the way it was going.
     const inReach = (o) => o !== a && o.visible && !o.ko && !o.untouchable && Math.abs(o.y - a.y) <= 3 && Math.hypot(o.x - a.x, o.z - a.z) <= EMOTE_RANGE.swat;
@@ -5192,6 +5402,7 @@ const combat = {
       if (x1 < bb.x0 || x0 > bb.x1 || y1 < bb.y0 || y0 > bb.y1 || z1 < bb.z0 || z0 > bb.z1) continue;
       if (blockedBetween(a.x, a.y + 1, a.z, b.x, clamp(a.y + 1, b.y + 0.15, b.y + b.height - 0.15), b.z)) continue;
       if (b.taunting) { this.blocked(a, b); continue; }
+      if (b.ghost) { net.ev(b.netId, { k: 'swat' }); game.onSpatulaHit(a, b); continue; }
       b.takeHit(a, 0, S.hop, 0, S.stun, false);
       b.knockYaw = Math.atan2(b.x - a.x, b.z - a.z);     // (on their back, feet toward you)
       b.downFor = S.down * (b === player && a !== player ? KNOCKDOWN.youDown : 1);
@@ -5199,11 +5410,17 @@ const combat = {
     }
   },
   // Dancing or taunting (TAUNT): it bounces off. Nothing happens to them but a flash of the shield and a "NOPE!".
-  blocked(a, b) { b.shieldHit = 1; game.onBlocked(a, b); },
+  blocked(a, b) {
+    b.shieldHit = 1; game.onBlocked(a, b);
+    if (b.ghost && a === player) net.ev(b.netId, { k: 'blocked' });
+  },
   // Swept off their feet: up about a block, a little along the slide, tumbling, then a moment on the ground.
   tackleHit(a, b) {
-    b.takeHit(a, a.tackleDirX * TACKLE.push, TACKLE.flingUp, a.tackleDirZ * TACKLE.push, TACKLE.stun, false);
-    b.downFor = TACKLE.down;
+    if (b.ghost) net.ev(b.netId, { k: 'tackle', v: [R2(a.tackleDirX * TACKLE.push), R2(TACKLE.flingUp), R2(a.tackleDirZ * TACKLE.push)] });
+    else {
+      b.takeHit(a, a.tackleDirX * TACKLE.push, TACKLE.flingUp, a.tackleDirZ * TACKLE.push, TACKLE.stun, false);
+      b.downFor = TACKLE.down;
+    }
     game.onTackleHit(a, b);
   },
 };
@@ -5211,6 +5428,7 @@ const combat = {
 // walk into them. If that ends in a laser or off the edge, the knock-out is yours.
 const _shv = new THREE.Vector3();
 function shove(p, d) {
+  if (p.ghost) return;                                    // (someone else in your room shoves on their own device)
   if (!d.grounded || p.heldBy || Math.abs(p.y - d.y) > 0.8) return;
   if (d === player && p !== player) return;               // (rivals don't push you about while you're down)
   if (p.diving || p.slideT > 0 || p.tackleT >= 0) return;  // (diving or sliding, you go over them: only feet shove)
@@ -5222,6 +5440,7 @@ function shove(p, d) {
   if (along < 0.5) return;                               // (only when you walk into them)
   const cur = d.vx * nx + d.vz * nz, want = along * KNOCKDOWN.shove;
   if (cur < want) { d.vx += nx * (want - cur); d.vz += nz * (want - cur); }
+  if (d.ghost && run.time - d.shoveAt > 0.1) { d.shoveAt = run.time; net.ev(d.netId, { k: 'shove', n: [R2(nx), 0, R2(nz)], w: R2(want) }); }
   d.lastHitBy = p; d.punchedT = 0;
   if (d.shovedT > 0.4) game.onShove(p, d);              // (a thump when it starts, not every step)
   d.shovedT = 0;
@@ -5231,6 +5450,7 @@ function runnersApart() {
   const rs = combat.runners();
   for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) {
     const a = rs[i], b = rs[j];
+    if (a.ghost && b.ghost) continue;                    // (two others in your room: their own devices keep them apart)
     if (a.heldBy || b.heldBy) continue;                  // (someone held in a hug is carried, not bumped)
     if ((a.downed && !a.grounded) || (b.downed && !b.grounded)) continue;   // (flying from a hit, nobody bumps into you)
     if (a.shovable !== b.shovable) { shove(a.shovable ? b : a, a.shovable ? a : b); continue; }
@@ -5238,7 +5458,12 @@ function runnersApart() {
     const ox = 2 * P_HALF_W - Math.abs(dx), oz = 2 * P_HALF_D - Math.abs(dz);
     if (ox <= 0 || oz <= 0 || a.y + a.height < b.y + 0.2 || b.y + b.height < a.y + 0.2) continue;
     // (a dancer or taunter holds their ground and the other one gives way, unless a wall is pushing that one along)
-    const ka = a.taunting && !b.taunting && b.pushT > 0.1 ? 0 : b.taunting && !a.taunting && a.pushT > 0.1 ? 1 : 0.5;
+    let ka = a.taunting && !b.taunting && b.pushT > 0.1 ? 0 : b.taunting && !a.taunting && a.pushT > 0.1 ? 1 : 0.5;
+    if (a.ghost || b.ghost) {                            // you and someone in your room: you give way by half (they give the other half on
+      const you = a.ghost ? b : a, them = a.ghost ? a : b; // theirs), all of it to a taunt, and none while you taunt
+      const share = you.taunting && !them.taunting ? 0 : them.taunting && !you.taunting ? 1 : 0.5;
+      ka = a === you ? share : 1 - share;
+    }
     if (ox < oz) { const sx = Math.sign(dx) || 1; a.x -= sx * ox * ka; b.x += sx * ox * (1 - ka); } else { const sz = Math.sign(dz) || 1; a.z -= sz * oz * ka; b.z += sz * oz * (1 - ka); }
   }
 }
@@ -5666,18 +5891,19 @@ function updateCamera(dt) {
     // Yaw and pitch apply straight away; only the point it circles follows the runner smoothly.
     const over = c.mode === 'over' && c.focus;           // game over: circle the spot where the run ended
     const fixed = (over || c.mode === 'out') && c.focus;  // (respawn mode, out for a moment: stay on the spot)
-    const px = fixed ? c.focus.x : player.x, pz = fixed ? c.focus.z : player.z, py = fixed ? c.focus.y : player.y;
+    const subj = camSubject();                           // (out of a room's round: whoever you're watching)
+    const px = fixed ? c.focus.x : subj.x, pz = fixed ? c.focus.z : subj.z, py = fixed ? c.focus.y : subj.y;
     const kf = 3 + 7 * settings.cameraSens;
     if (over && !locked()) c.yaw += dt * 0.12;           // slow showcase spin behind the game-over card
     c.pivot.set(damp(c.pivot.x, px, kf, dt), damp(c.pivot.y, Math.max(0, py) * 0.35, kf, dt), damp(c.pivot.z, pz, kf, dt));
     // While you emote the camera comes in closer and lower, aimed at you, so the pose reads; it goes back as soon as
     // you move (that ends the emote).
-    c.ez = damp(c.ez || 0, c.mode !== 'over' && player.emoting && !player.emote.def.tackle && !player.emote.def.hold ? 1 : 0, 3.5, dt);   // (a tackle or a hold is a move, not a pose)
+    c.ez = damp(c.ez || 0, c.mode !== 'over' && subj.emoting && !subj.emote.def.tackle && !subj.emote.def.hold ? 1 : 0, 3.5, dt);   // (a tackle or a hold is a move, not a pose)
     c.rad = damp(c.rad || Math.hypot(P.dist, P.height), Math.hypot(P.dist, P.height) * (1 - 0.5 * c.ez) + (c.mode === 'over' ? 4.5 : 0), 3, dt);
     const pv = c.pivot, e0 = camBaseElev();
     const elev = clamp(e0 + c.pitch + (c.mode === 'over' ? 0.08 : 0) - 0.3 * c.ez, CAM_ELEV_MIN, CAM_ELEV_MAX);
     // An emote aimed at someone (a hug, a point): swing round to the side for a moment so you see both of you.
-    const em = player.emote, side = em && em.target && !em.fade && !em.def.hold ? em.faceYaw : null;
+    const em = subj.emote, side = em && em.target && !em.fade && !em.def.hold ? em.faceYaw : null;
     let swing = 0;
     if (side !== null) { const a = wrapAngle(side + 1.75 - c.yaw), b = wrapAngle(side - 1.75 - c.yaw); swing = Math.abs(a) < Math.abs(b) ? a : b; }
     c.eyaw = damp(c.eyaw || 0, swing, 2.4, dt);
@@ -5708,13 +5934,25 @@ function updateCamera(dt) {
   {
     const w = Math.max(1, stage.clientWidth || innerWidth), h = Math.max(1, stage.clientHeight || innerHeight), wide = w >= h * 1.05;
     const fx = c.mode === 'locker' && wide ? -0.23 : 0;
-    const fy = c.mode === 'locker' ? (wide ? 0 : 0.31) : c.mode === 'menu' && state === 'menu' && !wide ? 0.2 : 0;
+    const fy = c.mode === 'locker' ? (wide ? 0 : 0.31) : c.mode === 'menu' && state === 'menu' && !wide ? lobbyShiftY(h) : 0;
     c.shiftX = damp(c.shiftX, fx, 4, dt); c.shiftY = damp(c.shiftY, fy, 4, dt);
     setViewShift(c.shiftX, c.shiftY);
   }
   sky.position.copy(camera.position);
   stars.pts.position.copy(camera.position);
-  placeSun(c.mode === 'menu' ? ARENA_MID : player.z - 12);
+  placeSun(c.mode === 'menu' ? ARENA_MID : camSubject().z - 12);
+}
+function camSubject() { return camCtl.mode === 'watch' && camCtl.watch && camCtl.watch.visible ? camCtl.watch : player; }
+// A phone held upright: the lobby's runner stands just above the plate with its outfit's name, however much of the
+// screen the tiles and buttons below take: the picture moves up as far as it takes (measured, not guessed).
+const _lobbyFeet = new THREE.Vector3(), lobbyPlate = { top: 0, at: -1 };
+function lobbyShiftY(h) {
+  const now = performance.now();
+  if (now - lobbyPlate.at > 500) { lobbyPlate.at = now; lobbyPlate.top = $('lobby-plate').getBoundingClientRect().top; }   // (a layout read twice a second, not every frame)
+  if (!(lobbyPlate.top > 0)) return 0.2;
+  _lobbyFeet.set(LOBBY.x, 0, LOBBY.z).project(camera);
+  const feet = ((1 - _lobbyFeet.y) / 2) * h;            // where the feet are drawn now (with the current shift)
+  return clamp(camCtl.shiftY + (feet - (lobbyPlate.top - 10)) / h, 0.12, 0.42);
 }
 
 // ---------------------------------------------------------------------
@@ -6202,13 +6440,13 @@ const hud = {
 // ---------------------------------------------------------------------
 // 17. Menus & settings screens
 // ---------------------------------------------------------------------
-const SCREENS = ['menu', 'howto', 'settings', 'keys', 'skins', 'blocks', 'waves', 'pause', 'gameover'];
+const SCREENS = ['menu', 'howto', 'settings', 'keys', 'skins', 'blocks', 'waves', 'pause', 'gameover', 'rooms'];
 let currentScreen = null, settingsReturn = 'menu';
 function showScreen(name) {
   stillDrawn = false;
   const prev = currentScreen;
   currentScreen = name;
-  if (prev === 'menu' && !['menu', 'howto', 'settings', 'keys'].includes(name)) leaveLobby();   // (Skins and Blocks set the podium up their own way)
+  if (prev === 'menu' && !['menu', 'howto', 'settings', 'keys', 'rooms'].includes(name)) leaveLobby();   // (Skins and Blocks set the podium up their own way)
   if (prev === 'skins' && name !== 'skins') closeSkins();
   if (name === 'skins' && prev !== 'skins') openSkins();
   if (prev === 'blocks' && name !== 'blocks') closeBlocks();
@@ -6218,6 +6456,7 @@ function showScreen(name) {
   if ((prev === 'keys' && name !== 'keys') || (prev === 'skins' && name !== 'skins')) keyCapture.active = false;
   if (name === 'menu' && state === 'menu') enterLobby();
   for (const s of SCREENS) $('screen-' + s).classList.toggle('active', s === name);
+  if (name === 'rooms') roomsUI.render();
   // A button on a screen that just closed can keep the focus (MAIN MENU after a game over did),
   // and then Enter pressed it again instead of starting a run. Let go of it.
   const ae = document.activeElement;
@@ -7268,12 +7507,532 @@ function bindSettingsUI() {
 }
 
 // ---------------------------------------------------------------------
+// 17b. ROOMS: play together on your Wi-Fi. server.js, next to this file, serves the game to every device on the
+//      network and runs the rooms (see the top of server.js). Everyone in a room runs on the same walls: one seed
+//      and one clock (the server's), so every device builds the same walls itself, in step with the others (a room's
+//      round runs in fixed steps, NET.step). Each device runs its own runner and sends where it is and what it's
+//      doing ~20 times a second; everyone else is drawn from that: a "ghost", moved on at its own speed between
+//      messages so it keeps up with the walls. A punch, a tackle, a swat, a hug or a shove is settled by whoever
+//      throws it, against what they see; it's sent to the one it lands on, who takes it (unless their taunt or
+//      their guard shrugs it off). The rooms can be switched off and on from any device (a PIN, away from the
+//      server's computer).
+// ---------------------------------------------------------------------
+const NET = {
+  step: 1 / 120,           // a room's round steps in fixed steps, the same on every device
+  snapEvery: 0.05,         // s between the messages about your runner
+  catchUp: 240,            // at most this many steps in one frame when the round's clock is ahead (a stall, a hidden tab)
+  outWatch: 1.8,           // s after you're out before the camera goes to someone still in
+  endWait: 1.4,            // s the arena stays up when the round is over, before the results
+  nameKey: 'blockdash.name.v1', pinKey: 'blockdash.pins.v1',
+};
+const R1 = (v) => Math.round(v * 10) / 10, R2 = (v) => Math.round(v * 100) / 100;
+const cleanName = (s) => String(s || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 14).toUpperCase() || 'PLAYER';
+function safeColors(sk, c) {                            // someone else's outfit colours: only #rrggbb, else the skin's own
+  const out = { ...sk.colors };
+  if (c && typeof c === 'object') for (const k of Object.keys(out)) if (typeof c[k] === 'string' && /^#[0-9a-f]{6}$/i.test(c[k])) out[k] = c[k];
+  return out;
+}
+// Where everyone starts: in a line across the start, four to a row, the next four a little nearer the edge.
+function netSpot(slot, n) {
+  const row = Math.floor(slot / 4), inRow = Math.max(1, Math.min(4, n - row * 4)), col = slot % 4;
+  return { x: (col - (inRow - 1) / 2) * 3.6, z: P_START_Z + row * 2.4 };
+}
+const netIdOf = (r) => (!r ? 0 : r === player ? net.id : r.ghost ? r.netId : 0);
+const runnerOf = (id) => (!id ? null : id === net.id ? player : ghosts.byId.get(id) || null);
+
+// Your runner, packed for the others: [time, x, y, z, vx, vy, vz, carry, stick x, stick z, flags, stun, punch t,
+// punch dir x, z, tackle t, tackle dir x, z, knock yaw, emote, emote count, emote t, emote target, emote facing,
+// holding, held by, yaw]. Flags: 1 grounded, 2 diving, 4 belly-sliding, 8 downed, 16 down (landed), 32 zapped,
+// 64 Super Punch, 128 in sight, 256 riding a block, 512 emote ending, 1024 guard, 2048 just dropped back in,
+// 4096 pushed by a wall.
+const SNAP_LEN = 27;
+function packSnap(p) {
+  const e = p.emote;
+  const f = (p.grounded ? 1 : 0) | (p.diving ? 2 : 0) | (p.slideT > 0 ? 4 : 0) | (p.downed ? 8 : 0) | (p.downStarted ? 16 : 0) | (p.ko ? 32 : 0)
+    | (p.punchSuper ? 64 : 0) | (p.visible ? 128 : 0) | (p.platform ? 256 : 0) | (e && e.fade ? 512 : 0) | (p.guardT > 0 ? 1024 : 0)
+    | (p.spawnT > 0 ? 2048 : 0) | (p.pushT < 0.2 ? 4096 : 0);
+  return [Math.round(run.time * 1000) / 1000, R2(p.x), R2(p.y), R2(p.z), R2(p.vx), R2(p.vy), R2(p.vz), R2(p.carry), R2(p.ctl.moveX), R2(p.ctl.moveZ), f,
+    R2(p.stunT), R2(p.punchT), R2(p.punchDirX), R2(p.punchDirZ), R2(p.tackleT), R2(p.tackleDirX), R2(p.tackleDirZ), R2(p.knockYaw),
+    e ? e.def.id : '', p.emotes, e ? R2(e.t) : 0, e ? netIdOf(e.target) : 0, e ? R2(e.faceYaw) : 0,
+    netIdOf(p.holding), netIdOf(p.heldBy), R2(p.yaw)];
+}
+const RIDING = { row: null, block: null, part: null };   // (a ghost riding a block: only that it is, for the drawing)
+
+// The others in your room, drawn from what their devices send.
+const ghosts = {
+  pool: [], list: [], byId: new Map(),
+  setup(players) {
+    this.clear();
+    players.forEach((p, slot) => {
+      if (p.id === net.id) return;
+      const i = this.list.length;
+      if (!this.pool[i]) this.pool[i] = createRunner({ id: 100 + i });
+      const g = this.pool[i];
+      Object.assign(g, { ghost: true, netId: p.id, snap: null, out: false, left: false, emoteKey: '', shoveAt: -9 });
+      g.name = cleanName(p.name);
+      nameTag(g);
+      const sk = SKIN_BY_ID[p.skin && p.skin.id] || SKINS[0];
+      g.applySkin(sk, safeColors(sk, p.skin && p.skin.colors));
+      g.reset();
+      const at = netSpot(slot, players.length);
+      Object.assign(g, { x: at.x, y: 0, z: at.z, grounded: true, ex: at.x, ey: 0, ez: at.z });
+      this.list.push(g);
+      this.byId.set(p.id, g);
+    });
+  },
+  clear() {
+    for (const g of this.list) { if (g.holding || g.heldBy) g.letGo(); g.hide(); }
+    this.list = []; this.byId.clear();
+  },
+  remove(id) {                                           // they left the room
+    const g = this.byId.get(id);
+    if (!g) return;
+    if (g.holding || g.heldBy) g.letGo();
+    g.hide(); g.left = true;
+    this.byId.delete(id);
+    this.list = this.list.filter((o) => o !== g);
+  },
+  active() { return this.list.filter((g) => g.visible); },
+  onSnap(id, d) {
+    const g = this.byId.get(id);
+    if (!g || !Array.isArray(d) || d.length < SNAP_LEN || !d.slice(0, 19).every((v) => typeof v === 'number' && Number.isFinite(v))) return;
+    if (g.snap && d[0] < g.snap[0]) return;              // (an older one, late)
+    g.snap = d;
+  },
+  // Where everyone is now: their last message, moved on at the speed it gave (as far as a quarter of a second), and
+  // eased onto that so a new message never makes them jump. Whoever you're holding in a hug is right in front of you.
+  update(dt, now) {
+    for (const g of this.list) {
+      if (g.grabCd > 0) g.grabCd -= dt;
+      const s = g.snap;
+      if (!s) continue;
+      const f = s[10];
+      if (!(f & 128)) { if (g.visible) { if (g.holding || g.heldBy) g.letGo(); g.hide(); } continue; }   // out of sight
+      if (!g.visible || (g.ko && !(f & 32))) { g.reset(); g.ex = s[1]; g.ey = s[2]; g.ez = s[3]; g.emoteKey = ''; }   // back in sight: from where they are
+      const age = clamp(now - s[0], 0, 0.25), grounded = !!(f & 1);
+      if (g.heldBy === player) {
+        g.ex = player.x - Math.sin(player.yaw) * HUG.dist; g.ez = player.z - Math.cos(player.yaw) * HUG.dist; g.ey = player.y + HUG.lift;
+      } else {
+        const vz = s[6] + s[7], tx = s[1] + s[4] * age, tz = s[3] + vz * age;
+        const ty = grounded ? s[2] : Math.max(s[2] + s[5] * age - 0.5 * G_DOWN * age * age, Math.min(s[2], 0));
+        g.ex += s[4] * dt; g.ez += vz * dt;
+        if (Math.hypot(tx - g.ex, tz - g.ez) > 3) { g.ex = tx; g.ez = tz; }
+        else { const k = 1 - Math.exp(-14 * dt); g.ex += (tx - g.ex) * k; g.ez += (tz - g.ez) * k; }
+        g.ey = Math.abs(ty - g.ey) > 3 ? ty : g.ey + (ty - g.ey) * (1 - Math.exp(-30 * dt));
+      }
+      g.x = g.ex; g.y = g.ey; g.z = g.ez;
+      g.vx = s[4]; g.vy = s[5]; g.vz = s[6]; g.carry = s[7];
+      g.ctl.moveX = s[8]; g.ctl.moveZ = s[9];
+      g.grounded = grounded; g.diving = !!(f & 2); g.slideT = f & 4 ? 0.2 : 0;
+      g.downed = !!(f & 8); g.downStarted = !!(f & 16);
+      g.stunT = s[11] > 0 ? Math.max(1e-3, s[11] - age) : 0;
+      g.punchSuper = !!(f & 64);
+      g.punchT = s[12] >= 0 && s[12] + age < (g.punchSuper ? SUPER_PUNCH : PUNCH).duration ? s[12] + age : -1;
+      g.punchDirX = s[13]; g.punchDirZ = s[14];
+      g.tackleT = s[15] >= 0 ? s[15] + age : -1; g.tackleDirX = s[16]; g.tackleDirZ = s[17];
+      g.knockYaw = s[18];
+      g.guardT = f & 1024 ? 0.1 : 0; g.spawnT = f & 2048 ? 0.1 : 0; g.pushT = f & 4096 ? 0 : 9;
+      g.platform = f & 256 ? RIDING : null;
+      g.yaw = typeof s[26] === 'number' ? s[26] : g.yaw;
+      if (f & 32 && !g.ko) g.knockOut(Math.sign(g.x) || 1);   // zapped: the tumble (where they go comes from them)
+      // hugs between two others (one with you is settled by messages: see net.onEvent)
+      if (g.heldBy !== player) g.heldBy = s[25] && s[25] !== net.id ? this.byId.get(s[25]) || null : null;
+      if (g.holding !== player) g.holding = s[24] && s[24] !== net.id ? this.byId.get(s[24]) || null : null;
+      // the emote they're doing (started here when they start one; their own device ends it)
+      const eid = typeof s[19] === 'string' ? s[19] : '', key = `${s[20]}:${eid}`;
+      if (key !== g.emoteKey) {
+        g.emoteKey = key;
+        const def = eid && EMOTE_BY_ID[eid];
+        if (def) {
+          const t0 = Math.max(0, (+s[21] || 0) + age), target = runnerOf(s[22]);
+          g.emote = { def, t: t0, fade: 0, fx: (def.fx || []).filter((x) => x[0] < t0).length, target,
+            reach: target && def.reach ? clamp((Math.hypot(target.x - g.x, target.z - g.z) - 0.9) * def.reach, 0, 0.45) : 0,
+            dirX: 0, dirZ: -1, faceYaw: +s[23] || 0, air: !grounded, lock: 0, commit: 0 };
+        } else if (g.emote && !g.emote.fade) g.emote.fade = 1e-4;
+      } else if (g.emote) {
+        if (f & 512 && !g.emote.fade) g.emote.fade = 1e-4;
+        g.emote.faceYaw = +s[23] || 0;
+      }
+    }
+  },
+  updateVisual(dt) { for (const g of this.list) if (g.visible) g.updateVisual(dt); },
+};
+
+// The connection to the server, the rooms, and the messages of a round.
+const net = {
+  ws: null, conn: 'idle', id: 0,                         // conn: idle, connecting or open
+  served: null, reach: false, status: null,              // served: this page came from server.js (null: not checked yet)
+  rooms: [], room: null, leftRoom: 0, results: null, resultsMode: 'regular',
+  offset: 0, rtt: Infinity, pingTimer: 0, pollTimer: 0,
+  msg: '', msgOk: false, msgDrop: false, askPin: null, busy: false,   // (msgDrop: the message says the connection went)
+  get isHost() { return !!this.room && this.room.host === this.id; },
+  serverNow() { return Date.now() + this.offset; },
+  name() { return cleanName(store.get(NET.nameKey) || '').replace(/^PLAYER$/, ''); },
+  profile() { return { name: this.name(), skin: { id: skinState.id, colors: skinColors(skinState.id) } }; },
+  say(text, ok = false, drop = false) { this.msg = text || ''; this.msgOk = ok; this.msgDrop = drop; roomsUI.render(); },
+
+  // Is this page served by server.js (a file opened from the disk, or from a website, isn't), and are rooms on?
+  async probe() {
+    if (!/^https?:$/.test(location.protocol)) { this.served = false; this.reach = false; this.status = null; return; }
+    try {
+      const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 3000);
+      const res = await fetch('/api/status', { cache: 'no-store', signal: ctl.signal });
+      clearTimeout(to);
+      const st = res.ok ? await res.json() : null;
+      this.reach = !!(st && st.server === 'blockdash');
+      if (this.reach) { this.served = true; this.status = st; }
+      else if (!this.served) { this.served = false; this.status = null; }
+    } catch {
+      this.reach = false;
+      if (!this.served) this.served = false;
+    }
+  },
+  open() {                                               // the ROOMS screen opened
+    this.msg = ''; this.askPin = null;
+    roomsUI.render();
+    this.refresh();
+    clearInterval(this.pollTimer);
+    this.pollTimer = setInterval(() => this.refresh(), 3000);
+  },
+  close() {                                              // ... and closed: out of any room, and off the server
+    clearInterval(this.pollTimer); this.pollTimer = 0;
+    this.leave();
+    this.disconnect();
+  },
+  async refresh() {
+    if (run.net) return;                                 // (mid-round the connection itself says if the server goes)
+    await this.probe();
+    if (this.reach && this.status.on && this.conn === 'idle' && currentScreen === 'rooms') this.connect();
+    roomsUI.render();
+  },
+  connect() {
+    if (this.ws) return;
+    let ws;
+    try { ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`); } catch { return; }
+    this.ws = ws; this.conn = 'connecting';
+    ws.onopen = () => {
+      if (ws !== this.ws) return;
+      this.conn = 'open';
+      if (this.msgDrop) { this.msg = ''; this.msgDrop = false; }   // (back on: "switched off" is old news)
+      this.send({ t: 'hello', ...this.profile() });
+      this.syncClock();
+      roomsUI.render();
+    };
+    ws.onmessage = (e) => {
+      if (ws !== this.ws) return;
+      let m;
+      try { m = JSON.parse(e.data); } catch { return; }
+      if (m && typeof m === 'object') this.onMessage(m);
+    };
+    ws.onclose = () => { if (ws === this.ws) this.dropped(); };
+    ws.onerror = () => { /* (onclose follows) */ };
+  },
+  disconnect() {
+    const ws = this.ws;
+    this.ws = null; this.conn = 'idle'; this.id = 0; this.room = null; this.rooms = [];
+    clearInterval(this.pingTimer); this.pingTimer = 0;
+    if (ws) { try { ws.close(); } catch { /* gone */ } }
+  },
+  dropped(why) {                                         // the connection went: the server stopped, the rooms were switched off, the Wi-Fi dropped
+    const was = !!this.room || run.net;
+    this.disconnect();
+    if (run.net) game.leaveNetRun();
+    if (why || was) this.say(why || 'Lost the connection to the server.', false, true);
+    if (currentScreen === 'rooms') this.refresh();
+  },
+  send(m) { if (this.ws && this.conn === 'open') { try { this.ws.send(JSON.stringify(m)); } catch { /* closing */ } } },
+  ev(to, e) { if (to) this.send({ t: 'ev', to, e }); }, // something you did to someone
+  evAll(e) { this.send({ t: 'ev', e }); },              // ... or to the walls (everyone sees it)
+  // How far this device's clock is from the server's: the quickest of a few round trips is the best guess.
+  syncClock() {
+    this.offset = 0; this.rtt = Infinity;
+    clearInterval(this.pingTimer);
+    const ping = () => this.send({ t: 'ping', c: Date.now() });
+    for (let i = 0; i < 6; i++) setTimeout(ping, 60 + i * 110);
+    this.pingTimer = setInterval(ping, 4000);
+  },
+  onPong(m) {
+    const now = Date.now(), rtt = now - m.c;
+    if (!(rtt >= 0 && rtt < 5000) || typeof m.s !== 'number') return;
+    this.rtt += 1;                                       // (an old best ages out slowly)
+    if (rtt <= this.rtt) { this.rtt = rtt; this.offset = m.s - (m.c + now) / 2; }
+  },
+  onMessage(m) {
+    switch (m.t) {
+      case 'welcome': this.id = m.id; this.rooms = Array.isArray(m.rooms) ? m.rooms : []; roomsUI.render(); break;
+      case 'rooms': this.rooms = Array.isArray(m.rooms) ? m.rooms : []; this.leftRoom = 0; roomsUI.render(); break;
+      case 'room':
+        if (!m.room || m.room.id === this.leftRoom) break;   // (news from a room you've just left)
+        if (!this.room || this.room.id !== m.room.id) this.results = null;
+        this.room = m.room;
+        roomsUI.render();
+        game.netRoster();
+        break;
+      case 'error': this.say(m.msg || 'That didn’t work.'); break;
+      case 'pong': this.onPong(m); break;
+      case 'start': this.onStart(m); break;
+      case 'snap': ghosts.onSnap(m.id, m.d); break;
+      case 'ev': if (m.e && typeof m.e === 'object') this.onEvent(m.from, m.e); break;
+      case 'out': case 'fall': game.netOther(m.t, m); break;
+      case 'left': game.netLeft(m.id); break;
+      case 'last': game.netLast(m.id); break;
+      case 'end': game.netEnd(m); break;
+      case 'off': if (this.status) this.status.on = false; this.dropped('The rooms were switched off.'); break;
+      default: break;
+    }
+  },
+  host() { this.say(''); this.send({ t: 'host' }); },
+  join(id) { this.say(''); this.send({ t: 'join', room: id }); },
+  leave() {
+    if (!this.room) return;
+    this.leftRoom = this.room.id; this.room = null; this.results = null;
+    this.send({ t: 'leave' });
+    roomsUI.render();
+  },
+  setRoom(k, v) { if (this.isHost && this.room.state === 'lobby') this.send({ t: 'settings', [k]: v }); },
+  start() { if (this.isHost && this.room.state === 'lobby') this.send({ t: 'start' }); },
+  onStart(m) {
+    if (!this.room) return;
+    this.results = null;
+    const wait = typeof m.at === 'number' ? clamp(m.at - this.serverNow(), 0, 10000) : 3000;   // GO, on this device's clock
+    game.startNet(m, performance.now() + wait);
+  },
+  setName(v) {
+    store.set(NET.nameKey, String(v || '').slice(0, 14));
+    this.send({ t: 'profile', ...this.profile() });
+  },
+  // The rooms' switch. On the server's own computer it just works; anywhere else it takes the PIN printed there
+  // (remembered on this device once it's right).
+  async power(on, pin) {
+    if (this.busy) return;
+    this.busy = true; roomsUI.render();
+    pin = pin || this.savedPin();
+    let res = null, st = null;
+    try {
+      res = await fetch('/api/power', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on, pin }) });
+      st = await res.json().catch(() => null);
+    } catch { res = null; }
+    this.busy = false;
+    if (!res) this.say('Couldn’t reach the server.');
+    else if (res.status === 403) {
+      this.forgetPin();
+      this.askPin = on;
+      this.say(pin ? 'That PIN isn’t right. It’s printed where the server runs.' : 'Enter the PIN printed where the server runs.');
+      setTimeout(() => { const el = $('pin-input'); if (el && currentScreen === 'rooms') el.focus(); }, 30);
+    } else if (res.ok && st) {
+      if (pin) this.savePin(pin);
+      this.askPin = null; this.status = st; this.served = this.reach = true;
+      this.say(on ? 'Rooms are on: everyone on your Wi-Fi can play.' : 'Rooms are off: nobody can join until they’re switched on again.', true);
+      if (on) this.connect();
+    } else this.say('The server said no.');
+    roomsUI.render();
+  },
+  pins() { try { const o = JSON.parse(store.get(NET.pinKey) || '{}'); return o && typeof o === 'object' ? o : {}; } catch { return {}; } },
+  savedPin() { return String(this.pins()[location.host] || ''); },
+  savePin(pin) { const o = this.pins(); o[location.host] = String(pin); store.set(NET.pinKey, JSON.stringify(o)); },
+  forgetPin() { const o = this.pins(); delete o[location.host]; store.set(NET.pinKey, JSON.stringify(o)); },
+
+  // During a round: your runner to the others (and how you're doing, for the results), every NET.snapEvery.
+  tick() {
+    const every = run.netOut && !player.visible ? 0.25 : NET.snapEvery;
+    if (run.time - run.lastSnap < every) return;
+    run.lastSnap = run.time;
+    this.send({ t: 'snap', d: packSnap(player), s: { w: run.waves, tm: R1(run.time), f: run.falls } });
+  },
+  // Something another runner did to you (or to the walls).
+  onEvent(from, e) {
+    if (!run.net) return;
+    if (e.k === 'glass') { world.breakShared(e); return; }
+    const G = ghosts.byId.get(from), P = player;
+    if (!G) return;
+    const live = state === 'playing' && !run.netOut && run.respawnT <= 0 && P.visible && !P.ko;
+    const vec = (v) => (Array.isArray(v) ? [0, 1, 2].map((i) => clamp(+v[i] || 0, -60, 60)) : [0, 0, 0]);
+    switch (e.k) {
+      case 'hit': case 'tackle': case 'swat': {
+        if (!live || P.untouchable) return;
+        if (P.taunting) { combat.blocked(G, P); return; }
+        if (e.k === 'swat') {
+          P.takeHit(G, 0, SPATULA.hop, 0, SPATULA.stun, false);
+          P.knockYaw = Math.atan2(P.x - G.x, P.z - G.z); P.downFor = SPATULA.down;
+          game.onSpatulaHit(G, P);
+        } else if (e.k === 'tackle') {
+          const v = vec(e.v);
+          P.takeHit(G, v[0], v[1], v[2], TACKLE.stun, false); P.downFor = TACKLE.down;
+          game.onTackleHit(G, P);
+        } else {
+          const v = vec(e.v), sup = !!e.sup;
+          P.takeHit(G, v[0], v[1], v[2], clamp(+e.st || PUNCH.stun, 0.1, 3), sup);
+          game.onPunchHit(G, P, sup, clamp(+e.kb || 0, 0, 60));
+        }
+        break;
+      }
+      case 'blocked': P.shieldHit = 1; game.onBlocked(G, P); break;   // (your taunt shrugged off what they threw)
+      case 'flinch':
+        if (live && P.playEmote('flinch', { target: G })) {
+          const h = P.partWorld('head', _efx);
+          pops.spawn(h.x + 0.5, h.y - 0.1, h.z, e.big ? '!!' : '!', '#ff5a6a', { size: 0.58, rise: 0.5, life: 0.8, drift: 0.3 });
+        }
+        break;
+      case 'grab':                                       // they hug you: you're held in front of them (see the runner's step)
+        if (!live || P.heldBy || P.holding || P.taunting || P.untouchable || P.grabCd > 0 || !P.grounded) { this.ev(from, { k: 'free' }); return; }
+        G.grab(P);
+        break;
+      case 'release': if (P.heldBy === G) P.letGo(); break;
+      case 'free': if (P.holding === G) P.letGo(); break;
+      case 'shove': {                                    // walked into while you're down: slid along the floor
+        if (!live || !P.shovable) return;
+        const n = vec(e.n), want = clamp(+e.w || 0, 0, 20), cur = P.vx * n[0] + P.vz * n[2];
+        if (cur < want) { P.vx += n[0] * (want - cur); P.vz += n[2] * (want - cur); }
+        P.lastHitBy = G; P.punchedT = 0;
+        if (P.shovedT > 0.4) game.onShove(G, P);
+        P.shovedT = 0;
+        break;
+      }
+      default: break;
+    }
+  },
+  letGo(h, t) {                                          // a hug with someone else ended here: tell them
+    if (!run.net) return;
+    if (h === player && t.ghost) this.ev(t.netId, { k: 'release' });
+    else if (t === player && h.ghost) this.ev(h.netId, { k: 'free' });
+  },
+};
+
+// The ROOMS screen: the server's switch, your name, the rooms to join, and the room you're in.
+const DIFF_SHORT = ['V.EASY', 'EASY', 'NORMAL', 'HARD', 'V.HARD'];
+const roomsUI = {
+  render() {
+    if (currentScreen !== 'rooms') return;
+    const st = net.status, on = !!(st && st.on && net.reach), inRoom = !!net.room;
+    // the server bar
+    const bar = $('srv-bar');
+    let state = 'wait', head = 'LOOKING FOR THE SERVER…', info = '';
+    if (net.served === false) { state = 'none'; head = 'NO SERVER HERE'; info = 'This page wasn’t opened from the Block Dash server.'; }
+    else if (net.served && !net.reach) { state = 'off'; head = 'CAN’T REACH THE SERVER'; info = 'Is it still running? Trying again…'; }
+    else if (st && !st.on) { state = 'off'; head = 'ROOMS ARE OFF'; info = 'Switch them on and everyone on your Wi-Fi can host and join rooms.'; }
+    else if (st) {
+      state = 'on'; head = 'ROOMS ARE ON';
+      const people = `${st.players} online · ${st.rooms} room${st.rooms === 1 ? '' : 's'}`;
+      const where = st.addresses && st.addresses.length ? ` · Others open <b>${escHtml(st.addresses[0].replace(/^http:\/\//, ''))}</b>` : '';
+      info = people + where;
+    }
+    if (st && net.reach && st.local && st.pin) info += `${info ? '<br>' : ''}PIN to switch the rooms from other devices: <b>${escHtml(st.pin)}</b>`;
+    bar.dataset.s = state;
+    $('srv-state').textContent = head;
+    $('srv-info').innerHTML = info;
+    const pw = $('btn-power');
+    pw.hidden = !(net.served && net.reach && st);
+    pw.setAttribute('aria-checked', String(on));
+    pw.disabled = net.busy;
+    $('power-lbl').textContent = on ? 'ON' : 'OFF';
+    $('pin-row').hidden = net.askPin === null;
+    const msg = $('rooms-msg');
+    msg.textContent = net.msg; msg.classList.toggle('ok', net.msgOk);
+    $('rooms-help').hidden = net.served !== false;
+    // the room list, or the room you're in
+    const ready = on && net.conn === 'open' && net.id;
+    $('rooms-browse').hidden = !ready || inRoom;
+    $('room-view').hidden = !ready || !inRoom;
+    $('btn-host').hidden = !ready || inRoom;
+    $('btn-room-leave').hidden = !inRoom;
+    $('btn-rooms-back').hidden = inRoom;
+    $('btn-room-start').hidden = !inRoom || !net.isHost;
+    if (ready && !inRoom) this.renderList();
+    if (ready && inRoom) this.renderRoom();
+  },
+  renderList() {
+    const nameEl = $('net-name');
+    if (document.activeElement !== nameEl) nameEl.value = net.name();
+    const list = $('room-list');
+    list.replaceChildren();
+    if (!net.rooms.length) {
+      const p = document.createElement('div');
+      p.className = 'room-empty';
+      p.textContent = 'No rooms yet. Host one, and everyone on your Wi-Fi can join it from their own phone, tablet or computer.';
+      list.appendChild(p);
+      return;
+    }
+    for (const r of net.rooms) {
+      const item = document.createElement('div'), txt = document.createElement('div'), b = document.createElement('b'), small = document.createElement('small');
+      item.className = 'room-item'; txt.className = 'ri-txt';
+      b.textContent = String(r.name || 'ROOM').toUpperCase();
+      small.textContent = `${r.players}/${r.max} PLAYERS`;
+      if (r.playing) { const live = document.createElement('span'); live.className = 'live'; live.textContent = ' · PLAYING'; small.appendChild(live); }
+      txt.append(b, small);
+      const join = document.createElement('button');
+      join.className = 'btn'; join.textContent = r.playing ? 'PLAYING' : r.players >= r.max ? 'FULL' : 'JOIN';
+      join.disabled = r.playing || r.players >= r.max;
+      join.addEventListener('click', () => { audio.play('click'); net.join(r.id); });
+      item.append(txt, join);
+      list.appendChild(item);
+    }
+  },
+  renderRoom() {
+    const r = net.room, host = net.isHost, s = r.settings || {};
+    $('room-name').textContent = String(r.name || 'ROOM').toUpperCase();
+    $('room-count').textContent = `${r.players.length}/8`;
+    const box = $('room-players');
+    box.replaceChildren();
+    for (const p of r.players) {
+      const el = document.createElement('div'), sw = document.createElement('i'), b = document.createElement('b');
+      el.className = 'rp' + (p.id === net.id ? ' me' : '');
+      const sk = SKIN_BY_ID[p.skin && p.skin.id] || SKINS[0], c = safeColors(sk, p.skin && p.skin.colors);
+      sw.style.setProperty('--c1', c.top); sw.style.setProperty('--c2', c.bottom);
+      b.textContent = cleanName(p.name) + (p.id === net.id ? ' (YOU)' : '');
+      el.append(sw, b);
+      if (p.id === r.host) { const em = document.createElement('em'); em.textContent = 'HOST'; el.appendChild(em); }
+      box.appendChild(el);
+    }
+    for (const btn of $('room-diff').children) {
+      const v = +btn.dataset.v;
+      btn.classList.toggle('on', v === s.difficulty); btn.setAttribute('aria-checked', String(v === s.difficulty)); btn.disabled = !host;
+    }
+    for (const btn of $('room-mode').children) {
+      const v = btn.dataset.v;
+      btn.classList.toggle('on', v === s.mode); btn.setAttribute('aria-checked', String(v === s.mode)); btn.disabled = !host;
+    }
+    const L = LEVELS[clamp(s.difficulty || 3, 1, 5) - 1];
+    $('room-diff-about').textContent = L.about;
+    $('room-mode-about').textContent = s.mode === 'respawn' ? 'Fall off and you drop back in. The host ends the round: fewest falls wins.' : 'One fall and you’re out. The last one standing wins.';
+    const hostName = (r.players.find((p) => p.id === r.host) || {}).name;
+    $('room-wait').textContent = r.state === 'playing' ? 'A round is on…' : host ? (r.players.length < 2 ? 'Waiting for others to join (or start on your own).' : '')
+      : `Waiting for ${cleanName(hostName)} to start…`;
+    $('btn-room-start').disabled = r.state !== 'lobby';
+    this.renderResults();
+  },
+  renderResults() {
+    const box = $('room-results'), res = net.results;
+    box.hidden = !res || !res.length;
+    if (box.hidden) return;
+    box.replaceChildren();
+    const h = document.createElement('h3');
+    h.textContent = 'LAST ROUND';
+    box.appendChild(h);
+    const respawn = net.resultsMode === 'respawn';
+    res.forEach((p, i) => {
+      const row = document.createElement('div'), pl = document.createElement('span'), b = document.createElement('b'), st = document.createElement('span');
+      row.className = 'res-row' + (p.id === net.id ? ' me' : '');
+      pl.className = 'pl'; pl.textContent = i + 1;
+      b.textContent = cleanName(p.name);
+      if (p.winner) { const em = document.createElement('em'); em.textContent = 'WINNER'; b.appendChild(em); }
+      const kos = p.kos ? ` · <i>${p.kos | 0}</i> KO${p.kos === 1 ? '' : 's'}` : '';
+      st.innerHTML = respawn ? `<i>${p.falls | 0}</i> FALL${p.falls === 1 ? '' : 'S'}${kos} · <i>${p.waves | 0}</i> WAVES`
+        : `<i>${p.waves | 0}</i> WAVES · <i>${fmtTime(Math.floor(+p.time || 0))}</i>${kos}`;
+      row.append(pl, b, st);
+      box.appendChild(row);
+    });
+  },
+};
+function openRooms() { showScreen('rooms'); net.open(); }
+function leaveRooms() { net.close(); showScreen('menu'); }
+// ---------------------------------------------------------------------
 // 18. Game state machine
 //     loading → menu → playing ⇄ paused/countdown → dying → gameover → …
 // ---------------------------------------------------------------------
 let state = 'loading';
 let timeScale = 1, deathTimer = 0, countdownT = 0, countdownLast = 0, bgTime = 0;
-const run = { waves: 0, time: 0, bestAtStart: 0, newBest: false, cause: '', causeText: '', pipResetAt: 0, practice: null, mode: 'regular', falls: 0, respawnT: 0 };
+const run = { waves: 0, time: 0, bestAtStart: 0, newBest: false, cause: '', causeText: '', pipResetAt: 0, practice: null, mode: 'regular', falls: 0, respawnT: 0,
+  net: false, netOut: false, netMenu: false, netStart: 0, steps: 0, outAt: 0, lastSnap: -1, endAt: 0, spot: null, kos: 0 };   // (net…: a round in a room, see 17b)
 const debug = { timeScale: 1, manual: false, forcePattern: null };
 const OBSTACLE_NAME = { '#': 'block', J: 'low barrier', M: 'crusher' };
 const OBSTACLE_COLOR = { J: '#ffd23f', M: '#c46bff' };
@@ -7297,6 +8056,8 @@ function countUp(el, target) {
 const game = {
   start(practice = null) {                               // practice: a layout slot to try out (TRY IT)
     audio.unlock();
+    if (run.net) { net.leave(); this.leaveNetRun(); }     // (not in a room's round any more)
+    world.seed = 0; world.syncSpeed = false;
     run.practice = practice;
     document.body.classList.toggle('practice', practice !== null);
     showScreen(null);
@@ -7331,9 +8092,23 @@ const game = {
   },
   pause() {
     if (state !== 'playing' && state !== 'countdown') return;
+    if (run.net) {                                       // a room's round doesn't stop for anyone: a menu over it, and it goes on
+      if (currentScreen === 'pause') return;
+      run.netMenu = true;
+      unlockPointer(); releaseJoystick(); keys.clear();
+      $('pause-waves').textContent = run.waves;
+      $('pause-title').textContent = 'MENU';
+      $('btn-pause-menu').textContent = 'LEAVE THE ROOM';
+      $('pause-hint').textContent = 'Esc to go back to the round';
+      showScreen('pause');
+      audio.play('pause');
+      return;
+    }
     setState('paused');
     unlockPointer();
     $('pause-waves').textContent = run.waves;
+    $('pause-title').textContent = 'PAUSED';
+    $('pause-hint').textContent = 'Esc / P to resume · R to restart';
     $('btn-pause-menu').textContent = run.practice !== null ? 'BACK TO EDITOR' : 'MAIN MENU';
     releaseJoystick();
     keys.clear();
@@ -7341,6 +8116,13 @@ const game = {
     audio.play('pause');
   },
   resume() {
+    if (run.net) {
+      if (!run.netMenu) return;
+      run.netMenu = false;
+      showScreen(null);
+      lockPointer();
+      return;
+    }
     if (state !== 'paused') return;
     showScreen(null);
     setState('countdown');
@@ -7349,6 +8131,7 @@ const game = {
     countdownLast = 0;
   },
   toMenu() {
+    if (run.net) { net.leave(); this.leaveNetRun(); return; }   // (LEAVE THE ROOM: back to the rooms)
     const back = run.practice;                           // a practice run goes back to the WAVES editor
     run.practice = null; run.respawnT = 0;
     document.body.classList.remove('practice', 'respawn');
@@ -7365,8 +8148,9 @@ const game = {
     audio.music('menu');
   },
   die(cause, info) {
-    if (state !== 'playing') return;
+    if (state !== 'playing' || run.netOut) return;
     if (run.mode === 'respawn') { this.knockedOut(cause, info); return; }
+    if (run.net) { this.netOut(cause, info); return; }
     setState('dying');
     const by = player.punchedT < 1.8 ? player.lastHitBy : null;   // whoever punched you off has a laugh about it
     if (by && by.ai) by.ai.emoteNext = { id: 'laugh', at: by.ai.t + 0.35 };
@@ -7374,8 +8158,8 @@ const game = {
     deathTimer = 0;
     releaseJoystick();
     camCtl.focus.set(player.x, Math.max(0, player.y), clamp(player.z, Z_FAR, Z_NEAR));
+    run.causeText = this.causeOf(cause);
     if (cause === 'zap') {
-      run.causeText = player.punchedT < 1.8 && player.lastHitBy ? `${player.lastHitSuper ? 'Super-punched' : 'Punched'} into a laser by ${player.lastHitBy.name}` : 'Zapped by a laser fence';
       player.knockOut(info.side);
       particles.burst(player.x, player.y + 0.8, player.z, 26, ['#ff3048', '#ffffff', '#ff9aa8'], { speed: 7, up: 5, size: [0.06, 0.16], life: [0.4, 0.9], grav: 0.4 });
       camCtl.shake = 0.8;
@@ -7387,12 +8171,15 @@ const game = {
       vibrate([40, 30, 40, 30, 120]);
       return;
     }
-    run.causeText = player.punchedT < 1.8 && player.lastHitBy ? `${player.lastHitSuper ? 'Super-punched' : 'Punched'} off the edge by ${player.lastHitBy.name}`
-      : player.knockT < 1.5 ? 'Knocked off the edge' : player.pushT < 0.8 ? 'Pushed off the edge by a wall'
-      : player.carry > 0 ? 'Rode a block off the edge' : 'Fell off the arena';
     camCtl.shake = 0.3;
     audio.play('fall');
     vibrate([60, 40, 220]);
+  },
+  causeOf(cause) {                                       // how the run ended, in words
+    const p = player, by = p.punchedT < 1.8 ? p.lastHitBy : null, how = p.lastHitSuper ? 'Super-punched' : 'Punched';
+    if (cause === 'zap') return by ? `${how} into a laser by ${by.name}` : 'Zapped by a laser fence';
+    return by ? `${how} off the edge by ${by.name}` : p.knockT < 1.5 ? 'Knocked off the edge' : p.pushT < 0.8 ? 'Pushed off the edge by a wall'
+      : p.carry > 0 ? 'Rode a block off the edge' : 'Fell off the arena';
   },
   // Respawn mode: out for a moment (the fall or the zap plays out, the camera stays on the spot), then back in.
   knockedOut(cause, info) {
@@ -7419,14 +8206,180 @@ const game = {
     }
     hud.showBanner(cause === 'zap' ? 'ZAPPED!' : 'FELL OFF!', 'BACK IN A MOMENT', '', 1.2);
     hud.busyUntil = performance.now() + 1300;
+    if (run.net) net.send({ t: 'fall', by: by && by.ghost ? by.netId : 0, cause: this.causeOf(cause) });   // (a room: for everyone's feed and the score)
   },
   respawn() {
     run.respawnT = 0;
-    player.respawn();
+    if (run.net) player.respawn(run.spot.x, run.spot.z); else player.respawn();
     camCtl.mode = 'follow';
     camCtl.ease = true;
     hud.showBanner('BACK IN!', `FALL ${run.falls}`, '', 0.9);
     hud.busyUntil = performance.now() + 900;
+  },
+  // ---- ROOMS (17b): a round with everyone in your room ----
+  // Everyone gets the same walls (the seed) and GO at the same moment (`goAt`, on this device's clock), and starts
+  // in their own spot along the start line, standing. The walls rise at GO.
+  startNet(m, goAt) {
+    audio.unlock();
+    run.practice = null;
+    document.body.classList.remove('practice');
+    showScreen(null);
+    const st = m.settings || {};
+    level = LEVELS[clamp((st.difficulty | 0) || 3, 1, 5) - 1];
+    leaveLobby();
+    world.seed = (m.seed >>> 0) || 1; world.syncSpeed = true; world.time = 0;   // (the crushers keep time with world.time)
+    world.reset('game');
+    particles.clear();
+    pops.clear();
+    rivals.clear();
+    const players = Array.isArray(m.players) ? m.players : [];
+    const slot = Math.max(0, players.findIndex((p) => p.id === net.id));
+    run.spot = netSpot(slot, players.length);
+    player.reset();
+    Object.assign(player, { x: run.spot.x, y: 0, z: run.spot.z, grounded: true });
+    ghosts.setup(players);
+    Object.assign(run, { waves: 0, time: 0, bestAtStart: 0, newBest: false, cause: '', causeText: '', pipResetAt: 0, practice: null,
+      mode: st.mode === 'respawn' ? 'respawn' : 'regular', falls: 0, respawnT: 0,
+      net: true, netOut: false, netMenu: false, netStart: goAt, steps: 0, outAt: 0, lastSnap: -1, endAt: 0, kos: 0 });
+    document.body.classList.toggle('respawn', run.mode === 'respawn');
+    document.body.classList.add('net');
+    document.body.classList.remove('netout', 'watching');
+    this.netRoster();
+    hud.setFalls(0);
+    timeScale = 1; deathTimer = 0;
+    Object.assign(camCtl, { mode: 'follow', yaw: 0, pitch: 0, shake: 0, ease: true, watch: null });
+    camCtl.pivot.set(player.x, 0, player.z);
+    look.id = null;
+    lockPointer();
+    hud.setCounter(0, false);
+    hud.resetPips();
+    hud.lastSec = -1;
+    hud.setTime(0);
+    hud.setDifficulty(0, speedForWave(0));
+    countdownT = (goAt - performance.now()) / 1000; countdownLast = 0;
+    setState('countdown');
+    audio.music('game');
+    hud.showBanner(net.room ? String(net.room.name).toUpperCase() : 'ROOM', `${players.length} RUNNER${players.length === 1 ? '' : 'S'} · ${run.mode === 'respawn' ? 'RESPAWN' : 'LAST ONE STANDING'}`, '', Math.max(1.6, countdownT));
+    hud.busyUntil = performance.now() + Math.max(1.6, countdownT) * 1000;
+  },
+  netRoster() {                                          // who's still in (the chip), and whether you're the host (END THE ROUND)
+    document.body.classList.toggle('net-host', net.isHost);
+    if (!run.net) return;
+    const respawn = run.mode === 'respawn';
+    $('hud-players').textContent = respawn ? 1 + ghosts.list.length : (run.netOut ? 0 : 1) + ghosts.list.filter((g) => !g.out).length;
+    $('hud-players-lbl').textContent = respawn ? 'PLAYERS' : 'STILL IN';
+  },
+  // REGULAR in a room: one fall and you're out. The round goes on: after a moment the camera follows someone still in.
+  netOut(cause, info) {
+    run.netOut = true; run.outAt = run.time; run.cause = cause;
+    const by = player.punchedT < 1.8 && player.lastHitBy && player.lastHitBy.ghost ? player.lastHitBy : null;
+    run.causeText = this.causeOf(cause);
+    releaseJoystick();
+    emoteTray.close();
+    if (player.holding || player.heldBy) player.letGo();
+    camCtl.focus.set(player.x, Math.max(0, player.y), clamp(player.z, Z_FAR, Z_NEAR));
+    camCtl.mode = 'out';
+    if (cause === 'zap') {
+      player.knockOut(info.side);
+      particles.burst(player.x, player.y + 0.8, player.z, 26, ['#ff3048', '#ffffff', '#ff9aa8'], { speed: 7, up: 5, size: [0.06, 0.16], life: [0.4, 0.9], grav: 0.4 });
+      camCtl.shake = 0.6;
+      hud.flash('hit');
+      audio.play('zap');
+      vibrate([40, 30, 40, 30, 120]);
+    } else {
+      camCtl.shake = 0.3;
+      audio.play('fall');
+      vibrate([60, 40, 220]);
+    }
+    hud.showBanner('YOU\'RE OUT!', `${run.causeText.toUpperCase()} · ${run.waves} WAVE${run.waves === 1 ? '' : 'S'}`, '', 2.4);
+    hud.busyUntil = performance.now() + 2500;
+    document.body.classList.add('netout');
+    net.send({ t: 'out', waves: run.waves, time: R1(run.time), falls: run.falls, by: by ? by.netId : 0, cause: run.causeText });
+    this.netRoster();
+  },
+  netOther(kind, m) {                                    // someone else is out (or fell off, in respawn): the feed
+    if (!run.net) return;
+    const g = ghosts.byId.get(m.id), name = g ? g.name : 'Someone', by = runnerOf(m.by);
+    if (kind === 'out' && g) g.out = true;
+    const verb = kind === 'out' ? 'knocked out' : 'knocked off';
+    if (by === player) { run.kos++; this.onRivalOut(); hud.feed(`You ${verb} ${name}`, 'gold'); }
+    else if (by) hud.feed(`${by.name} ${verb} ${name}`);
+    else hud.feed(kind === 'out' ? `${name} is out` : `${name} fell off`);
+    this.netRoster();
+  },
+  netLeft(id) {
+    const g = ghosts.byId.get(id);
+    if (!run.net || !g) return;
+    hud.feed(`${g.name} left`);
+    if (camCtl.watch === g) camCtl.watch = null;
+    ghosts.remove(id);
+    this.netRoster();
+  },
+  netLast(id) {                                          // only one runner left standing: they win
+    if (!run.net) return;
+    if (id === net.id) {
+      hud.showBanner('YOU WIN!', 'LAST ONE STANDING', 'best', 2.4);
+      hud.busyUntil = performance.now() + 2500;
+      audio.play('best');
+      vibrate([30, 40, 30, 40, 80]);
+      if (player.canEmote(EMOTE_BY_ID.celebrate)) player.playEmote('celebrate');
+    } else {
+      const g = ghosts.byId.get(id);
+      if (g) { hud.showBanner(`${g.name} WINS!`, 'LAST ONE STANDING', 'best', 2.4); hud.busyUntil = performance.now() + 2500; }
+    }
+  },
+  netEnd(m) {                                            // the round's over: the results, once the arena's had a moment
+    net.results = Array.isArray(m.results) ? m.results : null;
+    net.resultsMode = m.mode === 'respawn' ? 'respawn' : 'regular';
+    if (!run.net) { roomsUI.render(); return; }
+    if (!run.endAt) {
+      run.endAt = run.time + NET.endWait;
+      if (performance.now() > hud.busyUntil) hud.showBanner('ROUND OVER', 'TO THE RESULTS', '', NET.endWait);
+      audio.play('wave');
+    }
+  },
+  netTick() {                                            // every frame of a room's round: spectating, and the end of it
+    if (run.endAt && run.time >= run.endAt) { this.leaveNetRun(); return; }
+    if (!run.netOut || run.mode === 'respawn') return;
+    const w = camCtl.watch;
+    if (run.time - run.outAt > NET.outWatch && (!w || !w.visible || w.left)) this.watchNext(1);
+  },
+  watchNext(dir) {                                       // out: whose run to watch (◀ ▶ on the bar, or the arrow keys)
+    if (!run.net || !run.netOut) return;
+    const live = ghosts.list.filter((g) => !g.out && g.visible);
+    if (!live.length) {
+      if (camCtl.mode === 'watch') { camCtl.mode = 'out'; camCtl.focus.set(camCtl.pivot.x, 0, camCtl.pivot.z); }
+      camCtl.watch = null;
+      $('watch-name').textContent = 'NOBODY';
+      document.body.classList.toggle('watching', run.time - run.outAt > NET.outWatch);
+      return;
+    }
+    let i = live.indexOf(camCtl.watch);
+    i = i < 0 ? 0 : (i + dir + live.length) % live.length;
+    if (camCtl.watch !== live[i]) camCtl.ease = true;
+    camCtl.watch = live[i];
+    camCtl.mode = 'watch';
+    $('watch-name').textContent = live[i].name;
+    document.body.classList.add('watching');
+  },
+  leaveNetRun() {                                        // the round is over (or you left it): back to the room
+    if (!run.net) return;
+    if (player.holding || player.heldBy) player.letGo();
+    Object.assign(run, { net: false, netOut: false, netMenu: false, endAt: 0 });
+    world.seed = 0; world.syncSpeed = false;
+    ghosts.clear();
+    document.body.classList.remove('net', 'netout', 'watching', 'respawn', 'net-host');
+    setState('menu');
+    unlockPointer();
+    world.setMode('demo');
+    player.hide();
+    rivals.clear();
+    camCtl.mode = 'menu'; camCtl.watch = null;
+    timeScale = 1;
+    showScreen('rooms');
+    enterLobby();
+    audio.music('menu');
+    roomsUI.render();
   },
   onRespawn(r) {                                         // dropping back in: a puff and a chime
     particles.burst(r.x, r.y + 0.5, r.z, 14, ['#3fe0c5', '#ffffff', '#8af0ff'], { speed: 3, up: 2, size: [0.06, 0.14], life: [0.35, 0.7], grav: 0.3, bounce: 0 });
@@ -7446,6 +8399,7 @@ const game = {
     } else if (c.kind === 'bump') {
       audio.play('push');
     } else if (c.kind === 'break') {                  // shattered: shards fly, the run carries on
+      if (run.net) net.evAll({ k: 'glass', w: c.row.wave.index, r: c.row.idx, l: c.block.lane, y: c.block.parts[0].y0 });   // (gone for everyone)
       audio.play('shatter');
       vibrate(25);
       camCtl.shake = Math.max(camCtl.shake, 0.25);
@@ -7574,7 +8528,9 @@ const game = {
     const onButton = document.activeElement && document.activeElement.tagName === 'BUTTON';
     switch (code) {
       case 'Escape':
-        if (state === 'playing' || state === 'countdown') this.pause();
+        if (run.net && run.netMenu && currentScreen === 'pause') this.resume();
+        else if (state === 'playing' || state === 'countdown') this.pause();
+        else if (currentScreen === 'rooms') { audio.play('click'); leaveRooms(); }
         else if (currentScreen === 'keys') showScreen('settings');
         else if (currentScreen === 'settings') showScreen(settingsReturn);
         else if (state === 'paused') { if (performance.now() - lockLostAt > 500) this.resume(); }   // that Esc only freed the cursor
@@ -7590,11 +8546,14 @@ const game = {
         if (state === 'paused' && currentScreen === 'pause') { this.resume(); return; }
         break;
     }
+    if (run.netOut && (code === 'ArrowLeft' || code === 'ArrowRight')) { this.watchNext(code === 'ArrowLeft' ? -1 : 1); return; }   // (out: whose run to watch)
     // the keys you can change (Settings → CHANGE KEYS); a key does at most one of these
     if (bound('pause', code)) {
-      if (state === 'playing' || state === 'countdown') this.pause();
+      if (run.net && run.netMenu && currentScreen === 'pause') this.resume();
+      else if (state === 'playing' || state === 'countdown') this.pause();
       else if (state === 'paused' && currentScreen === 'pause') this.resume();
     } else if (bound('restart', code)) {
+      if (run.net) return;
       if ((state === 'paused' && currentScreen === 'pause') || state === 'gameover') this.start(run.practice);
     } else if (bound('punch', code)) {
       if (state === 'playing') player.requestPunch();
@@ -7626,7 +8585,7 @@ const game = {
   onWaveComplete(wave) {
     run.waves = wave.index + 1;
     for (const r of rivals.alive()) if (Math.random() < 0.35) r.ai.emoteNext = { id: Math.random() < 0.5 ? 'celebrate' : 'dance', at: r.ai.t + rand(0.1, 0.9) };
-    world.targetSpeed = speedForWave(run.waves);
+    if (!run.net) world.targetSpeed = speedForWave(run.waves);   // (in a room the walls speed up for everyone at once: world.syncSpeed)
     hud.setCounter(run.waves, true);
     hud.pipsDone();
     run.pipResetAt = run.time + 0.5;
@@ -7639,7 +8598,7 @@ const game = {
       { speed: 6, up: 9, size: [0.1, 0.22], life: [0.8, 1.4], grav: 0.8, carry: 2 });
     audio.play('wave');
     vibrate(30);
-    if (run.practice !== null || run.mode === 'respawn') return;   // practice and respawn runs don't count for your best
+    if (run.practice !== null || run.mode === 'respawn' || run.net) return;   // practice, respawn and room runs don't count for your best
     if (run.waves > bestWave) { bestWave = run.waves; saveBest(); }
     hud.setBest(bestWave, run.waves > run.bestAtStart);
     if (!run.newBest && run.bestAtStart > 0 && run.waves > run.bestAtStart) {
@@ -7738,31 +8697,68 @@ function perfMonitor(dt) {
 // ---------------------------------------------------------------------
 // 20. Main loop (fixed sub-steps for physics, one render per frame)
 // ---------------------------------------------------------------------
+// One physics step of a run.
+function playStep(h) {
+  if (run.netOut) {                                       // out of a room's round: the walls (and the others) go on without you
+    if (player.ko) player.koStep(h);
+    else if (player.visible) player.step(h, false);
+    if (player.visible && player.y < -24) player.hide();
+    world.step(h);
+    runnersApart();
+    combat.step();
+    return;
+  }
+  const out = run.respawnT > 0;                           // respawn mode: out for a moment (falling, or thrown clear by a zap)
+  if (out && player.ko) player.koStep(h);
+  else player.step(h, !out);
+  world.step(h);
+  if (!player.ko) world.support(player);
+  const contact = out ? null : world.resolve(player, h);
+  if (contact) game.onContact(contact);
+  rivals.step(h);                                         // the other runners, on the same walls
+  runnersApart();
+  combat.step();                                          // everyone's punches, settled together
+  if (out) {
+    if (player.ko || player.y < -4) run.respawnT -= h;     // (a fall counts down once you're out of sight)
+    if (run.respawnT <= 0) game.respawn();
+    return;
+  }
+  const zap = lasers.check(player);
+  if (zap) { game.die('zap', { side: zap }); return; }
+  if (run.mode === 'respawn' ? !player.grounded && player.y < -2.5 : player.fell()) { game.die('fall'); return; }   // (respawn mode: no long drop to wait through)
+  if (player.y > -1) world.checkPassed(player);           // no wave credit while dropping off the edge
+}
+// A room's round (17b): the round's clock says how far the walls should be, and the run takes as many fixed steps
+// (NET.step) as it takes to be there: the same steps on every device, so everyone's walls stay the same.
+function netPlay(dt) {
+  readMove();
+  if (run.netMenu) { input.moveX = input.moveZ = 0; player.jumpBuf = player.punchBuf = 0; }   // (the menu's open)
+  const goal = debug.manual ? run.time + dt : (performance.now() - run.netStart) / 1000;
+  const n = Math.min(NET.catchUp, Math.max(0, Math.floor((goal - run.time) / NET.step + 1e-6)));
+  ghosts.update(dt, run.time + n * NET.step);
+  for (let i = 0; i < n && run.net && state === 'playing'; i++) {
+    run.steps++;
+    run.time = run.steps * NET.step;
+    playStep(NET.step);
+  }
+  if (!run.net || state !== 'playing') return;           // (left the room meanwhile)
+  net.tick();
+  hud.setPunch(player);
+  if (!run.netOut && performance.now() > hud.busyUntil) {
+    const w = world.pendingAnnouncement(player);
+    if (w) hud.showBanner(`WAVE ${w.index + 1}`, w.pattern.name.toUpperCase() + (w.mirrored ? ' · MIRRORED' : ''), '', 1.9);
+  }
+  hud.setTime(run.time);
+  if (run.pipResetAt && run.time >= run.pipResetAt) { run.pipResetAt = 0; hud.resetPips(); }
+  hud.setDifficulty(run.waves, world.speed);
+  game.netTick();
+}
 function simulate(dt, active) {
   if (dt <= 0) return;
   const n = Math.min(24, Math.max(1, Math.ceil(dt / MAX_STEP))), h = dt / n;
   for (let i = 0; i < n; i++) {
-    if (active && state === 'playing') {
-      const out = run.respawnT > 0;                       // respawn mode: out for a moment (falling, or thrown clear by a zap)
-      if (out && player.ko) player.koStep(h);
-      else player.step(h, !out);
-      world.step(h);
-      if (!player.ko) world.support(player);
-      const contact = out ? null : world.resolve(player, h);
-      if (contact) game.onContact(contact);
-      rivals.step(h);                                     // the other runners, on the same walls
-      runnersApart();
-      combat.step();                                      // everyone's punches, settled together
-      if (out) {
-        if (player.ko || player.y < -4) run.respawnT -= h;   // (a fall counts down once you're out of sight)
-        if (run.respawnT <= 0) game.respawn();
-        continue;
-      }
-      const zap = lasers.check(player);
-      if (zap) { game.die('zap', { side: zap }); continue; }
-      if (run.mode === 'respawn' ? !player.grounded && player.y < -2.5 : player.fell()) { game.die('fall'); continue; }   // (respawn mode: no long drop to wait through)
-      if (player.y > -1) world.checkPassed(player);         // no wave credit while dropping off the edge
-    } else {
+    if (active && state === 'playing') playStep(h);
+    else {
       if (state === 'dying') {
         if (run.cause === 'fall') { player.step(h, false); world.support(player); }
         else player.koStep(h);
@@ -7776,6 +8772,7 @@ function update(rawDt) {
   const dt = rawDt * debug.timeScale, gdt = dt * timeScale;
   switch (state) {
     case 'playing': {
+      if (run.net) { netPlay(dt); break; }
       readMove();
       run.time += gdt;
       simulate(gdt, true);
@@ -7796,10 +8793,13 @@ function update(rawDt) {
       if (deathTimer > 1.35) game.gameOver();
       break;
     case 'countdown': {
-      countdownT -= dt;
+      countdownT = run.net && !debug.manual ? (run.netStart - performance.now()) / 1000 : countdownT - dt;   // (a room: GO when the round's clock says)
       const n = Math.ceil(countdownT / 0.5);
-      if (countdownT > 0 && n !== countdownLast) { countdownLast = n; hud.countdown(String(n)); audio.play('tick'); }
-      if (countdownT <= 0) { setState('playing'); hud.countdown('GO!'); audio.play('go'); }
+      if (countdownT > 0 && n <= 3 && n !== countdownLast) { countdownLast = n; hud.countdown(String(n)); audio.play('tick'); }
+      if (countdownT <= 0) {
+        if (run.net && debug.manual) run.netStart = performance.now();
+        setState('playing'); hud.countdown('GO!'); audio.play('go');
+      }
       break;
     }
     case 'menu':
@@ -7808,10 +8808,11 @@ function update(rawDt) {
       break;
     default: break;                       // paused / loading: frozen
   }
-  const frozen = state === 'paused' || state === 'countdown';
+  const frozen = state === 'paused' || (state === 'countdown' && !run.net);   // (a room's countdown: everyone stands ready, breathing)
   const vdt = frozen ? 0 : gdt;
   player.updateVisual(vdt);
   rivals.updateVisual(vdt);
+  ghosts.updateVisual(vdt);
   blockPreview.update(dt);
   buildUpdate(dt);
   updatePlayerExtras();
@@ -7877,6 +8878,30 @@ function wireButtons() {
   $('btn-skins').addEventListener('click', () => { audio.play('click'); showScreen('skins'); });
   $('btn-blocks').addEventListener('click', () => { audio.play('click'); showScreen('blocks'); });
   $('btn-waves').addEventListener('click', () => { audio.play('click'); showScreen('waves'); });
+  // ROOMS (17b)
+  $('btn-rooms').addEventListener('click', () => { audio.play('click'); openRooms(); });
+  $('btn-rooms-back').addEventListener('click', () => { audio.play('click'); leaveRooms(); });
+  $('btn-host').addEventListener('click', () => { audio.play('click'); net.host(); });
+  $('btn-room-leave').addEventListener('click', () => { audio.play('click'); net.leave(); });
+  $('btn-room-start').addEventListener('click', () => { audio.play('click'); net.start(); });
+  $('btn-power').addEventListener('click', () => { audio.play('click'); net.power(!(net.status && net.status.on)); });
+  $('btn-pin-ok').addEventListener('click', () => { const v = $('pin-input').value.trim(); if (v && net.askPin !== null) net.power(net.askPin, v); });
+  $('pin-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('btn-pin-ok').click(); } });
+  $('btn-pin-cancel').addEventListener('click', () => { audio.play('click'); net.askPin = null; net.say(''); });
+  const nameIn = $('net-name');
+  nameIn.addEventListener('change', () => net.setName(nameIn.value));
+  nameIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') nameIn.blur(); });
+  for (const [id, key, num] of [['room-diff', 'difficulty', true], ['room-mode', 'mode', false]]) {
+    $(id).addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b || b.disabled) return;
+      audio.play('click');
+      net.setRoom(key, num ? +b.dataset.v : b.dataset.v);
+    });
+  }
+  $('watch-prev').addEventListener('click', () => game.watchNext(-1));
+  $('watch-next').addEventListener('click', () => game.watchNext(1));
+  $('btn-end-round').addEventListener('click', () => { audio.play('click'); net.send({ t: 'end' }); game.resume(); });
   $('btn-howto-back').addEventListener('click', () => { audio.play('click'); showScreen('menu'); });
   $('btn-settings').addEventListener('click', () => { audio.play('click'); settingsReturn = 'menu'; syncSettingsUI(); showScreen('settings'); });
   $('btn-pause').addEventListener('click', () => game.pause());
@@ -7944,7 +8969,7 @@ function init() {
       designs, meshCounts: () => ({ hash: MESH['#'].count, ghost: MESH.ghost.count, spikes: MESH.spikes.count, bars: MESH.bar.count, breakables: MESH.brk.count }), layouts, layoutOpts,
       checkLayouts: () => layouts.forEach((L, i) => checkLayout(i)),
       layoutBlockCount: () => layoutView.meshes.map((m) => m.count),
-      rivals, combat, createRunner, PUNCH, SUPER_PUNCH, blockedBetween, EMOTES, EMOTE_LIST, emoteLoadout, setEmoteSlot, playEmoteSlot, emoteTray, czUI: () => czUI, setCzTab, pops, keymap, setKey, resetKeys, keyName, keyCapture, heldKeys: () => ({ keys: [...keys], bkeys: [...bkeys] }),
+      rivals, combat, createRunner, PUNCH, SUPER_PUNCH, blockedBetween, net, ghosts, packSnap, NET, netSpot, seededRandom, roomsUI, EMOTES, EMOTE_LIST, emoteLoadout, setEmoteSlot, playEmoteSlot, emoteTray, czUI: () => czUI, setCzTab, pops, keymap, setKey, resetKeys, keyName, keyCapture, heldKeys: () => ({ keys: [...keys], bkeys: [...bkeys] }),
       build, voxAt, voxRay, buildPlace, buildRemove, buildAim, buildAimRay, buildDir, enterBuild, leaveBuild, buildTool, VOX_H,
       setLayoutCells: (i, rows) => { layouts[i].vox = cellsToVox(rows.map((r) => (typeof r === 'string' ? [...r] : r))); checkLayout(i); },
       fogNear: () => scene.fog.near,

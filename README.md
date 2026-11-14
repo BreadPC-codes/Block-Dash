@@ -1,10 +1,10 @@
 # Block Dash
 
-A single-player 3D obstacle survival game in one file: `index.html` (HTML, CSS and JavaScript, with [Three.js](https://threejs.org/) r170 loaded from a CDN). You share the arena with computer-controlled rival runners, and you can punch them.
+A 3D obstacle survival game in one file: `index.html` (HTML, CSS and JavaScript, with [Three.js](https://threejs.org/) r170 loaded from a CDN). You share the arena with computer-controlled rival runners, and you can punch them. With the little server next to it, `server.js`, everyone on your Wi-Fi can play together in rooms (see [Rooms](#rooms-play-together-on-your-wi-fi)).
 
 Walls of cube blocks sweep across a small floating 12-lane arena with a slightly slippery checkered floor, one wave at a time and at most one new wall every 7 seconds. Slip through the holes, jump or dive over single cubes, or climb on top and ride. A wall that catches you pushes you toward the edge, so slide into a hole before you run out of floor. The always-on laser fences stand right beside the outer lanes, so there is no way around a wall at the sides: every wall reaches from fence to fence. Every wave you fully survive adds one to the **WAVE SURVIVED** counter.
 
-The main menu is a lobby: your runner stands on a podium just off the near end of the arena, with the walls rolling in behind it. Drag across the lobby to spin your runner and tap it to see your emotes one after another; the plate underneath names its outfit. **CUSTOMISE** (skins and emotes), **BLOCKS** and **WAVES** are down the left, **?** (How to play) and the gear (Settings) are at the top right, and your best, the difficulty, the game mode switch and **PLAY** are on the right. On a phone held upright everything sits above and below your runner instead.
+The main menu is a lobby: your runner stands on a podium just off the near end of the arena, with the walls rolling in behind it. Drag across the lobby to spin your runner and tap it to see your emotes one after another; the plate underneath names its outfit. **CUSTOMISE** (skins and emotes), **BLOCKS**, **WAVES** and **ROOMS** (play together on your Wi-Fi) are down the left, **?** (How to play) and the gear (Settings) are at the top right, and your best, the difficulty, the game mode switch and **PLAY** are on the right. On a phone held upright everything sits above and below your runner instead, with the four tiles in two rows.
 
 **Game mode:** the switch just above **PLAY** picks how a run goes. Your choice is saved.
 
@@ -26,6 +26,52 @@ python3 -m http.server 8000
 ```
 
 Then open <http://localhost:8000>.
+
+## Rooms: play together on your Wi-Fi
+
+Everyone on the same Wi-Fi can play in one room, each on their own phone, tablet or computer. One computer runs the server that comes with the game, `server.js`. It needs [Node.js](https://nodejs.org/) 18 or newer and nothing else: no `npm install`, no internet of its own.
+
+1. Put `server.js` next to `index.html` and, in that folder, run:
+
+   ```bash
+   node server.js
+   ```
+
+2. It prints where to open the game. On that computer it's `http://localhost:8080`. On every other device it's the Wi-Fi address it prints, like `http://192.168.1.20:8080`. If another device can't open it, the computer's firewall is probably blocking it: allow Node.js on private networks.
+3. On each device, open **ROOMS** in the lobby and type your name. One of you presses **HOST A ROOM** and the others **JOIN** it from the list. A room holds up to 8 players.
+4. The host picks the difficulty and the mode and presses **START**. Everyone counts down together and gets GO at the same moment.
+
+In a round:
+
+- **The same walls for everyone.** The server gives each round a seed, and each device builds the walls from it, in step: the round runs on the server's clock, in fixed steps, so every screen shows the same walls in the same place. Rooms use the built-in patterns only (your own wave layouts stay out of them); each device draws the walls in its own block designs.
+- **You see everyone.** Each device sends where its runner is and what it's doing about 20 times a second. Everyone else is drawn from that, in their own outfit with their name over their head, and moved on at their own speed between messages, so they keep up with the walls.
+- **Fights work across devices.** Punches and Super Punches, tackles, the spatula, hugs, uppercuts and shoves are settled on the device of whoever throws them, and the one they land on is flung (or picked up) on their own device. A taunt still shrugs everything off. Glass that someone smashes is gone for everyone.
+- **REGULAR:** one fall and you're out. The camera stays on the spot for a moment, then follows someone still in: ◀ ▶ at the bottom (or the arrow keys) switch who you watch. The last one standing wins ("YOU WIN!"); the round ends a moment later (or once everyone is out).
+- **RESPAWN:** fall off and you drop back in at your spot, inside the bubble. The round goes on until the host ends it from the menu (**END THE ROUND**). The fewest falls wins, then the most knock-outs.
+- **The round doesn't pause.** Esc (or the pause button) opens a menu over it, but the walls keep coming: **LEAVE THE ROOM** takes you back to ROOMS.
+- **Knock-outs:** if someone goes out within a couple of seconds of your punch, tackle, swat, hug or shove, it's your knock-out: the feed says so ("You knocked out BO") and it counts in the results.
+- **Results:** at the end everyone is back in the room with the results (waves, time or falls, and knock-outs), and the host can start the next round straight away. Rounds in rooms never count for your personal best.
+
+### Switching the rooms off and on
+
+The bar at the top of ROOMS shows whether the rooms are on, how many players are online, and the address the others open. The switch on its right turns the rooms off and on for everyone, from any device:
+
+- On the computer running the server it just works, and the bar there shows the server's **PIN**.
+- On any other device it asks for that PIN the first time (the server also prints it when it starts) and remembers it for next time.
+- Off, every room closes, everyone in a room is sent back to ROOMS ("The rooms were switched off."), and nobody can host or join. The game page itself still loads from the server, so the rooms can be switched back on from any device.
+
+The server's options are environment variables:
+
+| Variable | Default | What it does |
+|---|---|---|
+| `PORT` | `8080` | The port to serve on. |
+| `BLOCKDASH_PIN` | a new random 4-digit PIN every start | Your own PIN (4 to 8 digits). |
+| `BLOCKDASH_START_OFF` | not set | `1` starts the server with the rooms off. |
+| `BLOCKDASH_TRUST_LOCAL` | `1` | `0` asks for the PIN on the server's own computer too. |
+
+For example, `PORT=9000 BLOCKDASH_PIN=2468 node server.js` (in Windows PowerShell: `$env:PORT=9000; $env:BLOCKDASH_PIN=2468; node server.js`). Press Ctrl+C to stop the server.
+
+The server only serves `index.html` and the rooms. Each device still loads Three.js and the fonts from the internet, as usual. Use it on a network you trust: anyone on it can open the game and join a room, and the PIN only guards the switch.
 
 ## Controls
 
@@ -213,7 +259,7 @@ The hotbar has five kinds of block: **BLOCK** (an ordinary block in the wave's c
 
 ## Settings and saved data
 
-The Settings screen covers graphics quality (Low, Medium, High), field of view (70° by default), camera X and Y offset, your keyboard keys (**CHANGE KEYS**), mouse and camera sensitivity, joystick sensitivity and size (it scales the **JUMP** and **PUNCH** buttons too), the number of rival runners, volume, sound effects, music and vibration. Settings (including the difficulty and the game mode) are stored in `localStorage` under `blockdash.settings.v1`. The personal best is kept per difficulty: `blockdash.bestWave` for Normal and `blockdash.bestWave.1`, `.2`, `.4` and `.5` for the other levels. Your keys are stored under `blockdash.keys.v1`. The chosen outfit and your colours are stored under `blockdash.skin.v1`, your 20 block designs under `blockdash.blocks.v1`, and your 30 wave layouts under `blockdash.layouts.v1`.
+The Settings screen covers graphics quality (Low, Medium, High), field of view (70° by default), camera X and Y offset, your keyboard keys (**CHANGE KEYS**), mouse and camera sensitivity, joystick sensitivity and size (it scales the **JUMP** and **PUNCH** buttons too), the number of rival runners, volume, sound effects, music and vibration. Settings (including the difficulty and the game mode) are stored in `localStorage` under `blockdash.settings.v1`. The personal best is kept per difficulty: `blockdash.bestWave` for Normal and `blockdash.bestWave.1`, `.2`, `.4` and `.5` for the other levels. Your keys are stored under `blockdash.keys.v1`, your name in rooms under `blockdash.name.v1`, and the rooms PIN each server accepted from this device under `blockdash.pins.v1`. The chosen outfit and your colours are stored under `blockdash.skin.v1`, your 20 block designs under `blockdash.blocks.v1`, and your 30 wave layouts under `blockdash.layouts.v1`.
 
 ## Performance
 
@@ -240,4 +286,10 @@ On every quality:
 
 ## Debugging
 
-Add `?debug=1` to the URL to expose `window.BlockDash` (game state, world, player, rivals, the punch settings and the pattern solver) in the browser console.
+Add `?debug=1` to the URL to expose `window.BlockDash` (game state, world, player, rivals, the punch settings and the pattern solver, and in a room `net` and `ghosts`) in the browser console.
+
+How a room works, for anyone changing it (section 17b of `index.html`, and `server.js`):
+
+- `server.js` is plain Node: an HTTP server for the page, `GET /api/status` and `POST /api/power` (`{ on, pin }`), and a small WebSocket server at `/ws` for JSON messages. It keeps the rooms and relays messages between the players in one; it never runs the game itself.
+- A round's walls come from `world.seed`: every wave draws from its own seeded random stream (`seededRandom`), and in a room the walls speed up as each wave passes the start line (`world.syncSpeed`), not as you pass it. `netPlay` runs the round in fixed steps (`NET.step`, 1/120 s) up to the round's clock: GO is a moment on the server's clock (`start.at`), and each device knows how far its clock is from the server's (a few `ping`s; the quickest round trip wins).
+- Your runner goes out as a `snap` (`packSnap`) every 50 ms. Others are `ghosts`: runners that never step themselves, moved from their last snap on at its speed and eased onto it. In `combat`, ghosts never attack (their own device does that), and whatever you land on a ghost is sent to its player as an `ev` (`hit`, `tackle`, `swat`, `blocked`, `flinch`, `grab`/`release`/`free`, `shove`); `net.onEvent` applies it to you. A smashed glass block is an `ev` to everyone (`glass`).
