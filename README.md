@@ -205,6 +205,29 @@ The hotbar has five kinds of block: **BLOCK** (an ordinary block in the wave's c
 
 The Settings screen covers graphics quality (Low, Medium, High), field of view (70° by default), camera X and Y offset, your keyboard keys (**CHANGE KEYS**), mouse and camera sensitivity, joystick sensitivity and size (it scales the **JUMP** and **PUNCH** buttons too), the number of rival runners, volume, sound effects, music and vibration. Settings (including the difficulty) are stored in `localStorage` under `blockdash.settings.v1`. The personal best is kept per difficulty: `blockdash.bestWave` for Normal and `blockdash.bestWave.1`, `.2`, `.4` and `.5` for the other levels. Your keys are stored under `blockdash.keys.v1`. The chosen outfit and your colours are stored under `blockdash.skin.v1`, your 20 block designs under `blockdash.blocks.v1`, and your 30 wave layouts under `blockdash.layouts.v1`.
 
+## Performance
+
+What each graphics quality (Settings → Graphics) changes:
+
+| | Low | Medium | High |
+|---|---|---|---|
+| Resolution (device pixels per CSS pixel, at most) | 1 | 1.5 | 2 |
+| Antialiasing (MSAA) | off | on, except on high-density (2×+) screens | on, except on high-density (2×+) screens |
+| Shadows | off | 1024 × 1024 | 2048 × 2048 |
+| Materials | plain diffuse (Lambert) | plain diffuse (Lambert) | physically based (Standard) |
+| Frosted-glass blur behind the menus | off | off | on |
+| Particles / floating decor / dust / stars | 160 / 16 / 60 / 300 | 300 / 30 / 140 / 550 | 420 / 46 / 240 / 850 |
+| On a 120 Hz (or faster) screen | 60 frames a second | 60 frames a second | every refresh |
+
+On every quality:
+
+- **Fewer draws.** Parts of a runner that never move apart are one mesh: the torso with its stripe and shorts, and each leg with its shoe and sole, coloured per vertex. The eyes, cheeks and every skin item are merged by material. A runner is now about 16 draws instead of 27: with three rivals in view the main pass draws 106 meshes, down from 147.
+- **A cheaper shadow pass.** Only the big parts of a runner cast a shadow (torso, head, legs and sleeves). In the same moment the shadow pass draws 27 meshes, down from 105.
+- **No stalls mid-run.** Every shader is compiled while the game loads, and the rival runners and your block designs are built before the first run.
+- **A paused game rests.** The arena is drawn once when you pause, then not again until you resume, resize the window or change a setting.
+- **Less page work.** Hidden screens pause their looping animations; before, the PLAY button's shine forced a layout every frame of every run. The punch cooldown bar now restyles only itself, not the whole page. The small HUD chips have no blur.
+- **Adaptive resolution.** If a run averages more than 24 ms a frame for 3 seconds, the resolution drops a step (down to 60%). It comes back up when frames are fast again.
+
 ## Debugging
 
 Add `?debug=1` to the URL to expose `window.BlockDash` (game state, world, player, rivals, the punch settings and the pattern solver) in the browser console.
