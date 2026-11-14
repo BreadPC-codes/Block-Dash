@@ -4202,14 +4202,14 @@ function createRunner(opts = {}) {
     hide() { root.visible = false; },
     requestJump() { this.jumpBuf = JUMP_BUFFER; },
     // Emotes: standing on something, not mid-punch, mid-tackle or knocked about. A new one replaces the last. Out of a
-    // dive (in the air, or the belly-slide after it) only two kinds work: the tackle, which dashes on (startTackle),
-    // and the dances and taunts, which stop the dive (diveCancel).
+    // dive (in the air, or the belly-slide after it) only these work: the tackle, which dashes on (startTackle), and
+    // the dances, taunts and the spatula, which stop the dive and stand you up (diveCancel).
     // Knocked down (on the floor), only the spatula works: it gets you up (getUp).
     canEmote(def) {
       if (!this.visible || this.ko || this.punchT >= 0 || this.tackleT >= 0 || this.holding || this.heldBy) return false;
       if (def && def.spatula && this.spatulaCd > 0 && this.showYaw === null) return false;   // (one swat every SPATULA.cooldown)
       if (this.stunT > 0) return !!def && !!def.getUp && this.showYaw === null && this.downed && this.downStarted && this.grounded;
-      if (this.diving || this.slideT > 0) return !!def && this.showYaw === null && (!!def.tackle || def.group === 'fun');
+      if (this.diving || this.slideT > 0) return !!def && this.showYaw === null && (!!def.tackle || !!def.getUp || def.group === 'fun');
       return this.grounded;
     },
     // The spatula flips you up off the floor: up at once (with the usual moment's guard), with a little hop.
@@ -4227,7 +4227,7 @@ function createRunner(opts = {}) {
       const fromDive = this.diving || this.slideT > 0;
       const sliding = def.tackle && this.showYaw === null;
       if (sliding && !this.startTackle(fromDive)) return false;   // (still cooling down from the last one)
-      if (fromDive && !sliding) this.diveCancel();       // a dance or taunt stops the dive
+      if (fromDive && !sliding) this.diveCancel();       // a dance, a taunt or the spatula stops the dive: you're on your feet
       const grab = def.grab && this.showYaw === null ? this.hugTarget() : null;
       if (grab && !grab.taunting) { this.grab(grab); return true; }   // somebody in front of you: hold on to them
       if (grab) combat.blocked(this, grab);              // (taunting: they can't be grabbed, so it's a hug for yourself)
@@ -4283,8 +4283,9 @@ function createRunner(opts = {}) {
       this.yaw = Math.atan2(-dx, -dz);
       return true;
     },
-    // A dance or taunt out of a dive: the dive stops dead. You drop where you are with a little of its speed left
-    // (TAUNT.keep), and the stick you were holding doesn't count for a moment (TAUNT.lock, stickLocked).
+    // A dance, a taunt or the spatula out of a dive: the dive stops dead and you're upright again. You drop where you
+    // are with a little of its speed left (TAUNT.keep), and the stick you were holding doesn't count for a moment
+    // (TAUNT.lock, stickLocked), so it doesn't end the emote (or a spatula's swat) straight away.
     diveCancel() {
       this.diving = false; this.slideT = 0;
       this.vx *= TAUNT.keep; this.vz *= TAUNT.keep; this.vy = Math.min(this.vy, 1);
