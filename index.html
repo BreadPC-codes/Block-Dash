@@ -1255,6 +1255,11 @@ const TAUNT = { keep: 0.15, lock: 0.45 };
 // and over it (a vault): up till your feet are `clear` m above its top, carried along with it on the way up, then
 // back over it at `back` m/s while it slides on underneath you, and down behind it, still dancing.
 const VAULT = { clear: 1.2, back: 3 };
+// Spatula (the SPATULA emote): a swat a little longer and wider than a punch (`reach` past your front, `halfWidth`
+// either side, from `low` to `high` above your feet). Whoever it catches drops flat where they stand: no push, just
+// a little `hop`, then `down` seconds on the floor (a rival's swat keeps you down for KNOCKDOWN.youDown of that).
+// One every `cooldown` seconds. Knocked down yourself, it flips you straight back up first (a `flip` of a hop).
+const SPATULA = { reach: 2.1, halfWidth: 1.0, low: 0.1, high: 1.9, hop: 3, stun: 1.0, down: 2.0, cooldown: 3, flip: 4.5 };
 // The taunt's shield: a soft bubble, bright at the rim, round whoever's dancing or taunting.
 const SHIELD_GEO = new THREE.SphereGeometry(0.86, 28, 18);
 const SHIELD_VS = 'varying vec3 vN; varying vec3 vV; void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }';
@@ -2082,6 +2087,11 @@ const audio = {
         this.tone({ f0: 990, f1: 990, dur: 0.18, type: 'square', vol: 0.06, lp: 2600, delay: 0.09 });
         break;
       case 'nope': this.tone({ f0: 240, f1: 170, dur: 0.1, type: 'square', vol: 0.04, lp: 1400 }); break;
+      case 'whap':                                        // a spatula's flat smack
+        this.noise({ dur: 0.07, vol: 0.22 * (opt || 1), f0: 1800, type: 'bandpass', q: 0.8 });
+        this.tone({ f0: 520, f1: 260, dur: 0.09, type: 'square', vol: 0.05 * (opt || 1), lp: 2200 });
+        this.tone({ f0: 140, f1: 70, dur: 0.12, type: 'sine', vol: 0.2 * (opt || 1) });
+        break;
       case 'deflect':                                     // something bounced off a taunt's shield: a bright "ting"
         this.tone({ f0: 1320, f1: 1760, dur: 0.09, type: 'triangle', vol: 0.09 * (opt || 1) });
         this.tone({ f0: 1760, f1: 1600, dur: 0.22, type: 'sine', vol: 0.06 * (opt || 1), delay: 0.06 });
@@ -3430,6 +3440,7 @@ const both = (keys) => keys;                              // (the same keys for 
 const env = (t, a, b, ramp = 0.12) => clamp(Math.min((t - a) / ramp, (b - t) / ramp), 0, 1);   // 0 → 1 → 0 across [a, b]
 const EMOTE_ICONS = {
   tackle: '<svg viewBox="0 0 48 48"><path d="M12 13h10v9h11c5.5 0 9.5 3.4 10.5 8.6l.5 2.4H12z"/><rect x="11" y="34" width="34" height="4.5" rx="2.2" opacity=".75"/><path d="M2.5 18h6M1 25.5h7.5M3 33h5" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none"/><circle cx="6" cy="41" r="3.2" opacity=".55"/><circle cx="12.5" cy="43" r="2.4" opacity=".45"/></svg>',
+  spatula: '<svg viewBox="0 0 48 48"><g transform="rotate(-28 24 24)"><rect x="13" y="3" width="22" height="21" rx="4.5"/><rect x="17" y="7" width="3" height="12" rx="1.5" fill="#41597a" opacity=".6"/><rect x="22.5" y="7" width="3" height="12" rx="1.5" fill="#41597a" opacity=".6"/><rect x="28" y="7" width="3" height="12" rx="1.5" fill="#41597a" opacity=".6"/><path d="M21.5 24h5l1 8h-7z" opacity=".8"/><rect x="20.5" y="31" width="7" height="15" rx="3.5" fill="#d94a3a"/></g></svg>',
   hug: '<svg viewBox="0 0 48 48"><path d="M24 42S6 31 6 18.5C6 12 10.5 8 16 8c3.6 0 6.4 2 8 4.8C25.6 10 28.4 8 32 8c5.5 0 10 4 10 10.5C42 31 24 42 24 42z"/></svg>',
   laugh: '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="20"/><path d="M13 19c2-3 6-3 8 0M27 19c2-3 6-3 8 0" stroke="#5b2a00" stroke-width="3.2" stroke-linecap="round" fill="none"/><path d="M12 26h24c0 7-5.5 12-12 12s-12-5-12-12z" fill="#5b2a00"/><path d="M17 33c4 3 10 3 14 0" fill="#ff7a8a"/></svg>',
   dance: '<svg viewBox="0 0 48 48"><path d="M20 8l20-4v26.5a6.5 6.5 0 1 1-4-6V12.6l-12 2.4v19.5a6.5 6.5 0 1 1-4-6z"/></svg>',
@@ -3507,6 +3518,28 @@ const EMOTES = [
       eyes: [[0, 1], [0.15, 0.12]], mouth: [[0, 0], [0.15, 0.55]], face: [[0, 0]],
     },
     proc: (P, t) => { const k = Math.min(1, t / 0.3), kick = Math.sin(t * 15); P.lLX = kick * 0.55 * k; P.lRX = -kick * 0.55 * k; P.tilt = Math.sin(t * 7) * 0.08 * k; } },
+  // Spatula: out comes a big kitchen spatula. Raised high and back, then a flat WHAP down in front of you with a
+  // step in: whoever it catches (a little further than a punch reaches, see SPATULA) drops flat where they stand,
+  // no push. The blade wobbles after the smack. Knocked down yourself, it flips you up first (see getUp).
+  { id: 'spatula', name: 'SPATULA', group: 'hostile', spatula: true, getUp: true, c: ['#e8f0fb', '#8fa8c8', '#41597a'], dur: 1.05, target: 'swat', reach: 0.25,
+    chan: {
+      aRX: [[0, 0], [0.2, 2.75, 'out'], [0.3, 0.55, 'in'], [0.62, 0.45], [0.86, 1.3], [1.05, 0]],
+      aRZ: [[0, 0.12], [0.2, 0.35], [0.3, 0.1], [0.62, 0.1], [1.05, 0.12]],
+      aRS: [[0, 0], [0.22, 0], [0.3, 0.35, 'out'], [0.6, 0.25], [0.8, 0]],
+      aLX: [[0, 0], [0.2, 0.7], [0.3, 0.2], [0.62, 0.3], [1.05, 0]],
+      aLZ: [[0, 0.12], [0.2, 0.55], [0.3, 0.35], [0.62, 0.3], [1.05, 0.12]],
+      twist: [[0, 0], [0.2, -0.4], [0.3, 0.38, 'out'], [0.62, 0.3], [1.0, 0]],
+      lean: [[0, 0], [0.2, -0.18], [0.3, 0.32, 'out'], [0.62, 0.26], [1.0, 0]],
+      headX: [[0, 0], [0.2, -0.2], [0.3, 0.22], [0.62, 0.18], [1.0, 0]],
+      lLX: [[0, 0], [0.3, 0.38, 'out'], [0.7, 0.34], [1.0, 0]],
+      lRX: [[0, 0], [0.3, -0.2, 'out'], [0.7, -0.18], [1.0, 0]],
+      hop: [[0, 0], [0.22, 0.05], [0.3, 0], [1.05, 0]],
+      reach: [[0, 0], [0.3, 1, 'out'], [0.62, 0.8], [1.0, 0]],
+      eyes: [[0, 1], [0.18, 0.55], [0.3, 0.12], [0.62, 0.2], [0.9, 1]],
+      mouth: [[0, 0], [0.18, 0.25], [0.3, 0.85, 'out'], [0.62, 0.5], [0.9, 0]],
+    },
+    proc: (P, t) => { const k = env(t, 0.32, 0.64, 0.08); P.aRY = Math.sin((t - 0.32) * 30) * 0.14 * k; },   // the blade wobbles after the smack
+    fx: [[0.2, (r) => emoteFx.sound(r, 'swing')], [0.3, (r, e) => combat.spatula(r, e)]] },
   // Boxing: fists up, a bounce on the toes with a weave, a left jab, a right jab, then a crouch and a big uppercut
   // with a hop and a POW. It squares up to whoever's within reach, and they flinch.
   { id: 'boxing', name: 'BOXING', group: 'hostile', c: ['#ff9a8a', '#ff3b4f', '#a3162b'], dur: 2.2, turn: 0.9, target: 'spar', reach: 0.35,
@@ -3679,7 +3712,7 @@ function setEmoteSlot(i, id) {                           // (if it was in anothe
 }
 // Who an emote is aimed at: the closest runner within reach for boxing, anyone within 16 m for a point. (A tackle
 // isn't aimed: it goes the way you run; a hug grabs whoever's in front of you, see hugTarget.)
-const EMOTE_RANGE = { spar: 2.4, point: 16 };
+const EMOTE_RANGE = { spar: 2.4, point: 16, swat: 3.0 };
 function emoteTarget(r, def) {
   const range = EMOTE_RANGE[def.target];
   if (!range) return null;
@@ -3712,7 +3745,7 @@ function createRunner(opts = {}) {
   const M = {
     skin: mat(0xffcfa1), shirt: mat(0x23c3ff, 0.5), stripe: mat(0xffffff, 0.5), shorts: mat(0x3a3fa8),
     shoe: mat(0xffffff, 0.45), sole: mat(0xff4d5e), cap: mat(0xff4d5e, 0.45), eye: mat(0xffffff, 0.25),
-    pupil: mat(0x1b1530, 0.3), cheek: mat(0xff8f9a, 0.6),
+    pupil: mat(0x1b1530, 0.3), cheek: mat(0xff8f9a, 0.6), spatH: mat(0xd94a3a, 0.5), steel: mat(0xdfe6ef, 0.32),
     dark: mat(0x1b1530, 0.4), ivory: mat(0xfff1d6, 0.5),
     glass: new THREE.MeshStandardMaterial({ color: 0xbfe6ff, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.28, depthWrite: false }),
     glow: new THREE.MeshStandardMaterial({ color: 0x44f0ff, emissive: 0x44f0ff, emissiveIntensity: 0.9, roughness: 0.3 }),
@@ -3793,6 +3826,17 @@ function createRunner(opts = {}) {
     shoulder.userData = { s, sleeve, hand };
     return shoulder;
   });
+  // The SPATULA emote's spatula (an original design): a red handle and a slotted steel blade, out of the right hand
+  // along the arm, the blade's flat facing the way the arm swings. Only out while the emote plays.
+  const spatula = new THREE.Group();
+  spatula.visible = false;
+  add(spatula, new THREE.CylinderGeometry(0.024, 0.028, 0.3, 8), M.spatH, 0, -0.17, 0);
+  add(spatula, new THREE.CylinderGeometry(0.012, 0.016, 0.07, 6), M.steel, 0, -0.34, 0);
+  add(spatula, new THREE.BoxGeometry(0.17, 0.22, 0.02), M.steel, 0, -0.47, 0);
+  for (const sx of [-0.045, 0, 0.045]) add(spatula, new THREE.BoxGeometry(0.02, 0.13, 0.024), M.dark, sx, -0.48, 0);
+  mergeSiblings(spatula);
+  spatula.scale.setScalar(1.35);                         // (a big, cartoon one)
+  arms[1].userData.hand.add(spatula);
   // The punching fist glows during a Super Punch.
   const fistGlow = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10),
     new THREE.MeshBasicMaterial({ color: 0xffe066, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
@@ -4081,6 +4125,7 @@ function createRunner(opts = {}) {
     tackleT: -1, tackleCd: 0, tackleDirX: 0, tackleDirZ: -1, tackleHits: new Set(),   // a slide tackle: time into it, cooldown, way, who it caught
     tackleDash: 0, tackleV: 0, tackleAir: false,        // out of a dive: dash still to go (m), the slide's speed after it, started in the air
     vault: null,                                         // a taunt going over spikes or a bar: { row, top } (see VAULT)
+    spatulaCd: 0,                                        // till the next SPATULA swat
     shieldK: 0, shieldHit: 0,                            // the taunt's shield: how much it shows (0–1), and its flash when something bounces off
     holding: null, heldBy: null, holdT: 0, grabCd: 0,   // a hug: who you're holding (or who's holding you), time left, no re-grab yet
     downBlend: 0, shovedT: 9,                            // lying down (0–1, for the drawing); time since someone shoved you
@@ -4144,7 +4189,7 @@ function createRunner(opts = {}) {
       this.punchedT = 9; this.lastHitBy = null; this.lastHitSuper = false;
       this.downed = this.downStarted = false; this.downFor = this.guardT = this.hitFace = 0;
       this.emote = null; this.tackleT = -1; this.tackleCd = 0; this.tackleHits.clear(); this.tackleDash = this.tackleV = 0; this.tackleAir = false;
-      this.shieldK = this.shieldHit = 0; shield.visible = false; this.vault = null;
+      this.shieldK = this.shieldHit = 0; shield.visible = false; this.vault = null; this.spatulaCd = 0; spatula.visible = false;
       if (this.holding || this.heldBy) this.letGo();
       this.holdT = this.grabCd = this.downBlend = this.momentum = 0; this.shovedT = 9;
       botCtl.moveX = botCtl.moveZ = botCtl.aimX = botCtl.aimZ = 0; this.windup = 0;
@@ -4159,14 +4204,26 @@ function createRunner(opts = {}) {
     // Emotes: standing on something, not mid-punch, mid-tackle or knocked about. A new one replaces the last. Out of a
     // dive (in the air, or the belly-slide after it) only two kinds work: the tackle, which dashes on (startTackle),
     // and the dances and taunts, which stop the dive (diveCancel).
+    // Knocked down (on the floor), only the spatula works: it gets you up (getUp).
     canEmote(def) {
-      if (!this.visible || this.ko || this.stunT > 0 || this.punchT >= 0 || this.tackleT >= 0 || this.holding || this.heldBy) return false;
+      if (!this.visible || this.ko || this.punchT >= 0 || this.tackleT >= 0 || this.holding || this.heldBy) return false;
+      if (def && def.spatula && this.spatulaCd > 0 && this.showYaw === null) return false;   // (one swat every SPATULA.cooldown)
+      if (this.stunT > 0) return !!def && !!def.getUp && this.showYaw === null && this.downed && this.downStarted && this.grounded;
       if (this.diving || this.slideT > 0) return !!def && this.showYaw === null && (!!def.tackle || def.group === 'fun');
       return this.grounded;
+    },
+    // The spatula flips you up off the floor: up at once (with the usual moment's guard), with a little hop.
+    getUp() {
+      this.downed = this.downStarted = false; this.stunT = 0; this.guardT = FLING.guard;
+      this.downBlend = Math.min(this.downBlend, 0.45);
+      this.vy = SPATULA.flip; this.grounded = false; this.platform = null; this.coyote = 0; this.jumped = this.dived = true;
+      this.squash = -0.6;
+      game.onGetUp(this);
     },
     playEmote(id, opts = {}) {
       const def = EMOTE_BY_ID[id];
       if (!def || !this.canEmote(def)) return false;
+      if (def.getUp && this.downed) this.getUp();          // knocked down: the spatula flips you up first
       const fromDive = this.diving || this.slideT > 0;
       const sliding = def.tackle && this.showYaw === null;
       if (sliding && !this.startTackle(fromDive)) return false;   // (still cooling down from the last one)
@@ -4176,8 +4233,16 @@ function createRunner(opts = {}) {
       if (grab) combat.blocked(this, grab);              // (taunting: they can't be grabbed, so it's a hug for yourself)
       const target = opts.target !== undefined ? opts.target : emoteTarget(this, def);
       const reach = target && def.reach ? clamp((Math.hypot(target.x - this.x, target.z - this.z) - 0.9) * def.reach, 0, 0.45) : 0;
-      this.emote = { def, t: 0, fade: 0, fx: 0, target, reach, faceYaw: sliding ? this.yaw : emoteFaceYaw(this, def, target),
-        air: !this.grounded, lock: fromDive && !sliding ? TAUNT.lock : 0 };   // (out of a dive: it may start in the air)
+      let dirX = 0, dirZ = -1;                            // the spatula swats at whoever it's aimed at, or where you look
+      if (def.spatula) {
+        if (target) { const d = Math.hypot(target.x - this.x, target.z - this.z) || 1; dirX = (target.x - this.x) / d; dirZ = (target.z - this.z) / d; }
+        else if (local) { dirX = -Math.sin(camCtl.yaw); dirZ = -Math.cos(camCtl.yaw); }
+        else { dirX = -Math.sin(this.yaw); dirZ = -Math.cos(this.yaw); }
+        if (this.showYaw === null) this.spatulaCd = SPATULA.cooldown;
+      }
+      this.emote = { def, t: 0, fade: 0, fx: 0, target, reach, dirX, dirZ,
+        faceYaw: sliding ? this.yaw : def.spatula ? Math.atan2(-dirX, -dirZ) : emoteFaceYaw(this, def, target),
+        air: !this.grounded, lock: fromDive && !sliding ? TAUNT.lock : 0 };   // (out of a dive, or the spatula's flip: it may start in the air)
       this.emotes++;
       game.onEmote(this, def);
       return true;
@@ -4398,6 +4463,7 @@ function createRunner(opts = {}) {
       // keeps the dive's momentum. Only the cooldown and being knocked about stop you throwing one.
       if (this.punchCd > 0) this.punchCd -= h;
       if (this.tackleCd > 0) this.tackleCd -= h;
+      if (this.spatulaCd > 0) this.spatulaCd -= h;
       this.punchBuf = Math.max(0, this.punchBuf - h);
       if (this.punchT >= 0) {
         this.punchT += h;
@@ -4696,6 +4762,7 @@ function createRunner(opts = {}) {
         const mo = Number.isNaN(EP.mouth) ? 0 : EP.mouth * ew;
         mouth.visible = mo > 0.03; mouth.scale.y = 0.15 + mo * 0.85; smile.scale.setScalar(1 + mo * 0.35);
       } else if (mouth.visible || smile.scale.x !== 1) { mouth.visible = false; smile.scale.setScalar(1); }
+      spatula.visible = ew > 0.02 && !!this.emote && !!this.emote.def.spatula;
     },
   };
 }
@@ -5044,6 +5111,29 @@ const combat = {
     b.takeHit(a, dx * kb, lift, dz * kb, P.stun, sup);
     if (b === player && a !== player) b.downFor *= KNOCKDOWN.youDown;   // (and you're up again sooner)
     game.onPunchHit(a, b, sup, kb);
+  },
+  // The SPATULA's swat (an emote effect, at the moment it comes down): a box a little longer and wider than a punch's,
+  // the way it's aimed. Whoever it catches drops flat where they stand: no push. Not through walls; a taunt shrugs it off.
+  spatula(a, e) {
+    if (state !== 'playing' || a.showYaw !== null || !a.visible || a.ko) return;
+    const S = SPATULA, dx = e.dirX, dz = e.dirZ, near = P_HALF_D * 0.5, far = P_HALF_D + S.reach, w = S.halfWidth;
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (const along of [near, far]) for (const side of [-w, w]) {
+      const x = a.x + dx * along - dz * side, z = a.z + dz * along + dx * side;
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z);
+    }
+    const y0 = a.y + S.low, y1 = a.y + S.high;
+    for (const b of this.runners()) {
+      if (b === a || b.untouchable) continue;
+      const bb = b.bodyBox();
+      if (x1 < bb.x0 || x0 > bb.x1 || y1 < bb.y0 || y0 > bb.y1 || z1 < bb.z0 || z0 > bb.z1) continue;
+      if (blockedBetween(a.x, a.y + 1, a.z, b.x, clamp(a.y + 1, b.y + 0.15, b.y + b.height - 0.15), b.z)) continue;
+      if (b.taunting) { this.blocked(a, b); continue; }
+      b.takeHit(a, 0, S.hop, 0, S.stun, false);
+      b.knockYaw = Math.atan2(b.x - a.x, b.z - a.z);     // (on their back, feet toward you)
+      b.downFor = S.down * (b === player && a !== player ? KNOCKDOWN.youDown : 1);
+      game.onSpatulaHit(a, b);
+    }
   },
   // Dancing or taunting (TAUNT): it bounces off. Nothing happens to them but a flash of the shield and a "NOPE!".
   blocked(a, b) { b.shieldHit = 1; game.onBlocked(a, b); },
@@ -7290,6 +7380,21 @@ const game = {
     pops.spawn(b.x, b.y + 2.25, b.z, 'NOPE!', '#8af0ff', { size: 0.7, rise: 0.9, life: 0.9 });
     if (a === player) { camCtl.shake = Math.max(camCtl.shake, 0.12); vibrate(8); }
     if (b === player) vibrate(12);
+  },
+  onSpatulaHit(a, b) {                                  // the spatula comes down: WHAP, flat on the floor
+    const you = a === player || b === player, near = you ? 1 : clamp(1 - Math.hypot(b.x - player.x, b.z - player.z) / 16, 0.15, 1);
+    audio.play('whap', near);
+    particles.burst(b.x, b.y + 1.4, b.z, 14, ['#ffffff', '#e8f0fb', '#ffd23f'], { speed: 3.5, up: 2.5, size: [0.06, 0.13], life: [0.3, 0.55], grav: 0.5, bounce: 0 });
+    pops.spawn(b.x, b.y + 2.25, b.z, 'WHAP!', '#ffd23f', { size: 0.72, rise: 0.9, life: 0.9 });
+    if (a === player) { camCtl.shake = Math.max(camCtl.shake, 0.22); vibrate(18); }
+    if (b === player) { camCtl.shake = Math.max(camCtl.shake, 0.3); hud.flash('hit'); vibrate(28); }
+  },
+  onGetUp(r) {                                          // the spatula flips you up off the floor
+    const near = r === player ? 1 : clamp(1 - Math.hypot(r.x - player.x, r.z - player.z) / 16, 0, 1);
+    if (near > 0.04) audio.play('jump');
+    particles.burst(r.x, r.y + 0.2, r.z, 8, ['#ffffff', '#e8f0fb', '#cfc6ff'], { speed: 2.2, up: 1.8, size: [0.06, 0.12], life: [0.25, 0.45], grav: 0.4, bounce: 0 });
+    pops.spawn(r.x, r.y + 2.1, r.z, 'FLIP!', '#e8f0fb', { size: 0.6, rise: 0.8, life: 0.8 });
+    if (r === player) vibrate(10);
   },
   onVault(r) {                                          // a taunt lifted over spikes or a bar: a ting and a spring
     const near = r === player ? 1 : clamp(1 - Math.hypot(r.x - player.x, r.z - player.z) / 16, 0, 1);
