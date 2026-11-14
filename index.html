@@ -1259,7 +1259,10 @@ const VAULT = { clear: 1.2, back: 3 };
 // either side, from `low` to `high` above your feet). Whoever it catches drops flat where they stand: no push, just
 // a little `hop`, then `down` seconds on the floor (a rival's swat keeps you down for KNOCKDOWN.youDown of that).
 // One every `cooldown` seconds. Knocked down yourself, it flips you straight back up first (a `flip` of a hop).
-const SPATULA = { reach: 2.1, halfWidth: 1.0, low: 0.1, high: 1.9, hop: 3, stun: 1.0, down: 2.0, cooldown: 3, flip: 4.5 };
+// Mid-dive it stands you up and keeps all the dive's momentum: you glide on upright, as the dive would have carried
+// you, till you land and for at least `glide` seconds (through the swat), then run on as usual. Out of a dive you may
+// overtake whoever you aimed at, so the swat always turns to whoever's nearest in reach when it comes down.
+const SPATULA = { reach: 2.1, halfWidth: 1.0, low: 0.1, high: 1.9, hop: 3, stun: 1.0, down: 2.0, cooldown: 3, flip: 4.5, glide: 0.35 };
 // The taunt's shield: a soft bubble, bright at the rim, round whoever's dancing or taunting.
 const SHIELD_GEO = new THREE.SphereGeometry(0.86, 28, 18);
 const SHIELD_VS = 'varying vec3 vN; varying vec3 vV; void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }';
@@ -4125,7 +4128,7 @@ function createRunner(opts = {}) {
     tackleT: -1, tackleCd: 0, tackleDirX: 0, tackleDirZ: -1, tackleHits: new Set(),   // a slide tackle: time into it, cooldown, way, who it caught
     tackleDash: 0, tackleV: 0, tackleAir: false,        // out of a dive: dash still to go (m), the slide's speed after it, started in the air
     vault: null,                                         // a taunt going over spikes or a bar: { row, top } (see VAULT)
-    spatulaCd: 0,                                        // till the next SPATULA swat
+    spatulaCd: 0, glideT: 0,                             // till the next SPATULA swat; a spatula out of a dive gliding on upright
     shieldK: 0, shieldHit: 0,                            // the taunt's shield: how much it shows (0–1), and its flash when something bounces off
     holding: null, heldBy: null, holdT: 0, grabCd: 0,   // a hug: who you're holding (or who's holding you), time left, no re-grab yet
     downBlend: 0, shovedT: 9,                            // lying down (0–1, for the drawing); time since someone shoved you
@@ -4189,7 +4192,7 @@ function createRunner(opts = {}) {
       this.punchedT = 9; this.lastHitBy = null; this.lastHitSuper = false;
       this.downed = this.downStarted = false; this.downFor = this.guardT = this.hitFace = 0;
       this.emote = null; this.tackleT = -1; this.tackleCd = 0; this.tackleHits.clear(); this.tackleDash = this.tackleV = 0; this.tackleAir = false;
-      this.shieldK = this.shieldHit = 0; shield.visible = false; this.vault = null; this.spatulaCd = 0; spatula.visible = false;
+      this.shieldK = this.shieldHit = 0; shield.visible = false; this.vault = null; this.spatulaCd = 0; this.glideT = 0; spatula.visible = false;
       if (this.holding || this.heldBy) this.letGo();
       this.holdT = this.grabCd = this.downBlend = this.momentum = 0; this.shovedT = 9;
       botCtl.moveX = botCtl.moveZ = botCtl.aimX = botCtl.aimZ = 0; this.windup = 0;
@@ -4227,7 +4230,10 @@ function createRunner(opts = {}) {
       const fromDive = this.diving || this.slideT > 0;
       const sliding = def.tackle && this.showYaw === null;
       if (sliding && !this.startTackle(fromDive)) return false;   // (still cooling down from the last one)
-      if (fromDive && !sliding) this.diveCancel();       // a dance, a taunt or the spatula stops the dive: you're on your feet
+      if (fromDive && !sliding) {                        // out of a dive you're on your feet:
+        if (def.spatula) { this.diving = false; this.slideT = 0; this.glideT = SPATULA.glide; }   // the spatula keeps all its momentum,
+        else this.diveCancel();                          // a dance or taunt stops it dead
+      }
       const grab = def.grab && this.showYaw === null ? this.hugTarget() : null;
       if (grab && !grab.taunting) { this.grab(grab); return true; }   // somebody in front of you: hold on to them
       if (grab) combat.blocked(this, grab);              // (taunting: they can't be grabbed, so it's a hug for yourself)
@@ -4242,7 +4248,8 @@ function createRunner(opts = {}) {
       }
       this.emote = { def, t: 0, fade: 0, fx: 0, target, reach, dirX, dirZ,
         faceYaw: sliding ? this.yaw : def.spatula ? Math.atan2(-dirX, -dirZ) : emoteFaceYaw(this, def, target),
-        air: !this.grounded, lock: fromDive && !sliding ? TAUNT.lock : 0 };   // (out of a dive, or the spatula's flip: it may start in the air)
+        air: !this.grounded, lock: fromDive && !sliding && !def.spatula ? TAUNT.lock : 0,   // (out of a dive, or the spatula's flip: it may start in the air)
+        commit: fromDive && def.spatula ? SPATULA.glide : 0 };   // (a spatula out of a dive: steering or a press can't stop the swat)
       this.emotes++;
       game.onEmote(this, def);
       return true;
@@ -4283,9 +4290,9 @@ function createRunner(opts = {}) {
       this.yaw = Math.atan2(-dx, -dz);
       return true;
     },
-    // A dance, a taunt or the spatula out of a dive: the dive stops dead and you're upright again. You drop where you
-    // are with a little of its speed left (TAUNT.keep), and the stick you were holding doesn't count for a moment
-    // (TAUNT.lock, stickLocked), so it doesn't end the emote (or a spatula's swat) straight away.
+    // A dance or taunt out of a dive: the dive stops dead and you're upright again. You drop where you are with a
+    // little of its speed left (TAUNT.keep), and the stick you were holding doesn't count for a moment (TAUNT.lock,
+    // stickLocked), so it doesn't end the taunt straight away. (The spatula stands you up too, but keeps the speed.)
     diveCancel() {
       this.diving = false; this.slideT = 0;
       this.vx *= TAUNT.keep; this.vz *= TAUNT.keep; this.vy = Math.min(this.vy, 1);
@@ -4430,7 +4437,7 @@ function createRunner(opts = {}) {
     // Knocked about by a crusher: no control for a moment, tumbling through the air.
     stun(time, vx, vy, vz) {
       this.stunT = time; this.downed = this.downStarted = false;
-      this.emote = null; this.tackleT = -1; this.tackleDash = this.tackleV = 0; this.tackleAir = false; this.vault = null;   // knocked about: whatever you were doing stops
+      this.emote = null; this.tackleT = -1; this.tackleDash = this.tackleV = 0; this.tackleAir = false; this.vault = null; this.glideT = 0;   // knocked about: whatever you were doing stops
       if (this.holding || this.heldBy) this.letGo();
       this.vx = vx; this.vy = vy; this.vz = vz;
       this.grounded = false; this.platform = null; this.carry = 0;
@@ -4465,6 +4472,8 @@ function createRunner(opts = {}) {
       if (this.punchCd > 0) this.punchCd -= h;
       if (this.tackleCd > 0) this.tackleCd -= h;
       if (this.spatulaCd > 0) this.spatulaCd -= h;
+      if (this.glideT > 0) { this.glideT -= h; if (this.glideT <= 0 && !this.grounded) this.glideT = 1e-3; }   // (in the air the glide lasts till you land)
+      const gliding = this.glideT > 0;
       this.punchBuf = Math.max(0, this.punchBuf - h);
       if (this.punchT >= 0) {
         this.punchT += h;
@@ -4474,9 +4483,9 @@ function createRunner(opts = {}) {
         if (this.holding) this.letGo();                   // a punch lets go of a hug, and lands on them
         this.startPunch();
       }
-      if (this.diving || stunned) {
+      if (this.diving || stunned || gliding) {
         const k = stunned && this.downed ? (this.grounded ? FLING.slideDrag : FLING.airDrag)   // flung by a punch: fly far, slide a bit
-          : stunned && this.grounded ? 8 : this.diving ? 0.8 : 1.2;
+          : stunned && this.grounded ? 8 : this.diving || gliding ? 0.8 : 1.2;   // (a spatula out of a dive glides on like the dive)
         const drag = Math.max(0, 1 - k * h);               // keep the momentum
         this.vx *= drag; this.vz *= drag;
       } else if (this.slideT > 0) {
@@ -4707,8 +4716,9 @@ function createRunner(opts = {}) {
         const D = em.def;
         if (!em.fade && !D.hold) {                       // moving, jumping, punching, a shove or the floor going: stop (a hug's hold ends when it lets go)
           if (em.air && this.grounded) em.air = false;   // (out of a dive in the air: down now, the usual rules from here)
-          const moving = !D.tackle && !(em.t < (em.lock || 0)) && (!local || state === 'playing') && Math.hypot(this.ctl.moveX, this.ctl.moveZ) > 0.15;
-          const pressed = !D.tackle && (this.jumpBuf > 0 || this.punchBuf > 0);   // (a tackle can't be steered or stopped)
+          const committed = D.tackle || em.t < (em.commit || 0);   // (a tackle can't be steered or stopped, nor a spatula out of a dive till it swats)
+          const moving = !committed && !(em.t < (em.lock || 0)) && (!local || state === 'playing') && Math.hypot(this.ctl.moveX, this.ctl.moveZ) > 0.15;
+          const pressed = !committed && (this.jumpBuf > 0 || this.punchBuf > 0);
           if (moving || pressed || this.punchT >= 0 || (!this.grounded && !em.air) || this.diving || this.stunT > 0 || this.pushT < 0.05) em.fade = 1e-4;
         }
         em.t += dt;
@@ -5117,13 +5127,22 @@ const combat = {
   // the way it's aimed. Whoever it catches drops flat where they stand: no push. Not through walls; a taunt shrugs it off.
   spatula(a, e) {
     if (state !== 'playing' || a.showYaw !== null || !a.visible || a.ko) return;
+    // Aimed again as it comes down: at whoever it was aimed at, if they're still in reach, or else whoever's nearest
+    // (a dive's momentum may have carried you past them, or above them). Nobody in reach: the way it was going.
+    const inReach = (o) => o !== a && o.visible && !o.ko && !o.untouchable && Math.abs(o.y - a.y) <= 3 && Math.hypot(o.x - a.x, o.z - a.z) <= EMOTE_RANGE.swat;
+    let tgt = e.target && inReach(e.target) ? e.target : null;
+    if (!tgt) { let bd = Infinity; for (const o of this.runners()) { const d = Math.hypot(o.x - a.x, o.z - a.z); if (inReach(o) && d < bd) { bd = d; tgt = o; } } }
+    if (tgt) {
+      const d = Math.hypot(tgt.x - a.x, tgt.z - a.z) || 1;
+      e.dirX = (tgt.x - a.x) / d; e.dirZ = (tgt.z - a.z) / d; e.faceYaw = Math.atan2(-e.dirX, -e.dirZ);
+    }
     const S = SPATULA, dx = e.dirX, dz = e.dirZ, near = P_HALF_D * 0.5, far = P_HALF_D + S.reach, w = S.halfWidth;
     let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
     for (const along of [near, far]) for (const side of [-w, w]) {
       const x = a.x + dx * along - dz * side, z = a.z + dz * along + dx * side;
       x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z);
     }
-    const y0 = a.y + S.low, y1 = a.y + S.high;
+    const y0 = a.y + (a.grounded ? S.low : -1.8), y1 = a.y + S.high;   // (swatting down from the air, it reaches below your feet)
     for (const b of this.runners()) {
       if (b === a || b.untouchable) continue;
       const bb = b.bodyBox();
