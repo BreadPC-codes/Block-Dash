@@ -1,1 +1,210 @@
-# Block-Dash
+# Block Dash
+
+A single-player 3D obstacle survival game in one file: `index.html` (HTML, CSS and JavaScript, with [Three.js](https://threejs.org/) r170 loaded from a CDN). You share the arena with computer-controlled rival runners, and you can punch them.
+
+Walls of cube blocks sweep across a small floating 12-lane arena with a slightly slippery checkered floor, one wave at a time and at most one new wall every 7 seconds. Slip through the holes, jump or dive over single cubes, or climb on top and ride. A wall that catches you pushes you toward the edge, so slide into a hole before you run out of floor. The always-on laser fences stand right beside the outer lanes, so there is no way around a wall at the sides: every wall reaches from fence to fence. Every wave you fully survive adds one to the **WAVE SURVIVED** counter.
+
+The main menu is a lobby: your runner stands on a podium just off the near end of the arena, with the walls rolling in behind it. Drag across the lobby to spin your runner and tap it to see your emotes one after another; the plate underneath names its outfit. **CUSTOMISE** (skins and emotes), **BLOCKS** and **WAVES** are down the left, **?** (How to play) and the gear (Settings) are at the top right, and your best, the difficulty and **PLAY** are on the right. On a phone held upright everything sits above and below your runner instead.
+
+Pick a **difficulty** on the main menu with the slider, from Very easy to Very hard. On Normal and harder, some walls are three blocks high with no hole at all: you get over them with a little parkour, up a lane of steps in front of the wall.
+
+You play as a chunky little party-game runner (an original character), as tall as one block, who runs, jumps, flails and tumbles. The camera follows close behind and a little above, with a 70° field of view by default, so the runner and the walls look big on screen. Any block between the camera and the runner, or right in front of the camera, turns see-through so it never hides you.
+
+## Running it
+
+Open `index.html` in a modern browser (Chrome, Edge, Firefox or Safari, desktop or mobile). There is no build step and nothing to install.
+
+The page needs an internet connection to fetch Three.js (from jsDelivr, with unpkg as a fallback) and its web fonts. You can also serve the folder locally:
+
+```bash
+python3 -m http.server 8000
+```
+
+Then open <http://localhost:8000>.
+
+## Controls
+
+| | Desktop (default keys) | Touch (phones and tablets) |
+|---|---|---|
+| Move | `W A S D` or arrow keys | Virtual joystick, bottom-left |
+| Jump | `Space` | **JUMP** button, bottom-right |
+| Dive | `Space` again while in the air | Tap **JUMP** again while in the air |
+| Punch | `F`, or left click while the cursor is hidden | **PUNCH** button, left of **JUMP** |
+| Super Punch | Punch during a dive (or the belly-slide right after it) | The same, with **PUNCH** |
+| Emotes | `1`–`4` play your four emotes (or click their chips over **PUNCH** when the cursor is free) | **EMOTE** button, above **JUMP**, then tap one of your four |
+| Pause | `Esc` or `P`, or the ❚❚ button | ❚❚ button |
+| Camera | Move the mouse: the camera turns 360° around the runner | Drag anywhere away from the joystick and **JUMP** |
+| Restart / menu | `R` / `Enter` / `Esc` on the pause and game-over screens | Buttons |
+
+Every keyboard control can be changed: **Settings → CHANGE KEYS** (see **Changing the keys** below).
+
+While you play, the cursor is hidden (pointer lock) and the mouse turns the camera all the way around the runner. Moving the mouse up and down tilts it between skimming the floor and looking almost straight down. If it turns too fast or too slow, change **Mouse sensitivity** in Settings (0.2× to 4×). Movement follows the camera, so `W` always runs away from it. `Esc` frees the cursor and pauses. If the cursor is free while you play, click the 3D view to take the camera again. After a game over, the camera slowly circles the spot where the run ended.
+
+Touch controls appear automatically on touch devices. You can steer and jump at the same time with two thumbs, and turn the camera by dragging anywhere else on the screen.
+
+## Punching and rivals
+
+**Punch.** The arm pulls back and shoots out. Anyone inside the fist's reach while it is out gets hit once, and is flung the way the punch goes. The reach is generous: up to about 2.5 m ahead (centre to centre), 1.3 m to either side, and high enough to catch someone in the middle of a jump. You punch the way you are running, or the way the camera looks if you are standing still. A punch works standing, running and jumping, and it never changes how you move. After a punch there is a short cooldown (0.55 s), shown by the **PUNCH** meter in the corner (or the sweep on the touch button). A press up to 0.12 s before you're ready is remembered, and holding the key doesn't punch faster.
+
+**Super Punch.** Punch during a dive, or during the belly-slide right after one, and it becomes a Super Punch. The dive carries on at full speed: nothing about your movement changes, the fist leads, and its reach turns with your movement, so it stays out in front of you in the air and close to the ground. It hits harder than a normal punch for the same momentum (see below), with a bigger hop, and its reach is longer still. It ends in a gold burst and a shockwave. You keep going after it connects.
+
+**Momentum.** Every runner has a hidden momentum meter: it builds up as you run (about 6 after half a second, nearly full, 9.5, after two) and drains quickly when you slow down or stop (gone in about half a second). The more momentum you carry into a punch, the way the punch goes, the farther it flings someone. A point-blank punch from a standstill only knocks them back about one square (2 m); after a short run-up about 1.5 squares; at a full run about 2.5 squares (5 m); and a Super Punch out of a dive about 3.5 squares (7 m). So to punch someone into a laser, take a run at them, or knock them down and shove them in.
+
+**Flung.** Whoever a punch hits flies backwards, tumbling and facing whoever hit them, with no control until they land. They land on their back with dizzy stars round their head and lie there: 2 s after a punch, 2.4 s after a Super Punch, 1.6 s after a tackle (the last third of a second getting up). A rival's punch keeps you down for less (0.8 s), so a knockdown doesn't cost you the run. Nobody can punch them again while they're flying or lying there, or for 0.3 s after they're up, so nobody can be juggled. Spikes and bars still only knock you back a short way.
+
+**Shove.** Someone lying knocked down can't be punched, but they can be pushed: walk or run into them and they slide along the floor ahead of you, as fast as you push and a little further when you stop. Punch a rival toward a laser fence, run after them and shove them into it (or off the end of the arena): the knock-out is yours. (Rivals don't push you about while you're down.)
+
+You can't punch through blocks: a wall or a glass block between you and someone stops the punch, but a knee-high bar doesn't. Every hit is checked 120 times a second against the reach swept since the last check, so speed never lets a punch skip through someone.
+
+**Rivals.** Set **Rival runners** in Settings, from Off to 5 (3 by default). Each wears a random outfit and has its name over its head. They play by the same rules as you: they head for the gaps, hop single blocks and bars, dive through glass and climb the steps, and they can be pushed off, knocked off or zapped like you. Now and then, when no wall is close, a rival picks a fight with the nearest runner nobody else is after. It walks up and winds up (the arm pulls back) before it punches, or jumps and dives in for a Super Punch, and against another rival it lines up its punch to send it toward the nearest edge. Rivals fight each other more often than they go for you, and they go easier on you: they don't aim you at an edge, they only dive in for a Super Punch on you on Normal and harder (and rarely), and their punches fling you less far (half as far on Very easy, 70% on Normal, the full fling on Very hard). How often they fight depends on the difficulty. The **RIVALS** chip counts who is still in, and a line under it says who knocked out whom. The run is still yours: it ends only when you are out, and only your waves count. If a punch sends you off, the game-over screen says who threw it.
+
+There is no online multiplayer. Every runner's punches are settled in one place, once per physics step, for all runners together. That is the point a networked version would run on its server. The numbers are constants in the script: `MOMENTUM` (how fast the hidden meter builds and drains), `PUNCH` and `SUPER_PUNCH` near the top (reach and hitbox size, timing, cooldown, knockback from a standstill and how much each bit of momentum adds, lift, time to get up), `FLING` (drag in the air and on landing, and the safe time after), `KNOCKDOWN` (getting up, how long a rival keeps you down, how hard a shove pushes), `HUG` (the grab's reach, how long it holds, how fast you walk carrying someone), `TACKLE` (the slide tackle's speed, slide time, reach, fling height and cooldown), and `RIVAL_FIGHT_GAP`, `RIVAL_PICKS_YOU`, `RIVAL_DIVES_AT_YOU` and `RIVAL_HITS_YOU` beside the rivals' code (how often they fight, how often they pick you, how often they dive at you, and how hard they hit you).
+
+## Emotes
+
+Eight emotes, all original animations, in two groups. You take **four** of them into a run.
+
+**Your four:** on the main menu open **CUSTOMISE** and pick the **EMOTES** tab. The four slots across the top are your emotes; the ones in them are marked 1–4 below. Click (or tap) a slot, then the emote you want in it: it goes in, and if it was already in another slot the two swap. Your runner shows it off on the podium. **RANDOM** picks four for you and **RESET** brings back the first four (Tackle, Hug, Laugh, Dance). Your four are saved.
+
+**Their keys:** in a run `1`, `2`, `3` and `4` play emote 1 to 4. To change one, click the key under its slot and press the new one (**Esc** cancels, **Backspace** takes it off); they're also listed as Emote 1–4 under **Settings → CHANGE KEYS**. While you play, your four sit over the **PUNCH** chip at the bottom right with their keys, and you can click one when the cursor is free. On a touch screen the **EMOTE** button above **JUMP** opens a tray of your four: tap one (the tray puts itself away after a few seconds if you don't).
+
+**Hostile** (aimed at whoever's closest):
+
+- **Tackle:** a slide tackle. You drop onto one hip, lean right back and slide feet first along the floor, the leading leg out straight, one hand trailing and the other arm up, with dust flying. It really moves you: about 3.4 m the way you run (or where you look, standing still), faster if you were already running. You can't steer, jump or punch until you're back up a second later, and there's a short wait before the next one. Anyone your feet catch is flung about one block (1.86 m) up, tumbling, and lands a little further on; if that sends them off the arena, the knock-out is yours. Jump over a tackle to dodge it. While sliding you're as low as in a dive's belly-slide.
+- **Hug:** grab whoever's in front of you. Face them (the way you run, or where you look standing still) within about 2.3 m: you turn to them, wrap your arms round them, lift them off their feet and hold on for 2.5 s, with hearts. While you hold them you can walk about with them (a little slower than usual) and they can't move, only kick their legs; you can't jump. Carry them into a laser fence or off the end of the arena and the knock-out is yours. A punch lets go and lands on them straight away; being hit, a wall or dropping off something also makes you let go. You can even pick someone up who's lying knocked down. Nobody in front of you: a hug for yourself.
+- **Boxing:** fists up, a bounce on the toes with a weave, a left jab and a right jab (the arms shoot out, like a punch), then a crouch and a big uppercut with a hop and a **POW**. It squares up to a runner within reach, and they flinch back.
+
+**Dances & taunts:**
+
+- **Laugh:** thrown back laughing with the hands on the belly and the shoulders shaking, then doubled over, with HA HA floating up.
+- **Dance:** four bouncy bars of swinging hips, arms swapping up and down and knees lifting in turn, with music notes.
+- **Robot:** stiff moves that snap from pose to pose with a little shudder (one arm out, the other, both out to the sides, both up), then a power-down slump and a reboot, with bleeps and a BEEP and a BOOP.
+- **Point:** the arm draws back and shoots out at the nearest runner (a question mark pops over them) or at the camera, the other hand on the hip and the head cocked, with a couple of jabs.
+- **Cheer:** a crouch, a big jump with both arms up, two fist-pumping hops, and confetti.
+
+The tackle and the hug are the emotes that do something to people: boxing's flinch is only for show. Your **PUNCH** (`F`) still hits harder and farther.
+
+Each emote moves the body's parts: arms, legs, hips, head, eyes and an opening mouth. They are keyframed with anticipation and follow-through and blended smoothly in and out of the normal pose. The runner turns to face the camera (three-quarters on) or whoever the emote is aimed at, and the camera comes in a little closer and lower while you emote; when it's aimed at someone (boxing or a point) it swings round to the side so you see both of you. Apart from the tackle and holding someone in a hug, nothing about where you are or which way you're going changes. You can only emote standing on something, and moving, jumping, punching, being hit, being pushed by a wall or leaving the ground ends one (it eases out in 0.2 s; a tackle only ends early if you leave the ground, get hit or slide into a wall, and a hug's hold when it lets go); a new one replaces the one playing. Rivals emote too: they flinch, now and then show off when no wall is coming, and laugh or cheer after knocking someone out or surviving a wave. They stop for it only while no wall is close.
+
+New emotes go in `EMOTES` in the script: a list of joint channels with keyframes (and optional extra motion and timed effects), with a `group` (`hostile` or `fun`). Adding one to the list puts it under **CUSTOMISE → EMOTES**, ready to go in a slot.
+
+## Changing the keys
+
+**Settings → CHANGE KEYS** lists every keyboard control: run forward, back, left and right, jump (and dive), punch, pause and restart, Emote 1–4 (with the emote that's in each), and flying up and down while you build waves. Each one can have two keys. Click a key, then press the new one; **Esc** cancels and **Backspace** takes the key off. A key does one thing at a time: give it to a new action and it comes off the old one, and the screen says so. One key can still mean one thing in a run and another while building (Space jumps in a run and flies up in the builder). An action with no key is marked in red. **RESET KEYS** puts the defaults back.
+
+Keys are kept by their place on the keyboard, not the letter printed on them, so they stay put on any layout; where the browser shares it, the screen shows your keyboard's own letters (Z for the W position on AZERTY). Every hint follows your keys: the menu line, How to Play, the PUNCH meter, the pause screen and the builder's help line. `Esc` always pauses and goes back, the mouse turns the camera, a left click (with the cursor hidden) also punches, and `1`–`5` pick blocks in the builder; those can't be changed. The keys are saved in `localStorage` under `blockdash.keys.v1`.
+
+## How the waves work
+
+Each built-in wave is an 8×8 ASCII grid (your own layouts cover the whole map; see **Wave layouts** below). Every wave has its own block colour, different from the wave before it. Most waves are wall waves in the style of sweeping block-wall party games: one full-width wall per row, with holes and low parts, and gaps between walls. The layouts are original. Columns `A`–`H` are the lanes. Rows arrive in order **8 → 1**: row 8 reaches you first and row 1 last.
+
+| Symbol | Meaning |
+|---|---|
+| `#` | Stack of 2–3 cubes: too tall to jump |
+| `.` | Hole |
+| `J` | Single cube: a jump gets you on top, and a running jump or a dive clears it |
+| `M` | Moving crusher: rises and slams down; if it lands on you, you're bonked forward and dazed for a moment |
+| `3` | Stack of exactly 3 cubes: a wall you can't jump |
+| `S` | Climb lane: a 3-cube stack with steps in front of it (2 cubes high, then 1). Jump onto the low step, then the middle one, then onto the top, and drop down behind the wall. Climb lanes are drawn in a lighter colour |
+| `X` `Y` | Spikes, one (`X`) or two (`Y`) cubes high: dark cubes with spikes on every side but the bottom. You can't stand on them, and touching them knocks you backwards |
+| `K` `G` | Breakable glass, one (`K`) or two (`G`) blocks stacked: solid like any block, but dive into a block and it shatters. Each block breaks on its own |
+| `B b` | Bar: a low striped bar lying across two lanes (`B` is its left half, `b` its right). Hop over it; touching it knocks you backwards |
+
+How contact works:
+
+- **Front of an incoming wall:** it pushes you along with it. You can slide sideways along it freely into a hole, or run away from it. You can still jump while it shoves you, to the full height: against a single-block wall you sail up and land on top of it.
+- **Side of a block:** solid. You stop against it.
+- **Back of a wall:** solid too. If you catch up with a wall that has already passed you, you stop against it and move along with it.
+- **Breakable blocks:** solid like any block, so they push you when you run into them and you can stand on a one-high one. Dive into one, or belly-slide into it after a dive, and it always shatters, however little of it you hit, and you carry straight on. One dive smashes one block per stack, the one you're mostly inside; the blocks above or below it stay where they are (floating, if the block under them broke), even if the same dive brushes them. So a low dive (jump, then dive on the way down) breaks the bottom block of a two-high stack and you go under the top one, while a dive from high up breaks the top one and leaves the bottom one standing. A new dive can smash the next block.
+- **Spikes and bars:** solid, and they knock you backwards with a short tumble (no control for under half a second). Coming at you, they throw you back toward the near edge; touch one from the side or from behind and you're thrown away from it. You can't stand on either. A bar is low (0.8 units), so a jump timed as it arrives, or a running jump, clears it. Get knocked off the edge and the run ends with **Knocked off the edge**.
+- **Top of a block:** safe to stand on. A ridden block carries you toward the near edge, and you keep that momentum when you jump off. Every block is the same cube, and taller obstacles are whole cubes stacked on top of each other. Stacks can't be reached from the floor; climb onto them from a single block, or up the steps of a climb lane. While you climb you ride along with the wall, so climbing doesn't eat into the time before the next wall.
+- **Dive:** press jump again in the air. You lunge forward in your steering direction (or the way you face) with a small hop and a low profile, covering about 6.4 units from the top of a jump, then do a short belly slide.
+
+The run only ends if you **fall off the arena** (off the front or back edge: pushed off, ridden off or walked off) or **touch a laser fence** on the sides. Falling off means a long drop before the run is over, and walls teeter on the near edge for a moment before they fall, giving a rider time to jump off. A teetering wall stays solid until it tips into the void. The floor is a little slippery: you reach full speed in about 0.13 s and turn quickly, but glide a short way (under two units) when you let go. A wall hands you its momentum when it shoves you, and you bounce lightly off block sides. There's no gate: walls rise out of the platform right at the far edge.
+
+The six patterns from the brief (Basic Corridor, Alternating Gaps, Double Corridors, Jump Challenge, Narrow Zigzag, Moving Obstacles) are included verbatim. Six wall waves (Wall Rush, Hop or Hole, Slider, Twin Walls, Crusher Wall, Last Gap) are picked more often than the rest. Six more grid patterns also unlock as the wave count grows: Hurdle Run, Staircase, Hop Scotch, Split Decision, Crusher Alley and The Gauntlet. Four climb-wall patterns (Step Up, Climb Wall, Summit and Sky Ladder) appear only on Normal and harder. Four more bring in spikes and bars: Bar Hop, Spike Fence, Bar Run and Spike Slalom. Glass Garden and Smash Through have breakable blocks (Smash Through has walls you can only get through by diving), and Spike Towers has two-high spikes.
+
+The pattern engine parses each grid and rejects malformed or impossible patterns when the page loads. It then lays out every wave with a survivability solver:
+
+- The arena width is sampled every 0.1 units, and each row is classified as free, needs a jump, climb the steps, or blocked for the player's hitbox. Wall sections and crushers count as blocked, so a wave never depends on riding, diving or crusher timing, and only a climb wall's steps ever ask you to climb.
+- For each pair of consecutive rows, the solver works out how long the player needs to get from any position they could be in to the nearest safe spot in the next row. This accounts for acceleration, landing after a jump or a climb, and setting up the next jump or climb. Rows are then spaced so that much time always exists at the current speed, plus a reaction margin, and a climb wall is moved back by the length of its steps.
+- Waves are spaced the same way, so the first row of the next wave is always reachable from wherever the last one could leave you.
+
+A new wall appears at most once every 7 seconds on every level, and only one wave is on the map at a time: the next one starts at the far edge once every row of the previous wave has left over the near edge. Within a run the blocks get 5% faster every few waves, the reaction margin shrinks, harder patterns become more likely, and a pattern may arrive mirrored. The difficulty slider sets how all of that goes:
+
+| Level | Start speed | 5% faster every | Reaction margin | Patterns | Mirrored from wave | Climb walls |
+|---|---|---|---|---|---|---|
+| Very easy | 5.6 units/s | 25 waves | ×1.6 | easiest only (rating 1–2) | never | none |
+| Easy | 6.3 units/s | 20 waves | ×1.3 | rating 1–3 | 11 | none |
+| Normal | 7 units/s | 20 waves | ×1 | all | 6 | now and then, from wave 5 |
+| Hard | 7.7 units/s | 15 waves | ×0.8 | all, harder sooner | 3 | about every other wave, from wave 2 |
+| Very hard | 8.4 units/s | 10 waves | ×0.65 | all, hardest sooner | 1 | most waves, from wave 1 |
+
+Very easy, Easy and Normal open with the same three gentle waves. The arena is 12 lanes wide and 40 units long (12 × 20 squares of 2 × 2 units); the 8-column patterns are centred on it and their outer columns extend to the edges. The patterns are authored with the chessboard-style `A`–`H` / `8`–`1` grid below, but no lane letters or row numbers are drawn in the game.
+
+### Adding a pattern
+
+Append an entry to `PATTERN_DEFS` in `index.html`:
+
+```js
+{ id: 'my-pattern', name: 'My Pattern', minWave: 5, rating: 3, ascii: `
+      A B C D E F G H
+  8 | # # . . # # # # |
+  ...
+  1 | # # # . . # # # |` },
+```
+
+`minWave` is the earliest wave index (0-based) it can appear at. `rating` (1–5) steers how often it is picked at a given difficulty. Add `climb: true` to a pattern that uses `S` lanes so it only appears on Normal and harder. Invalid patterns are logged to the console and skipped.
+
+## Skins
+
+Pick an outfit under **CUSTOMISE** on the main menu (the **SKINS** tab; your emotes are on the **EMOTES** tab, see above). There are 30 original outfits: Classic, Ninja, Astronaut, Robot, Pirate, Chef, Royal, Wizard, Kitty, Bunny, Teddy, Dino, Viking, Cowboy, Knight, Swimmer, Propeller, Party, Super, Alien, Angel, Devil, Froggy, Unicorn, Shark, Snowy, Firefighter, Detective, Jetpack and Sporty. Each is a head, face and back item on the runner, built from simple shapes. Every outfit has six colours you can change: skin, top, bottom, hat, shoes and detail. **RANDOM** rolls new colours and **RESET** goes back to the outfit's own.
+
+The runner shows off the outfit on a podium beside the arena; drag beside the panel to turn it. Some items move: capes and tails sway, propellers spin, wings flap and the jetpack fires while you're in the air.
+
+## Block designer
+
+Paint your own blocks under **BLOCKS** on the main menu. You get a loadout of 20 designs, each a 16×16 pixel block face shown on every side of the cube. The loadout starts with 20 starter designs you can paint over: Tile, Bricks, Crate, Checker, Hazard, Smiley, Heart, Star, Gem, Circuit, Dots, Ice, Lava, Stone, Gift, Target, Window, Neon, Cookie and Plain.
+
+- **DRAW** paints cells (drag to paint a line), **FILL** floods an area, and **PICK** takes a colour from the design. **MIRROR** paints both halves at once, and **UNDO** (or Ctrl+Z) steps back. **CLEAR** paints the whole face in the current colour.
+- Choose from 24 colours, or any colour with the rainbow swatch. **Template…** loads one of the starter designs into the slot, and **COPY** / **PASTE** copy a design from one slot to another.
+- **In game** puts a design in the loadout the walls use. Each wave uses the next design that is in game, in slot order. With none in game, the walls use the classic look.
+- **Wave colour** tints the design with each wave's colour; paint it in light tones for that. Without it the design keeps its own colours. Climb lanes are drawn a little brighter either way, and crushers keep their own look.
+- The design shows live on a little stack of blocks on the podium beside the panel; drag there to turn it.
+
+## Wave layouts
+
+Build your own waves under **WAVES** on the main menu. The panel holds your 30 layout slots; press **BUILD** (or click the arena) to fly in and build. The background walls pause while you build, your runner waits just off the near edge, and glowing arrows past the far edge show where the walls roll in from.
+
+A layout is a 3D grid on the whole map: 12 lanes across, 20 squares from the near edge to the far one, and up to 6 blocks high. You can stack blocks on top of each other, build out sideways from a block, and leave gaps underneath: towers, stairs, doorways and tunnels (a runner fits under a block that floats one block up). The wave arrives exactly as you built it, as one formation with the rows one square apart, so you set the spacing yourself: leave empty rows between walls to give yourself time. The row nearest your runner is the front of the wave and reaches you first. Empty rows before the first block and after the last one are left out, and the wave still starts at least 7 seconds after the last wall of the wave before it.
+
+**Building**
+
+| | Desktop | Touch |
+|---|---|---|
+| Fly | `W A S D` or arrow keys, `Space` up, `Shift` down (`E` and `Q` work too) | The pad on the left; **UP** and **DOWN** |
+| Look | Move the mouse (the cursor is hidden while you build) | Drag on the view |
+| Place a block | Left click: it goes against the face you point at, or on the floor | Tap where it should go |
+| Remove a block | Right click | Turn on **REMOVE**, then tap |
+| Pick the kind | `1`–`5` or the mouse wheel, or click the hotbar | Tap the hotbar |
+| Back to the panel | `Esc` | **MENU** |
+
+A crosshair shows where you aim, the block you point at gets a white outline, and a see-through block shows where the next one will go (red when it can't go there). If the browser won't hide the cursor, you look by dragging and place by clicking, the same as on a touch screen.
+
+The hotbar has five kinds of block: **BLOCK** (an ordinary block in the wave's colour), **SPIKES** (knocks you back), **GLASS** (breakable: dive through it), **BAR** (a low striped bar segment; bars side by side join into one long bar) and **CRUSHER** (rises and slams down). A crusher only goes on the floor, with two clear blocks of room above it, and nothing can be stacked on a crusher or a bar.
+
+- **MIRROR** builds on both sides of the arena at once, **UNDO** (or Ctrl+Z) takes back the last change, and **CLEAR** empties the slot. **Start from…** copies a built-in pattern into the slot, as blocks you can then change.
+- Give each layout a name; it shows in the wave banner when it comes up.
+- Nothing is checked or blocked. Any layout with at least one block is ready to play, and the status line counts the blocks. The laser fences stand right beside the outer lanes, so a row built all the way across is a wall from fence to fence with no way around it.
+- The 8 pips under the wave counter fill up as the rows of your wave go past.
+- **In game** mixes the layout in with the built-in waves. **Only my layouts** makes every wave one of yours, in slot order. The difficulty slider still sets the speed and reaction time.
+- **TRY IT** starts a practice run with only that layout. Practice runs don't count for your personal best, and when the run ends **BACK TO EDITOR** takes you straight back.
+- Layouts made with the earlier flat grid editor are turned into blocks when they load: each square becomes a stack of the same height and kind, and a climb lane becomes a 3-high stack with stairs (2 high, then 1) on the two squares in front of it.
+
+## Settings and saved data
+
+The Settings screen covers graphics quality (Low, Medium, High), field of view (70° by default), camera X and Y offset, your keyboard keys (**CHANGE KEYS**), mouse and camera sensitivity, joystick sensitivity and size (it scales the **JUMP** and **PUNCH** buttons too), the number of rival runners, volume, sound effects, music and vibration. Settings (including the difficulty) are stored in `localStorage` under `blockdash.settings.v1`. The personal best is kept per difficulty: `blockdash.bestWave` for Normal and `blockdash.bestWave.1`, `.2`, `.4` and `.5` for the other levels. Your keys are stored under `blockdash.keys.v1`. The chosen outfit and your colours are stored under `blockdash.skin.v1`, your 20 block designs under `blockdash.blocks.v1`, and your 30 wave layouts under `blockdash.layouts.v1`.
+
+## Debugging
+
+Add `?debug=1` to the URL to expose `window.BlockDash` (game state, world, player, rivals, the punch settings and the pattern solver) in the browser console.
