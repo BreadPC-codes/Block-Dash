@@ -852,7 +852,7 @@ body.touch .kbd-hint{display:none}
         <div class="ctrl"><span class="k" id="hk-jump">SPACE</span><span class="ctrl-txt">Jump · press again in the air to <b>dive</b> · off an edge without jumping, your first press still jumps</span></div>
         <div class="ctrl"><span class="k" id="hk-punch">F</span><span class="k">CLICK</span><span class="ctrl-txt">Punch, the way you run (or look, standing still) · during a dive: <b>Super Punch</b></span></div>
         <div class="ctrl"><span class="k">ESC</span><span class="k" id="hk-pause">P</span><span class="ctrl-txt">Pause</span></div>
-        <div class="ctrl"><span class="k" id="hk-emotes">1–4</span><span class="ctrl-txt">Your four emotes · pick them in <b>CUSTOMISE → EMOTES</b> · moving ends one · a dance or taunt <b>shields</b> you from hits (and stops a dive) · tackle mid-dive to <b>dash</b></span></div>
+        <div class="ctrl"><span class="k" id="hk-emotes">1–4</span><span class="ctrl-txt">Your four emotes · pick them in <b>CUSTOMISE → EMOTES</b> · moving ends one · a dance or taunt <b>shields</b> you from hits, and spikes and bars lift you over instead of knocking you back (it also stops a dive) · tackle mid-dive to <b>dash</b></span></div>
         <div class="ctrl"><span class="k">⚙</span><span class="ctrl-txt">Change any of these keys in Settings → <b>CHANGE KEYS</b></span></div>
         <div class="ctrl"><span class="k">MOUSE</span><span class="ctrl-txt">Turn the camera 360° around you. The cursor hides while you play, and <span class="k">ESC</span> frees it. You always run the way the camera faces.</span></div>
         <div class="ctrl"><span class="k">TOUCH</span><span class="ctrl-txt">Joystick (bottom-left) moves · <span class="k">JUMP</span> (bottom-right), tap again in the air to dive · <span class="k">PUNCH</span> beside it · <span class="k">EMOTE</span> opens your four emotes · drag anywhere else to turn the camera</span></div>
@@ -864,9 +864,9 @@ body.touch .kbd-hint{display:none}
       <div class="leg"><span class="sw low"></span><div><b>Single block</b><small>One cube. A jump gets you on top, and a running jump or a dive clears it. Ride it, hop off, or climb from it onto a stack.</small></div></div>
       <div class="leg"><span class="sw climb"></span><div><b>Climb wall</b><small>Three blocks high with no hole (Normal and harder). Its lighter lane has steps in front: jump onto the low step, then the middle one, then over the top, and drop down behind it.</small></div></div>
       <div class="leg"><span class="sw move"></span><div><b>Crusher</b><small>Rises and slams down. Get caught underneath and you're bonked away.</small></div></div>
-      <div class="leg"><span class="sw spike"></span><div><b>Spikes</b><small>A block covered in spikes, one or two high. You can't stand on it, and touching it from any side knocks you backwards with a tumble.</small></div></div>
+      <div class="leg"><span class="sw spike"></span><div><b>Spikes</b><small>A block covered in spikes, one or two high. You can't stand on it, and touching it from any side knocks you backwards with a tumble (dancing or taunting, it lifts you over it instead).</small></div></div>
       <div class="leg"><span class="sw brk"></span><div><b>Breakable block</b><small>Cracked glass, solid like any block. Dive into it (or belly-slide into it, or slide-tackle through it) and it shatters, however little of it you hit. One dive smashes one block of a stack: break the bottom one and the one above stays where it is.</small></div></div>
-      <div class="leg"><span class="sw bar"></span><div><b>Bar</b><small>A low striped bar lying across two squares. Hop over it: touch it and you're knocked backwards.</small></div></div>
+      <div class="leg"><span class="sw bar"></span><div><b>Bar</b><small>A low striped bar lying across two squares. Hop over it: touch it and you're knocked backwards (dancing or taunting, it lifts you over it instead).</small></div></div>
       <div class="leg"><span class="sw laser"></span><div><b>Laser fences</b><small>They stand right beside the outer lanes, so there is no way around a wall at the sides. Touch one and the run is over.</small></div></div>
     </div>
     <h3>DIFFICULTY</h3>
@@ -1251,6 +1251,10 @@ const HUG = { range: 2.3, cone: 1.0, hold: 1.0, dist: 0.8, lift: 0.22, speed: 0.
 // dive stops dead (you keep `keep` of its speed and drop where you are), and the stick you were holding doesn't
 // count for `lock` seconds, so it doesn't end the taunt straight away.
 const TAUNT = { keep: 0.15, lock: 0.45 };
+// A taunt holds off spikes and bars too: one coming at you can't knock you away. It lifts you up its face instead
+// and over it (a vault): up till your feet are `clear` m above its top, carried along with it on the way up, then
+// back over it at `back` m/s while it slides on underneath you, and down behind it, still dancing.
+const VAULT = { clear: 1.2, back: 3 };
 // The taunt's shield: a soft bubble, bright at the rim, round whoever's dancing or taunting.
 const SHIELD_GEO = new THREE.SphereGeometry(0.86, 28, 18);
 const SHIELD_VS = 'varying vec3 vN; varying vec3 vV; void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }';
@@ -3153,6 +3157,12 @@ const world = {
       }
     }
     if (land) p.landOn(land, this.speed);
+    if (knock && p.taunting) {
+      // Taunting: it can't knock you away. Coming at you (or under your feet), it lifts you over it; touched from
+      // the side or behind, it's only solid.
+      if (p.z >= knock.cz || p.y >= knock.y1 - 0.05) p.vaultOver(knock);
+      knock = null;
+    }
     if (knock && p.knockT > KNOCK_COOLDOWN && p.stunT <= 0) {
       // Thrown away from it: back toward the near edge if it's coming at you (or you landed on it), the
       // other way if you ran into its back, and sideways too if you touched it from the side.
@@ -4070,6 +4080,7 @@ function createRunner(opts = {}) {
     emote: null, emotes: 0,                              // the emote playing (see EMOTES), and how many so far
     tackleT: -1, tackleCd: 0, tackleDirX: 0, tackleDirZ: -1, tackleHits: new Set(),   // a slide tackle: time into it, cooldown, way, who it caught
     tackleDash: 0, tackleV: 0, tackleAir: false,        // out of a dive: dash still to go (m), the slide's speed after it, started in the air
+    vault: null,                                         // a taunt going over spikes or a bar: { row, top } (see VAULT)
     shieldK: 0, shieldHit: 0,                            // the taunt's shield: how much it shows (0–1), and its flash when something bounces off
     holding: null, heldBy: null, holdT: 0, grabCd: 0,   // a hug: who you're holding (or who's holding you), time left, no re-grab yet
     downBlend: 0, shovedT: 9,                            // lying down (0–1, for the drawing); time since someone shoved you
@@ -4133,7 +4144,7 @@ function createRunner(opts = {}) {
       this.punchedT = 9; this.lastHitBy = null; this.lastHitSuper = false;
       this.downed = this.downStarted = false; this.downFor = this.guardT = this.hitFace = 0;
       this.emote = null; this.tackleT = -1; this.tackleCd = 0; this.tackleHits.clear(); this.tackleDash = this.tackleV = 0; this.tackleAir = false;
-      this.shieldK = this.shieldHit = 0; shield.visible = false;
+      this.shieldK = this.shieldHit = 0; shield.visible = false; this.vault = null;
       if (this.holding || this.heldBy) this.letGo();
       this.holdT = this.grabCd = this.downBlend = this.momentum = 0; this.shovedT = 9;
       botCtl.moveX = botCtl.moveZ = botCtl.aimX = botCtl.aimZ = 0; this.windup = 0;
@@ -4320,6 +4331,17 @@ function createRunner(opts = {}) {
       this.punchT = -1; this.punchBuf = 0;                  // a punch you were throwing is lost
       this.squash = 0.5;
     },
+    // Taunting, spikes or a bar coming at you lift you over them instead of knocking you away (VAULT).
+    vaultOver(c) {
+      if (this.vault && this.vy > 0) return;              // (already on the way up; coming down on it again, it lifts you again)
+      this.vault = { row: c.row, top: c.y1 };
+      this.vy = Math.sqrt(2 * G_UP * Math.max(0.5, c.y1 + VAULT.clear - this.y));
+      this.grounded = false; this.platform = null; this.carry = 0; this.coyote = 0;
+      this.jumped = this.dived = true;                   // (no jump or dive of your own on the way over)
+      if (this.emote) this.emote.air = true;              // the taunt carries on through the air
+      this.shieldHit = 1;
+      game.onVault(this);
+    },
     knock(side, vz) {                                    // spikes or a bar: thrown back with a little tumble
       this.stun(KNOCK_STUN, side * 4, KNOCK_UP, vz);
       this.knockT = 0;
@@ -4334,7 +4356,7 @@ function createRunner(opts = {}) {
     },
     leavePlatform() { this.platform = null; this.grounded = false; },   // keeps the block's momentum (carry)
     touchDown(impact) {
-      this.dived = false; this.jumped = false;
+      this.dived = false; this.jumped = false; this.vault = null;
       if (this.diving) { this.diving = false; this.slideT = DIVE_SLIDE; }   // belly-slide after a dive
       if (this.downed && !this.downStarted && this.stunT > 0) { this.downStarted = true; this.stunT = this.downFor; }   // flung: landed, up in a moment
       if (local) game.onLand(impact); else this.squash = 0.3 + clamp(impact / 12, 0, 0.6);
@@ -4342,7 +4364,7 @@ function createRunner(opts = {}) {
     // Knocked about by a crusher: no control for a moment, tumbling through the air.
     stun(time, vx, vy, vz) {
       this.stunT = time; this.downed = this.downStarted = false;
-      this.emote = null; this.tackleT = -1; this.tackleDash = this.tackleV = 0; this.tackleAir = false;   // knocked about: whatever you were doing stops
+      this.emote = null; this.tackleT = -1; this.tackleDash = this.tackleV = 0; this.tackleAir = false; this.vault = null;   // knocked about: whatever you were doing stops
       if (this.holding || this.heldBy) this.letGo();
       this.vx = vx; this.vy = vy; this.vz = vz;
       this.grounded = false; this.platform = null; this.carry = 0;
@@ -4442,6 +4464,10 @@ function createRunner(opts = {}) {
           this.diving = true; this.dived = true; this.jumpBuf = 0; this.diveBroke.clear();   // a new dive can smash again
           if (local) game.onDive();
         }
+      }
+      if (this.vault) {                                   // over spikes or a bar (VAULT): up its face with it, then back over it
+        this.vz = this.y < this.vault.top + 0.05 ? world.speed : -VAULT.back;
+        this.vx *= Math.max(0, 1 - 6 * h);
       }
       if (this.platform) this.carry = world.speed;
       if (!this.grounded) this.vy -= (this.vy > 0 ? G_UP : G_DOWN) * h;
@@ -7264,6 +7290,13 @@ const game = {
     pops.spawn(b.x, b.y + 2.25, b.z, 'NOPE!', '#8af0ff', { size: 0.7, rise: 0.9, life: 0.9 });
     if (a === player) { camCtl.shake = Math.max(camCtl.shake, 0.12); vibrate(8); }
     if (b === player) vibrate(12);
+  },
+  onVault(r) {                                          // a taunt lifted over spikes or a bar: a ting and a spring
+    const near = r === player ? 1 : clamp(1 - Math.hypot(r.x - player.x, r.z - player.z) / 16, 0, 1);
+    if (near > 0.04) { audio.play('deflect', near); audio.play('jump'); }
+    particles.burst(r.x, r.y + 0.3, r.z, 12, ['#8af0ff', '#ffffff', '#c9f7ff'], { speed: 3, up: 2.5, size: [0.05, 0.12], life: [0.3, 0.55], grav: 0.4, bounce: 0 });
+    rings.spawn(r.x, r.z, 0x8af0ff, 2.2, 0.35);
+    if (r === player) { camCtl.shake = Math.max(camCtl.shake, 0.15); vibrate(14); }
   },
   onDash(r) {                                           // a dive tackle's dash: a whoosh and a streak of dust
     audio.play('whoosh', r === player ? 1 : clamp(1 - Math.hypot(r.x - player.x, r.z - player.z) / 16, 0, 1));
