@@ -2,26 +2,42 @@
 // Block Dash local server: serves the game to every device on your Wi-Fi and runs the rooms you play in together.
 //
 //   node server.js            (Node 18 or newer; nothing to install)
+//   BlockDash.exe             (Windows: the same server with the game inside, see tools/build-exe.mjs)
 //
 // Then open the address it prints on every device that wants to play (phones and tablets too). Everyone on the
-// same Wi-Fi can host a room or join one from the game's ROOMS screen.
+// same Wi-Fi can host a room or join one from the game's ROOMS screen. BlockDash.exe opens the game on its own
+// computer by itself (node server.js --open does too); --no-open stops that.
 //
 // The rooms can be switched off and on from any of those devices (ROOMS → the server bar). From this computer that
 // needs nothing; from another device it needs the PIN printed below (it changes every start unless you set one).
 // Switched off, nobody can join and every room closes, but the page still loads, so you can switch it back on.
 //
-// Options (environment variables): PORT (8080), BLOCKDASH_PIN (four digits, instead of a random one),
-// BLOCKDASH_START_OFF=1 (start with the rooms off), BLOCKDASH_TRUST_LOCAL=0 (ask for the PIN on this computer too).
+// Options (environment variables): PORT (8080; if it's taken, the next free one), BLOCKDASH_PIN (four digits,
+// instead of a random one), BLOCKDASH_START_OFF=1 (start with the rooms off), BLOCKDASH_TRUST_LOCAL=0 (ask for the
+// PIN on this computer too).
 'use strict';
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
+const { spawn } = require('child_process');
+
+// Packed into BlockDash.exe (a Node.js single executable application), the game and Three.js are inside it.
+let sea = null;
+try { sea = require('node:sea'); if (!sea.isSea()) sea = null; } catch { sea = null; }
+const embedded = (name) => { try { return sea ? Buffer.from(sea.getAsset(name)) : null; } catch { return null; } };
+const PAGE = embedded('index.html');                    // (null: read index.html next to this file, fresh every time)
+const THREE_JS = embedded('three.module.min.js') || (() => {   // a copy of Three.js to serve: no internet needed
+  try { return fs.readFileSync(path.join(__dirname, 'vendor', 'three.module.min.js')); } catch { return null; }
+})();
+const THREE_PATH = '/vendor/three.module.min.js';
 
 const PORT = +process.env.PORT || 8080;
+let port = PORT;                                        // (the one it got: the next one up if PORT was taken)
 const PIN = /^\d{4,8}$/.test(process.env.BLOCKDASH_PIN || '') ? process.env.BLOCKDASH_PIN : String(crypto.randomInt(1000, 10000));
 const TRUST_LOCAL = process.env.BLOCKDASH_TRUST_LOCAL !== '0';
+const OPEN = process.argv.includes('--open') || (!!sea && !process.argv.includes('--no-open'));
 const GAME = path.join(__dirname, 'index.html');
 const MAX_PLAYERS = 8;
 const START_DELAY = 3200;                               // ms from START to GO (everyone's countdown ends together)
@@ -31,12 +47,18 @@ let roomsOn = process.env.BLOCKDASH_START_OFF !== '1';
 // ---------------------------------------------------------------------------------------------------------------
 // Addresses this computer has on the local network (where the others open the game)
 // ---------------------------------------------------------------------------------------------------------------
+// (Wi-Fi and wired ones first: home networks are 192.168.x.x or 10.x.x.x; virtual machines' and WSL's last.)
 function lanAddresses() {
   const out = [];
-  for (const list of Object.values(os.networkInterfaces())) {
-    for (const a of list || []) if ((a.family === 'IPv4' || a.family === 4) && !a.internal) out.push(a.address);
+  for (const [name, list] of Object.entries(os.networkInterfaces())) {
+    for (const a of list || []) {
+      if (!(a.family === 'IPv4' || a.family === 4) || a.internal || a.address.startsWith('169.254.')) continue;
+      const virtual = /vethernet|virtualbox|vmware|vbox|hyper-v|wsl|docker|loopback|tailscale|zerotier|vpn/i.test(name);
+      const home = /^192\.168\./.test(a.address) ? 0 : /^10\./.test(a.address) ? 1 : /^172\.(1[6-9]|2\d|3[01])\./.test(a.address) ? 2 : 3;
+      out.push({ address: a.address, rank: (virtual ? 10 : 0) + home });
+    }
   }
-  return out;
+  return out.sort((a, b) => a.rank - b.rank).map((a) => a.address);
 }
 const isLocal = (req) => {
   const a = (req.socket.remoteAddress || '').replace(/^::ffff:/, '');
@@ -51,8 +73,8 @@ function status(req) {
   for (const c of clients.values()) if (c.open) players++;
   const local = isLocal(req);
   return {
-    server: 'blockdash', on: roomsOn, rooms: rooms.size, players, port: PORT,
-    addresses: lanAddresses().map((a) => `http://${a}:${PORT}`),
+    server: 'blockdash', on: roomsOn, rooms: rooms.size, players, port,
+    addresses: lanAddresses().map((a) => `http://${a}:${port}`),
     local, pin: local ? PIN : undefined,                // (only this computer is told the PIN)
   };
 }
@@ -76,11 +98,22 @@ const server = http.createServer((req, res) => {
     return;
   }
   if ((url.pathname === '/' || url.pathname === '/index.html') && (req.method === 'GET' || req.method === 'HEAD')) {
+    const serve = (data) => {
+      // (with a copy of Three.js here, the page is told to load it from here first: no internet needed to play)
+      const html = THREE_JS ? data.toString('utf8').replace('<head>', `<head>\n<meta name="blockdash-three" content="${THREE_PATH}">`) : data;
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+      res.end(req.method === 'HEAD' ? undefined : html);
+    };
+    if (PAGE) { serve(PAGE); return; }
     fs.readFile(GAME, (err, data) => {
       if (err) { res.writeHead(500); res.end('index.html not found next to server.js'); return; }
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
-      res.end(req.method === 'HEAD' ? undefined : data);
+      serve(data);
     });
+    return;
+  }
+  if (url.pathname === THREE_PATH && THREE_JS && (req.method === 'GET' || req.method === 'HEAD')) {
+    res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=86400', 'Access-Control-Allow-Origin': '*' });
+    res.end(req.method === 'HEAD' ? undefined : THREE_JS);
     return;
   }
   res.writeHead(404, { 'Content-Type': 'text/plain' });
@@ -342,17 +375,79 @@ function setRoomsOn(v) {
   log(`Rooms are ${v ? 'ON' : 'OFF'}.`);
 }
 
-server.listen(PORT, '0.0.0.0', () => {
-  const addrs = lanAddresses();
+// ---------------------------------------------------------------------------------------------------------------
+// Starting up: the first free port from PORT on (or, if Block Dash is already running here, open that one instead),
+// then the addresses, the PIN, and the game opened on this computer (BlockDash.exe, or --open)
+// ---------------------------------------------------------------------------------------------------------------
+function openGame(url) {
+  const quiet = { detached: true, stdio: 'ignore' };
+  try {
+    if (process.platform === 'win32') {                 // Edge as an app window (a window of its own, like a game), else the browser
+      const edge = [process.env['ProgramFiles(x86)'], process.env.ProgramFiles, process.env.LOCALAPPDATA].filter(Boolean)
+        .map((d) => path.join(d, 'Microsoft', 'Edge', 'Application', 'msedge.exe')).find((f) => fs.existsSync(f));
+      const child = edge ? spawn(edge, [`--app=${url}`, '--window-size=1280,760'], quiet) : spawn('cmd', ['/c', 'start', '', url], { ...quiet, windowsHide: true });
+      child.on('error', () => {});
+      child.unref();
+    } else {
+      const child = spawn(process.platform === 'darwin' ? 'open' : 'xdg-open', [url], quiet);
+      child.on('error', () => {});
+      child.unref();
+    }
+  } catch { /* (the address is printed: open it by hand) */ }
+}
+function alreadyRunning(p) {                            // is that port Block Dash, already running on this computer?
+  return new Promise((resolve) => {
+    const req = http.get({ host: '127.0.0.1', port: p, path: '/api/status', timeout: 1500 }, (res) => {
+      let body = '';
+      res.on('data', (d) => { body += d; });
+      res.on('end', () => { try { resolve(JSON.parse(body).server === 'blockdash'); } catch { resolve(false); } });
+    });
+    req.on('error', () => resolve(false));
+    req.on('timeout', () => { req.destroy(); resolve(false); });
+  });
+}
+function fatal(text) {                                  // (BlockDash.exe: the window would close at once, so wait for Enter)
+  console.error(`\n  ${text}\n`);
+  if (sea && process.stdin.isTTY) {
+    console.error('  Press Enter to close this window.');
+    process.stdin.resume();
+    process.stdin.once('data', () => process.exit(1));
+  } else process.exit(1);
+}
+function started() {
+  const addrs = lanAddresses(), here = `http://localhost:${port}`;
   console.log('\n  BLOCK DASH server');
-  console.log(`  On this computer:   http://localhost:${PORT}`);
-  for (const a of addrs) console.log(`  On your Wi-Fi:      http://${a}:${PORT}`);
+  console.log(`  On this computer:   ${here}${OPEN ? '   (opening it now)' : ''}`);
+  for (const a of addrs) console.log(`  On your Wi-Fi:      http://${a}:${port}`);
   if (!addrs.length) console.log('  (No network found: connect this computer to your Wi-Fi to play with others.)');
+  if (port !== PORT) console.log(`  (Port ${PORT} was taken, so it's ${port}.)`);
   console.log(`  PIN to switch the rooms off and on from another device: ${PIN}`);
-  console.log(`  Rooms are ${roomsOn ? 'ON' : 'OFF'}. Press Ctrl+C to stop the server.\n`);
-});
-server.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') console.error(`\n  Port ${PORT} is already in use. Try another: PORT=8081 node server.js\n`);
-  else console.error(err);
-  process.exit(1);
-});
+  console.log(`  Rooms are ${roomsOn ? 'ON' : 'OFF'}. ${sea ? 'Close this window' : 'Press Ctrl+C'} to stop the server.`);
+  if (process.platform === 'win32') console.log('  If Windows asks, allow it on private networks, so the others on your Wi-Fi can join.');
+  console.log('');
+  if (OPEN) openGame(here);
+}
+function listen(tries = 0) {
+  const onListening = () => { server.off('error', onError); server.on('error', (e) => console.error(e)); started(); };
+  const onError = async (err) => {
+    server.off('listening', onListening);              // (this try's: a later one that works says it's started)
+    if (err.code !== 'EADDRINUSE') { fatal(`The server could not start: ${err.message}`); return; }
+    if (await alreadyRunning(port)) {                   // (opened twice: the one that's running is the one to play on)
+      console.log(`\n  Block Dash is already running on this computer: http://localhost:${port}\n`);
+      if (OPEN) openGame(`http://localhost:${port}`);
+      setTimeout(() => process.exit(0), 2500);
+      return;
+    }
+    if (tries >= 20) { fatal(`Ports ${PORT} to ${port} are all taken. Choose another: set PORT=9000 and start it again.`); return; }
+    port++;
+    listen(tries + 1);
+  };
+  server.once('error', onError);
+  server.once('listening', onListening);
+  server.listen(port, '0.0.0.0');
+}
+if (sea) {
+  try { process.title = 'Block Dash server'; } catch { /* (the window's title) */ }
+  process.on('uncaughtException', (e) => fatal(`Something went wrong: ${e && e.stack ? e.stack : e}`));
+}
+listen();

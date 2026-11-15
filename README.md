@@ -27,9 +27,27 @@ python3 -m http.server 8000
 
 Then open <http://localhost:8000>.
 
+## Windows: BlockDash.exe
+
+On Windows the whole thing comes as one program, **BlockDash.exe**: the game, the rooms server (see [Rooms](#rooms-play-together-on-your-wi-fi)) and the 3D engine, with nothing to install and no internet needed. Download it from the [latest release](https://github.com/BreadPC-codes/Block-Dash/releases/latest/download/BlockDash.exe) and double-click it:
+
+- A black window opens with the addresses to play at and the rooms PIN, and the game opens in a window of its own (Microsoft Edge's app window, or your browser if there's no Edge).
+- Everyone else on your Wi-Fi opens the Wi-Fi address it shows (like `http://192.168.1.20:8080`) on their phone, tablet or computer, and you all meet under **ROOMS**.
+- The first time, Windows may say it protected your PC, because the exe isn't code-signed: choose **More info**, then **Run anyway**. If the firewall asks, allow it on **private networks**, or nobody else can join.
+- Close the black window to stop it. Opened again while it's still running, it just opens the game again.
+- If port 8080 is taken, it uses the next free one and says so. The [server options](#switching-the-rooms-off-and-on) work here too (`set PORT=9000` in a Command Prompt, then `BlockDash.exe`), and `BlockDash.exe --no-open` starts it without opening the game.
+
+Every change to `main` builds a new BlockDash.exe on GitHub (`.github/workflows/windows-exe.yml`) and puts it on the Releases page. To build it yourself, on any computer with Node.js 20.12 or newer (22 recommended):
+
+```bash
+node tools/build-exe.mjs
+```
+
+That writes `dist/BlockDash.exe`. It's a Node.js [single executable application](https://nodejs.org/api/single-executable-applications.html): the Windows build of the Node.js you run it with (downloaded from nodejs.org and checked against its published checksums, unless you build on Windows) with `server.js` inside as its program and `index.html` and Three.js (from npm) as its files, plus Block Dash's icon and name. `--target linux` builds the same thing for Linux (`dist/blockdash-linux`).
+
 ## Rooms: play together on your Wi-Fi
 
-Everyone on the same Wi-Fi can play in one room, each on their own phone, tablet or computer. One computer runs the server that comes with the game, `server.js`. It needs [Node.js](https://nodejs.org/) 18 or newer and nothing else: no `npm install`, no internet of its own.
+Everyone on the same Wi-Fi can play in one room, each on their own phone, tablet or computer. One computer runs the server that comes with the game: on Windows that's just [BlockDash.exe](#windows-blockdashexe); anywhere else it's `server.js`, which needs [Node.js](https://nodejs.org/) 18 or newer and nothing else (no `npm install`, no internet of its own).
 
 1. Put `server.js` next to `index.html` and, in that folder, run:
 
@@ -71,7 +89,7 @@ The server's options are environment variables:
 
 For example, `PORT=9000 BLOCKDASH_PIN=2468 node server.js` (in Windows PowerShell: `$env:PORT=9000; $env:BLOCKDASH_PIN=2468; node server.js`). Press Ctrl+C to stop the server.
 
-The server only serves `index.html` and the rooms. Each device still loads Three.js and the fonts from the internet, as usual. Use it on a network you trust: anyone on it can open the game and join a room, and the PIN only guards the switch.
+The server only serves `index.html`, the rooms, and its own copy of Three.js if it has one (BlockDash.exe does; for `server.js`, put `three.module.min.js` in a `vendor` folder next to it). With that, nobody needs the internet to play; without it, each device loads Three.js from the internet as usual. The fonts always come from the internet, with built-in ones in their place offline. Use it on a network you trust: anyone on it can open the game and join a room, and the PIN only guards the switch.
 
 ## Controls
 

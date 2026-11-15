@@ -1,0 +1,42 @@
+# Builds BlockDash.exe (the game, the rooms server and Three.js in one Windows program; see tools/build-exe.mjs)
+# whenever the game changes on main, and puts it on the Releases page as "Block Dash for Windows", downloadable at
+# https://github.com/<owner>/<repo>/releases/latest/download/BlockDash.exe. It can also be run by hand from the
+# Actions tab (Run workflow); every run keeps the exe as a download on the run's page too.
+name: Windows exe
+
+on:
+  push:
+    branches: [main]
+    paths: [index.html, server.js, tools/build-exe.mjs, .github/workflows/windows-exe.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-exe
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build BlockDash.exe
+        run: node tools/build-exe.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BlockDash-windows
+          path: dist/BlockDash.exe
+      - name: Publish it as the latest release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest dist/BlockDash.exe --target "$GITHUB_SHA" --latest \
+            --title "Block Dash for Windows" \
+            --notes "Download **BlockDash.exe** below and double-click it: it starts the rooms server for everyone on your Wi-Fi and opens the game. Nothing to install, no internet needed. The first time, Windows may say it protected your PC (the exe isn't code-signed): choose **More info**, then **Run anyway**; and if it asks, allow it on private networks so the others can join. Built from ${GITHUB_SHA:0:7}."

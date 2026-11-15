@@ -1340,8 +1340,10 @@ function bootError(msg) {
   document.getElementById('btn-retry').hidden = false;
 }
 
+// (Served by the Block Dash server with its own copy, e.g. BlockDash.exe: from there first, so no internet is needed.)
+const LOCAL_THREE = document.querySelector('meta[name="blockdash-three"]');
 let THREE = null;
-for (const url of THREE_CDNS) {
+for (const url of [...(LOCAL_THREE ? [LOCAL_THREE.content] : []), ...THREE_CDNS]) {
   try { THREE = await import(url); break; }
   catch (err) { console.warn('[Block Dash] Could not load Three.js from', url, err); }
 }
