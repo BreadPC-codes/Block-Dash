@@ -273,12 +273,7 @@ MX.module('game', function (THREE, MX) {
       const P = this.phys.crashed ? this.phys.crash.rider.pos : this.phys.pos;
       let s = this.lastTrackS;
       if (t.query(P.x, P.z, q)) s = q.s;
-      // back up to flat ground away from jumps and berms
-      for (let k = 0; k < 60; k++) {
-        const i = Math.floor((((s % t.length) + t.length) % t.length) / MX.TRACK_DS);
-        if (t.isFlatAt(s) && t.bermH[i] < 0.15 && t.rutD[i] < 0.05) break;
-        s -= 2;
-      }
+      s = MX.safeResetS(t, s);
       this._doReset(s, false);
       if (this.lap.running) { this.lap.invalid = true; }
       MX.toast('Bike reset', '', 1400);

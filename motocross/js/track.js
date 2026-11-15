@@ -609,6 +609,23 @@
       return { x, z, tx: tx / l, tz: tz / l, heading: Math.atan2(tx / l, tz / l) };
     }
 
+    // a reset spot at or behind s: flat, off berms/ruts, with a run-up to the next jump
+    safeResetS(s0) {
+      const L = this.length, wrap = (v) => ((v % L) + L) % L;
+      let s = s0;
+      for (let k = 0; k < 120; k++) {
+        const i = Math.floor(wrap(s) / DS) % this.n;
+        let ok = this.isFlatAt(s) && this.bermH[i] < 0.15 && this.rutD[i] < 0.05;
+        if (ok) for (let a = 0; a <= 26; a += 2) if (this.featureHeight(wrap(s + a)) > 0.05) { ok = false; break; }
+        if (ok) return wrap(s);
+        s -= 2;
+      }
+      // nothing ideal: settle for flat ground
+      s = s0;
+      for (let k = 0; k < 60 && !this.isFlatAt(s); k++) s -= 2;
+      return wrap(s);
+    }
+
     // Is there a jump/obstacle near s? (used to choose a safe reset spot)
     isFlatAt(s) {
       for (let k = -8; k <= 8; k += 2) if (this.featureHeight(((s + k) % this.length + this.length) % this.length) > 0.15) return false;
@@ -746,6 +763,7 @@
   }
 
   MX.Track = Track;
+  MX.safeResetS = (track, s) => track.safeResetS(s);
   MX.TRACK_DS = DS;
   MX.buildTrackFeature = buildFeature;
 })(typeof window !== 'undefined' ? window : globalThis);

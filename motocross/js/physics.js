@@ -415,7 +415,13 @@ MX.module('physics', function (THREE, MX) {
         const assist = this.opts.riderAssist == null ? 1 : this.opts.riderAssist;
         if (assist > 0) {
           const cw = fw.contact ? fw : this.wheels[1];
-          const bank = Math.asin(clamp(cw.cn.dot(this.l) * -Math.sign(Ln || 1), -0.9, 0.9)); // ground tilt toward the turn
+          // berm banking: how the ground rises across the direction of travel (sampled
+          // 0.7 m either side, so a berm counts but rut walls and bumps don't)
+          const fhl = Math.hypot(this.f.x, this.f.z) || 1;
+          const rx = -this.f.z / fhl, rz = this.f.x / fhl;          // horizontal right
+          const P = cw.cp;
+          const hR = this.track.height(P.x + rx * 0.7, P.z + rz * 0.7), hL = this.track.height(P.x - rx * 0.7, P.z - rz * 0.7);
+          const bank = Math.atan((hL - hR) / 1.4) * Math.sign(Ln || 1);
           const muE = cw.mu * 0.94;
           const grip = Math.atan(muE * (assist >= 2 ? 0.74 : 0.82)) + Math.max(0, bank) * 0.9;
           phiMax = Math.min(phiMax, grip);
@@ -425,7 +431,9 @@ MX.module('physics', function (THREE, MX) {
         this.leanTarget = MX.approach(this.leanTarget == null ? phi : this.leanTarget, phiGoal, 4.0 * Math.sqrt(hand) * dt);
         const phiT = this.leanTarget;
         // lateral acceleration the "rider" asks the tyres for (counter-steering)
-        const k1 = 50 * hand, k2 = 13 * Math.sqrt(hand);
+        // the steering needed per m/s^2 grows with 1/v^2, so soften the loop at low speed
+        const lowV = 0.38 + 0.62 * smoothstep(4, 13, v);
+        const k1 = 50 * hand * lowV, k2 = 13 * Math.sqrt(hand) * (0.55 + 0.45 * lowV);
         const aCmd = G * Math.tan(clamp(phi, -1.2, 1.2)) + k1 * (phi - phiT) + k2 * phiRate;
         const vv = Math.max(v, 2.2);
         let dCtl = -Math.atan(this.wheelbase * aCmd / (vv * vv)) / Math.cos(C.rake);
@@ -433,7 +441,7 @@ MX.module('physics', function (THREE, MX) {
         if (v > 3) {
           const rDes = -aCmd / v;                  // world yaw rate, + = turning left
           const rAct = this.omega.y;
-          dCtl += clamp((rDes - rAct) * 0.32 * clamp(9 / v, 0.25, 1.5), -0.25, 0.25) * smoothstep(3, 6, v);
+          dCtl += clamp((rDes - rAct) * 0.32 * clamp(9 / v, 0.25, 1.0), -0.25, 0.25) * smoothstep(3, 7, v);
         }
         // steer into a rear-wheel slide (opposite lock)
         if (speed > 3) {
@@ -534,6 +542,7 @@ MX.module('physics', function (THREE, MX) {
       w.s = s1; w.sv = sv;
 
       if (!contact) {
+        w.alphaEff = 0;
         w.contact = false; w.N = 0; w.Fx = 0; w.Fy = 0; w.slideAmt = 0; w.pen = 0;
         w.fPrev.set(0, 0, 0);
         return;
@@ -565,7 +574,12 @@ MX.module('physics', function (THREE, MX) {
       const slipV = surf - vLong;
       const vRef = Math.max(Math.abs(vLong), 1.0);
       const kappa = slipV / vRef;
-      const alpha = Math.atan2(vLat, vRef);
+      const alphaRaw = Math.atan2(vLat, vRef);
+      // relaxation length: the carcass needs ~0.3 m of rolling to build side force
+      // (a tyre that lands crossed-up doesn't snap the bike instantly)
+      const relax = Math.min(1, Math.max(Math.abs(vLong), 3) * dt / 0.3);
+      w.alphaEff = (w.alphaEff || 0) + (alphaRaw - (w.alphaEff || 0)) * relax;
+      const alpha = w.alphaEff;
       const kp = 0.17 + 0.05 * (1 - w.dirt), ap = 0.19;
       const sx = kappa / kp, sy = alpha / ap;
       const rho = Math.sqrt(sx * sx + sy * sy);
@@ -653,10 +667,13 @@ MX.module('physics', function (THREE, MX) {
       // traction control (like the factory TC on modern MX bikes): trims ignition when the rear spins up
       this.tcCut = 0;
       if (this.opts.tractionControl && wr.contact && en.gear > 0) {
-        const k = wr.slip;
-        const cut = smoothstep(0.2, 0.55, k);
-        this.tcCut = cut;
-        thr *= 1 - 0.95 * cut;
+        // lean-sensitive (IMU) TC: less wheelspin allowed when leaned, and it backs off
+        // when the rear starts stepping out sideways in a corner
+        const leanF = Math.sin(Math.min(1.2, Math.abs(this.lean)));
+        const cut = smoothstep(0.2 - 0.12 * leanF, 0.55 - 0.3 * leanF, wr.slip);
+        const side = smoothstep(0.1, 0.28, Math.abs(wr.alphaEff || 0)) * smoothstep(0.1, 0.4, Math.abs(this.lean));
+        this.tcCut = Math.max(cut, side * 0.85);
+        thr *= 1 - 0.95 * this.tcCut;
       }
 
       // stall / restart
@@ -782,7 +799,7 @@ MX.module('physics', function (THREE, MX) {
         T.addScaledVector(f, 120 * Ln * auth);
         T.addScaledVector(u, 70 * Ln * auth);
         // rider steadies the bike when not whipping
-        const calm = (1 - Math.min(1, Math.abs(Ln) * 1.5)) * auth;
+        const calm = (1 - smoothstep(0.12, 0.55, Math.abs(Ln))) * auth;
         if (calm > 0) {
           const phi = this.lean;
           let yawErr = 0;
@@ -792,8 +809,12 @@ MX.module('physics', function (THREE, MX) {
             vh.normalize(); fh.normalize();
             yawErr = Math.atan2(vh.z * fh.x - vh.x * fh.z, vh.dot(fh)); // + = nose left of travel
           }
-          T.addScaledVector(f, (-70 * phi - 28 * om.dot(f)) * calm);
-          T.addScaledVector(u, (-45 * yawErr - 20 * om.dot(u)) * calm);
+          const ra = this.opts.riderAssist == null ? 1 : this.opts.riderAssist;
+          const kr = ra >= 2 ? 200 : ra >= 1 ? 150 : 70, ky = ra >= 2 ? 160 : ra >= 1 ? 120 : 45;
+          // roll back upright about the bike's long axis; straighten the heading about world vertical
+          _v3.set(f.x, 0, f.z).normalize();
+          T.addScaledVector(_v3, (-kr * phi - 0.55 * kr * om.dot(_v3)) * calm);
+          T.y += (-ky * yawErr - 0.8 * ky * om.y) * calm;
         }
         // rider keeps the bike's pitch matched to the trajectory unless he's asked to move
         const assist = this.opts.riderAssist == null ? 1 : this.opts.riderAssist;
@@ -807,7 +828,9 @@ MX.module('physics', function (THREE, MX) {
             const ctl = 1 - Math.min(1, Math.abs(P) * 1.4);
             const kp = (assist >= 2 ? 150 : 100) * ctl;
             const kd = (assist >= 2 ? 150 : 110) * ctl;
-            const tq = clamp(-kp * (bikePitch - trajPitch + 0.03) - kd * (pRate - 0.5 * trajRate), -320, 320) * auth;
+            // aim a little nose-up of the flight path so the rear wheel touches first
+            const aim = trajPitch < 0 ? trajPitch * 0.9 + 0.02 : trajPitch * 0.9 + 0.03;
+            const tq = clamp(-kp * (bikePitch - aim) - kd * (pRate - 0.5 * trajRate), -320, 320) * auth;
             T.addScaledVector(l, -tq);   // torque about +l is nose down
           }
         }
@@ -828,10 +851,12 @@ MX.module('physics', function (THREE, MX) {
       // scrub: throw the bike sideways on a jump face
       const slopeAhead = -(wr.cn.x * f.x + wr.cn.z * f.z); // + = going uphill
       if (Math.abs(Ln) > 0.3 && speed > 8 && slopeAhead > 0.2 && wr.contact) {
-        const s = smoothstep(0.2, 0.45, slopeAhead) * (Math.abs(Ln) - 0.3) / 0.7 * Math.sign(Ln);
-        T.addScaledVector(f, 380 * s);
-        T.addScaledVector(u, -180 * s);
-      }
+        // rider throws the bike over and kicks it sideways across the face
+        const s = smoothstep(0.2, 0.42, slopeAhead) * (Math.abs(Ln) - 0.3) / 0.7 * Math.sign(Ln);
+        T.addScaledVector(f, 560 * s);
+        T.addScaledVector(u, -300 * s);
+        this.scrubbing = Math.abs(s);
+      } else this.scrubbing = 0;
     }
 
     // ------------------------------------------------------------ chassis probes
