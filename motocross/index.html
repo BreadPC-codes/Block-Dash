@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b0d12">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="ROOST MX: a browser motocross simulator with real suspension, weight transfer, clutch and gearbox, whips, scrubs and three tracks.">
+<title>ROOST MX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;0,800;1,700;1,800;1,900&family=Barlow:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body data-state="boot">
+<div id="stage"></div>
+<div id="vignette"></div>
+
+<!-- ============================================================ LOADING -->
+<div id="loading" class="overlay">
+  <div class="logo big">ROOST<span>MX</span></div>
+  <div class="loadbar"><i></i></div>
+  <div id="loading-text">Loading the 3D engine…</div>
+  <button class="mbtn small" id="btn-retry" hidden>RETRY</button>
+</div>
+
+<!-- ============================================================ SPLASH -->
+<div id="splash" class="overlay hidden">
+  <div class="logo huge">ROOST<span>MX</span></div>
+  <div class="tagline">MOTOCROSS SIMULATOR</div>
+  <div class="press">Click or press any key to start</div>
+  <div class="splash-note">Keyboard, mouse and controllers supported. Headphones recommended.</div>
+</div>
+
+<!-- ============================================================ MAIN MENU -->
+<section id="menu" class="screen">
+  <div class="menu-left">
+    <div class="logo">ROOST<span>MX</span></div>
+    <div class="tagline">MOTOCROSS SIMULATOR</div>
+    <nav class="menu-list">
+      <button class="mbtn primary" data-action="play"><b>PLAY</b><small id="menu-play-sub">Practice · RF 450</small></button>
+      <button class="mbtn" data-goto="bikes"><b>BIKE SELECTION</b></button>
+      <button class="mbtn" data-goto="tracks"><b>TRACK SELECTION</b></button>
+      <button class="mbtn" data-goto="garage"><b>GARAGE</b></button>
+      <button class="mbtn" data-goto="settings"><b>SETTINGS</b></button>
+      <button class="mbtn" data-goto="controls"><b>CONTROLS</b></button>
+    </nav>
+    <div class="menu-foot"><span id="pad-status" class="pad-status">No controller</span><span class="ver">v1.0</span></div>
+  </div>
+  <div class="menu-card" id="menu-card"></div>
+  <div class="drag-hint">Drag to spin the bike</div>
+</section>
+
+<!-- ============================================================ BIKES -->
+<section id="bikes" class="screen panel-screen">
+  <header class="panel-head"><button class="back" data-back>‹ BACK</button><h1>BIKE SELECTION</h1><span class="prompt-hint" data-hint="tabs"></span></header>
+  <div class="bikes-wrap">
+    <div class="bike-list" id="bike-list"></div>
+    <div class="bike-info" id="bike-info"></div>
+  </div>
+</section>
+
+<!-- ============================================================ TRACKS -->
+<section id="tracks" class="screen panel-screen">
+  <header class="panel-head"><button class="back" data-back>‹ BACK</button><h1>TRACK SELECTION</h1></header>
+  <div class="track-grid" id="track-grid"></div>
+</section>
+
+<!-- ============================================================ GARAGE -->
+<section id="garage" class="screen panel-screen side-panel">
+  <header class="panel-head"><button class="back" data-back>‹ BACK</button><h1>GARAGE</h1><span class="garage-bike" id="garage-bike"></span></header>
+  <div class="tabs" data-tabs="garage">
+    <button class="tab" data-tab="paint">BIKE</button>
+    <button class="tab" data-tab="rider">RIDER</button>
+    <button class="tab" data-tab="setup">SETUP</button>
+  </div>
+  <div class="tab-body" id="garage-body"></div>
+</section>
+
+<!-- ============================================================ SETTINGS -->
+<section id="settings" class="screen panel-screen">
+  <header class="panel-head"><button class="back" data-back>‹ BACK</button><h1>SETTINGS</h1></header>
+  <div class="tabs" data-tabs="settings">
+    <button class="tab" data-tab="graphics">GRAPHICS</button>
+    <button class="tab" data-tab="audio">AUDIO</button>
+    <button class="tab" data-tab="gameplay">GAMEPLAY</button>
+    <button class="tab" data-tab="keyboard">KEYBOARD</button>
+    <button class="tab" data-tab="controller">CONTROLLER</button>
+  </div>
+  <div class="tab-body" id="settings-body"></div>
+</section>
+
+<!-- ============================================================ CONTROLS -->
+<section id="controls" class="screen panel-screen">
+  <header class="panel-head"><button class="back" data-back>‹ BACK</button><h1>CONTROLS</h1></header>
+  <div class="controls-wrap" id="controls-body"></div>
+</section>
+
+<!-- ============================================================ HUD -->
+<div id="hud">
+  <div class="hud-tl">
+    <div class="hud-track" id="hud-track">PRACTICE</div>
+    <div class="hud-lap"><span>LAP</span><b id="hud-lapn">–</b></div>
+    <div class="hud-time" id="hud-time">0:00.000</div>
+    <div class="hud-sub"><span>LAST</span><b id="hud-last">--:--.---</b></div>
+    <div class="hud-sub"><span>BEST</span><b id="hud-best">--:--.---</b></div>
+    <div class="hud-cp" id="hud-cp"></div>
+  </div>
+  <canvas class="hud-map" id="hud-map" width="200" height="200"></canvas>
+  <div class="hud-br">
+    <svg class="tacho" viewBox="0 0 220 220" id="tacho">
+      <path class="tacho-bg" d=""></path>
+      <path class="tacho-red" d=""></path>
+      <path class="tacho-fill" d=""></path>
+      <g class="tacho-ticks"></g>
+    </svg>
+    <div class="tacho-center">
+      <div class="gear" id="hud-gear">1</div>
+      <div class="speed"><b id="hud-speed">0</b><span id="hud-unit">KM/H</span></div>
+      <div class="rpm" id="hud-rpm">0 RPM</div>
+    </div>
+    <div class="shift-light" id="shift-light"></div>
+  </div>
+  <div class="hud-bl" id="hud-inputs">
+    <div class="ibar"><span>THR</span><i id="in-thr"></i></div>
+    <div class="ibar"><span>FRT</span><i id="in-front"></i></div>
+    <div class="ibar"><span>REAR</span><i id="in-rear"></i></div>
+    <div class="ibar"><span>CLU</span><i id="in-clutch"></i></div>
+    <div class="lean-ind"><i id="in-lean"></i></div>
+    <div class="rider-ind"><i id="in-rider"></i></div>
+    <div class="assist-tags" id="assist-tags"></div>
+  </div>
+  <div class="hud-center" id="hud-center"></div>
+  <div class="hud-air" id="hud-air"></div>
+  <div class="hud-fps" id="hud-fps"></div>
+  <div class="hud-crash" id="hud-crash"><div class="crash-title">CRASHED</div><div class="crash-reason" id="crash-reason"></div><div class="crash-hint" id="crash-hint"></div></div>
+</div>
+
+<!-- ============================================================ PAUSE -->
+<section id="pause" class="screen">
+  <div class="pause-box">
+    <h1>PAUSED</h1>
+    <div class="pause-info" id="pause-info"></div>
+    <nav class="menu-list">
+      <button class="mbtn primary" data-action="resume"><b>RESUME</b></button>
+      <button class="mbtn" data-action="restart"><b>RESTART</b></button>
+      <button class="mbtn" data-action="change-track"><b>CHANGE TRACK</b></button>
+      <button class="mbtn" data-action="pause-settings"><b>SETTINGS</b></button>
+      <button class="mbtn" data-action="quit"><b>MAIN MENU</b></button>
+    </nav>
+  </div>
+</section>
+
+<div id="toasts"></div>
+<div id="trackload" class="overlay hidden"><div class="logo">ROOST<span>MX</span></div><div class="loadbar"><i></i></div><div id="trackload-text">Building track…</div></div>
+<div id="capture" class="overlay hidden"><div class="capture-box"><div class="capture-title" id="capture-title">Press a key</div><div class="capture-sub" id="capture-sub">Esc to cancel</div></div></div>
+
+<!-- game code: plain scripts (work from file:// too), started once Three.js is loaded -->
+<script src="js/core.js"></script>
+<script src="js/noise.js"></script>
+<script src="js/bikes.js"></script>
+<script src="js/track-data.js"></script>
+<script src="js/track.js"></script>
+<script src="js/physics.js"></script>
+<script src="js/input.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/bike-model.js"></script>
+<script src="js/world.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/camera.js"></script>
+<script src="js/hud.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/game.js"></script>
+<script type="module">
+  const THREE_VERSION = '0.170.0';
+  const urls = [
+    `https://cdn.jsdelivr.net/npm/three@${THREE_VERSION}/build/three.module.min.js`,
+    `https://unpkg.com/three@${THREE_VERSION}/build/three.module.min.js`,
+  ];
+  const text = document.getElementById('loading-text');
+  let THREE = null;
+  for (const u of urls) {
+    try { THREE = await import(u); break; } catch (e) { console.warn('[ROOST MX] could not load Three.js from', u, e); }
+  }
+  if (!THREE) {
+    text.textContent = 'Could not load the 3D engine (Three.js). Check your internet connection and try again.';
+    const b = document.getElementById('btn-retry'); b.hidden = false; b.onclick = () => location.reload();
+  } else {
+    try {
+      window.MX.boot(THREE);
+      window.MX.start();
+    } catch (e) {
+      console.error(e);
+      text.textContent = 'Something went wrong while starting: ' + (e && e.message ? e.message : e);
+    }
+  }
+</script>
+</body>
+</html>

@@ -208,3 +208,7 @@ The Settings screen covers graphics quality (Low, Medium, High), field of view (
 ## Debugging
 
 Add `?debug=1` to the URL to expose `window.BlockDash` (game state, world, player, rivals, the punch settings and the pattern solver) in the browser console.
+
+## Also in this repository: ROOST MX
+
+[`motocross/`](motocross/) holds a separate game: **ROOST MX**, a browser motocross simulator (Three.js) with real suspension, weight transfer, a clutch and gearbox, whips and scrubs, four bikes, three tracks, a garage, and keyboard and full controller support. Open `motocross/index.html`; see [`motocross/README.md`](motocross/README.md).
