@@ -498,7 +498,7 @@ MX.module('world', function (THREE, MX) {
           const x = p.x + p.tz * dd, z = p.z - p.tx * dd;
           const y = t.height(x, z);
           const b = new THREE.Mesh(bG, bMat);
-          b.position.set(x, y + 1.3, z); b.rotation.y = p.heading + Math.PI / 2;
+          b.position.set(x, y + 1.3, z); b.rotation.y = p.heading - side * Math.PI / 2;   // face the track
           scene.add(b);
           for (const e of [-1.9, 1.9]) {
             const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.9, 6), postMat);
@@ -664,15 +664,20 @@ MX.module('world', function (THREE, MX) {
       this.holder = new THREE.Group();
       this.holder.position.y = 0.12;
       table.add(this.holder);
-      // backdrop panels with soft light strips
-      const panelMat = new THREE.MeshStandardMaterial({ color: '#15181f', roughness: 0.9 });
-      for (let i = -2; i <= 2; i++) {
-        const pnl = new THREE.Mesh(new THREE.BoxGeometry(3.6, 6, 0.2), panelMat);
-        const a = i * 0.32;
-        pnl.position.set(Math.sin(a) * 11, 3, -Math.cos(a) * 11); pnl.rotation.y = -a;
-        scene.add(pnl);
-        const strip = new THREE.Mesh(new THREE.BoxGeometry(0.06, 5.2, 0.05), new THREE.MeshBasicMaterial({ color: i % 2 ? '#ff7a00' : '#3a3f4a' }));
-        strip.position.set(Math.sin(a) * 10.85 + Math.cos(a) * 1.75, 3, -Math.cos(a) * 10.85 + Math.sin(a) * 1.75); strip.rotation.y = -a;
+      // backdrop: a curved wall with a soft vertical gradient and light strips
+      const wallTex = MX.canvasTex(32, 256, (g, w, h) => {
+        const grd = g.createLinearGradient(0, 0, 0, h);
+        grd.addColorStop(0, '#07080b'); grd.addColorStop(0.55, '#141821'); grd.addColorStop(1, '#0b0d12');
+        g.fillStyle = grd; g.fillRect(0, 0, w, h);
+      });
+      const wall = new THREE.Mesh(new THREE.CylinderGeometry(16, 16, 12, 64, 1, true, Math.PI * 0.55, Math.PI * 0.9), new THREE.MeshBasicMaterial({ map: wallTex, side: THREE.BackSide, fog: false }));
+      wall.position.y = 5.5;
+      scene.add(wall);
+      for (let i = 0; i < 7; i++) {
+        const a = Math.PI * (0.62 + i * 0.12);
+        const strip = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 7), new THREE.MeshBasicMaterial({ color: i % 3 === 1 ? '#ff7a00' : '#2a3040', transparent: true, opacity: 0.8, fog: false }));
+        strip.position.set(Math.sin(a) * 15.8, 4.5, Math.cos(a) * 15.8);
+        strip.lookAt(0, 4.5, 0);
         scene.add(strip);
       }
       this.bike = null;
@@ -700,14 +705,14 @@ MX.module('world', function (THREE, MX) {
       const mode = this.mode;
       if (this.debugCam) { camera.position.copy(this.debugCam.pos); camera.lookAt(this.debugCam.look); return; }
       // animated background camera: slow orbit + bob; the bike sits right of the menus
-      let dist = 4.3, height = 1.5, shift = 0.95;
+      let dist = 4.7, height = 1.35, shift = 0.75;
       if (mode === 'garage') { dist = 4.0; height = 1.3; shift = 1.15; }
       if (mode === 'bikes') { dist = 4.6; height = 1.4; shift = 1.35; }
       const a = 0.62 + Math.sin(this.camT * 0.11) * 0.3;
       const pos = _sv1.set(Math.sin(a) * dist, height + Math.sin(this.camT * 0.23) * 0.12, Math.cos(a) * dist);
       // offset the look point to the camera's left so the bike appears on the right of the screen
       const right = _sv2.set(Math.cos(a), 0, -Math.sin(a));
-      const look = _sv3.set(0, 0.72, 0).addScaledVector(right, -shift);
+      const look = _sv3.set(0, mode === 'menu' ? 0.5 : 0.72, 0).addScaledVector(right, -shift);
       pos.addScaledVector(right, -shift);
       camera.position.lerp(pos, 1 - Math.exp(-dt * 2.5));
       if (!this._look) this._look = look.clone();
