@@ -117,6 +117,8 @@ body:not([data-state=playing]) #btn-pause{pointer-events:none;opacity:.35}
 .banner .b1{font-family:var(--display);font-size:clamp(18px,2.8vw,30px);letter-spacing:.05em;color:#fff;text-shadow:0 3px 0 rgba(40,10,70,.8),0 0 18px rgba(124,92,255,.8)}
 .banner .b2{margin-top:2px;font-weight:800;font-size:clamp(10px,1.3vw,14px);letter-spacing:.22em;color:var(--gold);text-shadow:0 2px 6px rgba(0,0,0,.7)}
 .banner.best .b1{color:var(--gold);text-shadow:0 3px 0 rgba(90,40,0,.8),0 0 22px rgba(255,190,60,.8)}
+.banner.legend .b1{color:#ffb36b;text-shadow:0 3px 0 rgba(90,10,20,.85),0 0 22px rgba(255,70,60,.85)}
+.banner.legend .b2{color:#ff8a7a}
 @keyframes banner{0%{opacity:0;transform:translate(-50%,10px) scale(.9)}12%{opacity:1;transform:translate(-50%,0) scale(1)}78%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-8px) scale(1)}}
 .countdown{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);font-family:var(--display);font-size:clamp(72px,14vw,150px);color:#fff;
   text-shadow:0 6px 0 rgba(40,10,70,.8),0 0 30px rgba(124,92,255,.9);opacity:0;pointer-events:none}
@@ -305,6 +307,8 @@ body.fx-lite .best-card,body.fx-lite .diff-pick,body.fx-lite .lobby-plate{backgr
   font-weight:800;letter-spacing:.12em;font-size:13px;color:var(--muted);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 0 24px rgba(255,210,63,.12)}
 .best-card b{font-family:var(--display);font-weight:400;font-size:24px;color:var(--gold);letter-spacing:.02em;line-height:1}
 .best-card .star{color:var(--gold);font-size:18px}
+.best-card.lg .pb-long{display:none}
+.best-card.lg #menu-best-lbl{color:#ff9a8a}
 .diff-pick{width:min(420px,90vw);padding:10px 18px 9px;border-radius:18px;background:rgba(14,10,38,.6);border:1px solid var(--line);
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);text-align:left}
 .diff-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
@@ -361,15 +365,19 @@ body.fx-lite .best-card,body.fx-lite .diff-pick,body.fx-lite .lobby-plate{backgr
 .lobby .best-card{justify-content:center;padding:8px 16px}
 .lobby .diff-pick{width:100%}
 /* Game mode, just over PLAY: REGULAR (one fall and you're out) or RESPAWN (fall off and you drop back in) */
-.mode-pick{display:flex;gap:4px;padding:4px;border-radius:16px;background:rgba(14,10,38,.6);border:1px solid var(--line);
+.mode-pick{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:16px;background:rgba(14,10,38,.6);border:1px solid var(--line);
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
-.mode-pick button{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:6px 10px;border:0;border-radius:12px;
+.mode-pick button{min-width:0;display:flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:6px 10px;border:0;border-radius:12px;
   background:transparent;color:var(--muted);font-family:var(--display);font-size:17px;letter-spacing:.06em;cursor:pointer;transition:background .2s,color .2s,transform .12s}
+.mode-pick button.lg{color:#ff9a8a}
+.mode-pick .ml{font-size:12.5px;line-height:1.02;letter-spacing:.04em;text-align:left}   /* (two lines: RESPAWN / LEGENDARY) */
 .mode-pick button:hover{color:#fff}
 .mode-pick button:active{transform:scale(.96)}
 .mode-pick button:focus-visible{outline:2px solid var(--cyan);outline-offset:1px}
 .mode-pick button.on{background:linear-gradient(180deg,#9479ff,#6a4dff);color:#fff;box-shadow:0 2px 12px rgba(124,92,255,.5)}
 .mode-pick button.on[data-mode=respawn]{background:linear-gradient(180deg,#3fe0c5,#14a08a);box-shadow:0 2px 12px rgba(40,210,180,.45)}
+.mode-pick button.on.lg{color:#fff;background:linear-gradient(180deg,#ff6a4d,#d6193a);box-shadow:0 2px 12px rgba(255,60,60,.5)}
+.mode-pick button.on[data-mode=legendary-respawn]{background:linear-gradient(135deg,#ff6a4d,#d6193a 62%,#14a08a)}
 .mode-pick .mi{font-family:system-ui,sans-serif;font-size:.9em;line-height:1}
 .mode-note{margin:-6px 0 0;text-align:center;font-size:12px;font-weight:700;letter-spacing:.04em;color:#e4dfff;opacity:.85}
 body.fx-lite .mode-pick{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(14,10,38,.8)}
@@ -493,6 +501,15 @@ body.fx-lite .mode-pick{-webkit-backdrop-filter:none;backdrop-filter:none;backgr
 .lt-select{font:inherit;font-size:12px;font-weight:700;padding:7px 8px;border-radius:10px;border:1px solid var(--line);background:#2a2150;color:#fff}
 .lt-stage{cursor:crosshair}
 .lt-stage .drag-hint{bottom:auto;top:2%;white-space:normal;max-width:92%;text-align:center;line-height:1.4}
+/* WAVES: two creators, Block Dash's and Legendary's */
+.lt-maps{display:flex;gap:4px;padding:3px;border-radius:12px;background:rgba(0,0,0,.28);border:1px solid var(--line);flex:none}
+.lt-maps button{flex:1;min-width:0;border:0;background:transparent;padding:7px 8px;border-radius:9px;font-family:var(--display);font-size:13px;letter-spacing:.06em;color:var(--muted);min-height:34px}
+.lt-maps button.lg{color:#ff9a8a}
+.lt-maps button.on{color:#fff;background:linear-gradient(180deg,#9479ff,#6a4dff);box-shadow:0 2px 10px rgba(124,92,255,.55)}
+.lt-maps button.on.lg{background:linear-gradient(180deg,#ff6a4d,#d6193a);box-shadow:0 2px 10px rgba(255,60,60,.5)}
+.lt-maps button:focus-visible{outline:2px solid var(--cyan)}
+body.lt-legendary .lt-panel h2{background:linear-gradient(90deg,#ffb36b,#ff5a4a,#ff2d55);-webkit-background-clip:text;background-clip:text}
+
 /* ---------- WAVES builder (flying) ---------- */
 .lt-build{width:100%}
 .bld-hud{display:none;position:fixed;inset:0;pointer-events:none;z-index:6}
@@ -716,6 +733,9 @@ body.net.net-host #btn-end-round{display:block}
 }
 @media (max-width:380px){.room-set .seg button{font-size:10px;letter-spacing:0}}
 .room-set .seg button:disabled{cursor:default}
+#room-mode{display:grid;grid-template-columns:1fr 1fr}
+#room-mode button.lg{color:#ff9a8a}
+#room-mode button.on.lg{color:#fff;background:linear-gradient(180deg,#ff6a4d,#d6193a);box-shadow:0 2px 10px rgba(255,60,60,.5)}
 .room-set .seg button:disabled:not(.on){opacity:.45}
 .room-wait{margin:12px 0 0!important;text-align:center;color:var(--muted)!important;font-size:14px!important;font-weight:700}
 .room-wait:empty{display:none}
@@ -952,7 +972,7 @@ body.touch .kbd-hint{display:none}
     </nav>
     <div class="lobby-plate" id="lobby-plate"><small>YOUR RUNNER</small><b id="lobby-skin">Classic</b></div>
     <div class="lobby-go">
-      <div class="best-card"><span class="star">★</span><span><span class="pb-long">PERSONAL </span>BEST</span> <b id="menu-best">0</b><span id="menu-best-unit">WAVES</span></div>
+      <div class="best-card"><span class="star">★</span><span><span id="menu-best-lbl"></span><span class="pb-long">PERSONAL </span>BEST</span> <b id="menu-best">0</b><span id="menu-best-unit">WAVES</span></div>
       <div class="diff-pick" id="diff-pick">
       <div class="diff-head"><label for="set-diff">DIFFICULTY</label><b id="diff-name">NORMAL</b></div>
       <input type="range" id="set-diff" min="1" max="5" step="1" value="3">
@@ -960,8 +980,10 @@ body.touch .kbd-hint{display:none}
       <p class="diff-about" id="diff-about"></p>
     </div>
       <div class="mode-pick" id="mode-pick" role="radiogroup" aria-label="Game mode" aria-describedby="mode-note">
-        <button type="button" data-mode="regular" role="radio" aria-checked="true" title="One fall and you're out"><span class="mi" aria-hidden="true">♥</span>REGULAR</button>
-        <button type="button" data-mode="respawn" role="radio" aria-checked="false" title="Fall off and you drop back in"><span class="mi" aria-hidden="true">↻</span>RESPAWN</button>
+        <button type="button" data-mode="regular" role="radio" aria-checked="true" title="Block Dash: one fall and you're out"><span class="mi" aria-hidden="true">♥</span>REGULAR</button>
+        <button type="button" data-mode="respawn" role="radio" aria-checked="false" title="Block Dash: fall off and you drop back in"><span class="mi" aria-hidden="true">↻</span>RESPAWN</button>
+        <button type="button" data-mode="legendary" role="radio" aria-checked="false" title="Legendary Block Dash (red floor, its own waves): one fall and you're out" class="lg"><span class="mi" aria-hidden="true">♛</span>LEGENDARY</button>
+        <button type="button" data-mode="legendary-respawn" role="radio" aria-checked="false" title="Legendary Block Dash: fall off and you drop back in" class="lg"><span class="mi" aria-hidden="true">↻</span><span class="ml">RESPAWN LEGENDARY</span></button>
       </div>
       <p class="mode-note" id="mode-note"></p>
       <button class="btn primary big play-btn" id="btn-play"><span class="play-in"><span class="play-ico" aria-hidden="true">▶</span>PLAY</span></button>
@@ -982,6 +1004,7 @@ body.touch .kbd-hint{display:none}
         <h3>GOAL</h3>
         <p>The floor is a little slippery: you get up to speed fast but glide a short way when you let go. Walls of blocks sweep toward you in <b>waves</b> of eight rows. Get past all eight and <b>WAVE SURVIVED</b> goes up by one.</p>
         <p>On the main menu, pick your outfit under <b>CUSTOMISE</b>, paint your own blocks under <b>BLOCKS</b>, and build your own waves under <b>WAVES</b>: fly over the arena and stack the blocks yourself.</p>
+        <p>The switch above <b>PLAY</b> picks the mode: <b>REGULAR</b> (one fall and you're out) or <b>RESPAWN</b> (you drop back in), on Block Dash or on <b>LEGENDARY</b> Block Dash, with its red floor and the waves of its own creator under WAVES.</p>
         <p>Under <b>ROOMS</b>, everyone on your Wi-Fi plays together on the same walls, each on their own device: one computer runs <b>node server.js</b> (it comes with the game) and everyone opens the address it prints. Host a room or join one; the last one standing wins.</p>
         <p>Slip through the holes, jump the low parts, dive, or <b>jump on top</b> and ride. A wall that catches you <b>pushes you</b> toward the edge. Fall off the front or back edge, or touch a laser fence on the sides, and the run is over.</p>
         <p><b>Rival runners</b> (set how many in Settings) dodge the same walls and pick fights. <b>Punch</b> them off the arena or into a laser before they do it to you. Punch in the middle of a dive for a <b>Super Punch</b>: you keep all your speed and hit much harder.</p>
@@ -1053,7 +1076,11 @@ body.touch .kbd-hint{display:none}
 <section class="screen" id="screen-waves" aria-label="Wave builder">
   <div class="skins-layout">
     <div class="panel skins-panel lt-panel">
-      <h2>WAVES</h2>
+      <h2 id="lt-title">WAVES</h2>
+      <div class="lt-maps" id="lt-maps" role="radiogroup" aria-label="Which waves to make">
+        <button type="button" data-map="blockdash" role="radio">BLOCK DASH</button>
+        <button type="button" data-map="legendary" role="radio" class="lg">♛ LEGENDARY</button>
+      </div>
       <div class="lt-slots" id="lt-slots" role="listbox" aria-label="Your 30 wave layouts"></div>
       <div class="lt-row lt-name-row">
         <input type="text" id="lt-name" maxlength="18" aria-label="Layout name" autocomplete="off" spellcheck="false">
@@ -1262,7 +1289,7 @@ body.touch .kbd-hint{display:none}
           </div></div></div>
         <div class="setting"><div class="lbl">Mode<small id="room-mode-about"></small></div>
           <div class="ctl"><div class="seg" id="room-mode" role="radiogroup" aria-label="Game mode">
-            <button data-v="regular" role="radio">REGULAR</button><button data-v="respawn" role="radio">RESPAWN</button>
+            <button data-v="regular" role="radio">REGULAR</button><button data-v="respawn" role="radio">RESPAWN</button><button data-v="legendary" role="radio" class="lg">LEGENDARY</button><button data-v="legendary-respawn" role="radio" class="lg">RESPAWN LEGENDARY</button>
           </div></div></div>
       </div>
       <p class="room-wait" id="room-wait"></p>
@@ -2024,8 +2051,9 @@ const LIB_BY_ID = Object.fromEntries(LIBRARY.map((p) => [p.id, p]));
 function choosePattern(index, demo, lastId, rnd = Math.random) {
   if (debug.forcePattern && LIB_BY_ID[debug.forcePattern]) return LIB_BY_ID[debug.forcePattern];
   if (!demo && run.practice !== null && layouts[run.practice].pattern) return layouts[run.practice].pattern;   // TRY IT
-  const mine = demo || run.net ? [] : layoutsInGame();   // (a room plays the built-in walls: everyone has to have the same)
-  if (mine.length && layoutOpts.only) return mine[index % mine.length];   // only my layouts, in slot order
+  const map = run.legendary ? 'legendary' : 'blockdash';   // (Legendary Block Dash: the waves of its own creator)
+  const mine = demo || run.net ? [] : layoutsInGame(map);   // (a room plays the built-in walls: everyone has to have the same)
+  if (mine.length && layoutSets[map].only) return mine[index % mine.length];   // only my layouts, in slot order
   if (!demo && !mine.length && level.opening && index < FIXED_OPENING.length && LIB_BY_ID[FIXED_OPENING[index]]) return LIB_BY_ID[FIXED_OPENING[index]];
   const climbOk = level.climb > 0 && index >= level.climbFrom;
   const pool = LIBRARY.filter((p) => demo || (p.minWave <= index && p.rating <= level.maxRating && (!p.climb || climbOk)));
@@ -2061,12 +2089,17 @@ function defaultQuality() {
   if (COARSE) return mem <= 3 || cores <= 4 ? 'low' : 'medium';
   return 'high';
 }
+// The game modes (the switch over PLAY): Block Dash or LEGENDARY Block Dash (the red floor and its own waves, see 6b),
+// each with one fall and you're out, or RESPAWN.
+const MODES = ['regular', 'respawn', 'legendary', 'legendary-respawn'];
+const modeRespawn = (m) => m === 'respawn' || m === 'legendary-respawn';
+const modeLegendary = (m) => m === 'legendary' || m === 'legendary-respawn';
 const DEFAULTS = Object.freeze({ quality: defaultQuality(), difficulty: 3, mode: 'regular', fov: 70, camX: 0, camY: 0, mouseSens: 1, cameraSens: 1, touchSens: 1, joySize: 1, rivals: 3, volume: 0.7, sfx: true, music: true, vibration: true });
 function sanitizeSettings(s) {
   const num = (v, lo, hi, d) => (Number.isFinite(+v) ? clamp(+v, lo, hi) : d);
   return {
     quality: ['low', 'medium', 'high'].includes(s.quality) ? s.quality : DEFAULTS.quality,
-    difficulty: Math.round(num(s.difficulty, 1, LEVELS.length, 3)), mode: s.mode === 'respawn' ? 'respawn' : 'regular',
+    difficulty: Math.round(num(s.difficulty, 1, LEVELS.length, 3)), mode: MODES.includes(s.mode) ? s.mode : 'regular',
     fov: num(s.fov, 45, 100, DEFAULTS.fov), camX: num(s.camX, -6, 6, 0), camY: num(s.camY, -4, 8, 0),
     mouseSens: num(s.mouseSens, 0.2, 4, 1), cameraSens: num(s.cameraSens, 0.3, 2, 1),
     touchSens: num(s.touchSens, 0.5, 3, 1), joySize: num(s.joySize, 0.7, 1.4, 1), rivals: Math.round(num(s.rivals, 0, 5, 3)),
@@ -2082,17 +2115,19 @@ function loadSettings() {
 }
 let settings = loadSettings();
 const saveSettings = () => store.set(SETTINGS_KEY, JSON.stringify(settings));
-// Personal best per difficulty level (Normal keeps the original key).
-const bestKey = (n) => (n === 3 ? BEST_KEY : `${BEST_KEY}.${n}`);
-const loadBest = (n) => Math.max(0, parseInt(store.get(bestKey(n)) || '0', 10) || 0);
+// Personal best per difficulty level (Normal keeps the original key), and Legendary Block Dash its own.
+const bestKey = (n, legendary) => (legendary ? `${BEST_KEY}.legendary.${n}` : n === 3 ? BEST_KEY : `${BEST_KEY}.${n}`);
+const loadBest = (n, legendary = modeLegendary(settings.mode)) => Math.max(0, parseInt(store.get(bestKey(n, legendary)) || '0', 10) || 0);
 let bestWave = loadBest(settings.difficulty);
-const saveBest = () => store.set(bestKey(level.n), String(bestWave));
+const saveBest = () => store.set(bestKey(level.n, run.legendary), String(bestWave));
 
 // ---------------------------------------------------------------------
 // 6b. Custom wave layouts: 30 slots made in the WAVES editor. A layout covers the whole map, one cell
 //     per square of the checkered floor (12 lanes × 20 squares), and the wave arrives exactly as built.
+//     There are two creators: one for Block Dash and one for LEGENDARY Block Dash, 30 slots each. The Legendary one
+//     started as a copy of the Block Dash one (the layouts you'd made then), and the two are separate from there on.
 // ---------------------------------------------------------------------
-const LAYOUT_SLOTS = 30, LAYOUT_KEY = 'blockdash.layouts.v1', LAYOUT_CELLS = '.J#3SMXYBbKG', LAYOUT_W = LANES;   // every lane of the arena
+const LAYOUT_SLOTS = 30, LAYOUT_KEY = 'blockdash.layouts.v1', LAYOUT_KEY_LEGENDARY = 'blockdash.layouts.legendary.v1', LAYOUT_CELLS = '.J#3SMXYBbKG', LAYOUT_W = LANES;   // every lane of the arena
 const SQ = LANE_W, LAYOUT_H = Math.round(ARENA_LEN / SQ);   // the floor's squares, one block each: 20 from the near edge to the far one
 const OLD_ROW_AT = [1, 3, 6, 8, 10, 12, 14, 16];         // where 8-row layouts (older saves, built-in patterns) land on the map
 const emptyMap = () => Array.from({ length: LAYOUT_H }, () => Array(LAYOUT_W).fill('.'));
@@ -2119,24 +2154,28 @@ function cellsToVox(rows) {                              // layouts from the old
   }));
   return v;
 }
-const layouts = Array.from({ length: LAYOUT_SLOTS }, (_, i) => ({
-  name: `Layout ${i + 1}`, vox: emptyVox(), on: false, pattern: null,
-}));
-const layoutOpts = { only: false };
-function checkLayout(i) {                                // any layout with at least one block is a wave: nothing is checked or blocked
-  const L = layouts[i];
+const newSlots = () => Array.from({ length: LAYOUT_SLOTS }, (_, i) => ({ name: `Layout ${i + 1}`, vox: emptyVox(), on: false, pattern: null }));
+const layoutSets = {                                     // the two creators: their 30 slots, and "Only my layouts"
+  blockdash: { key: LAYOUT_KEY, slots: newSlots(), only: false },
+  legendary: { key: LAYOUT_KEY_LEGENDARY, slots: newSlots(), only: false },
+};
+let waveSet = 'blockdash';                             // the creator the WAVES editor shows
+const layouts = layoutSets.blockdash.slots.slice();      // ... its slots (swapped in place when you switch, see setLayoutMap)
+const layoutOpts = { get only() { return layoutSets[waveSet].only; }, set only(v) { layoutSets[waveSet].only = !!v; } };
+function checkSlot(L, i, map) {                          // any layout with at least one block is a wave: nothing is checked or blocked
   if (!L.vox.some((c) => c !== '.')) { L.pattern = null; return; }
-  L.pattern = { id: `custom-${i}`, name: L.name || `Layout ${i + 1}`, custom: true, full: true, slot: i, minWave: 0, rating: 3, wall: true,
+  L.pattern = { id: map === 'legendary' ? `legendary-${i}` : `custom-${i}`, name: L.name || `Layout ${i + 1}`, custom: true, full: true, slot: i, minWave: 0, rating: 3, wall: true,
     climb: false, vox: L.vox.slice() };
 }
-(() => {
+const checkLayout = (i) => checkSlot(layouts[i], i, waveSet);
+function loadLayoutSet(set, raw) {
   let st = null;
-  try { st = JSON.parse(store.get(LAYOUT_KEY) || 'null'); } catch { st = null; }
+  try { st = JSON.parse(raw || 'null'); } catch { st = null; }
   if (st && typeof st === 'object') {
-    layoutOpts.only = !!st.only;
+    set.only = !!st.only;
     (Array.isArray(st.slots) ? st.slots : []).slice(0, LAYOUT_SLOTS).forEach((sl, i) => {
       if (!sl) return;
-      const L = layouts[i];
+      const L = set.slots[i];
       if (typeof sl.name === 'string' && sl.name.trim()) L.name = sl.name.trim().slice(0, 18);
       // Rows of 8 or 10 lanes (older saves) are widened. 8-row layouts go where the old editor showed them;
       // maps from before the arena grew keep their place from the near edge, with the new far rows empty.
@@ -2151,16 +2190,31 @@ function checkLayout(i) {                                // any layout with at l
       L.on = !!sl.on;
     });
   }
-  layouts.forEach((L, i) => checkLayout(i));
-})();
-let layoutSaveT = 0;
-function saveLayouts() {
-  clearTimeout(layoutSaveT);
-  layoutSaveT = setTimeout(() => store.set(LAYOUT_KEY, JSON.stringify({
-    v: 3, only: layoutOpts.only, slots: layouts.map((L) => ({ name: L.name, vox: L.vox.join(''), on: L.on ? 1 : 0 })),
-  })), 250);
 }
-const layoutsInGame = () => layouts.filter((L) => L.on && L.pattern).map((L) => L.pattern);
+(() => {
+  const mine = store.get(LAYOUT_KEY), legendary = store.get(LAYOUT_KEY_LEGENDARY);
+  loadLayoutSet(layoutSets.blockdash, mine);
+  loadLayoutSet(layoutSets.legendary, legendary !== null ? legendary : mine);   // the first time: a copy of the layouts you'd made
+  if (legendary === null && mine !== null) store.set(LAYOUT_KEY_LEGENDARY, mine);   // (its own from now on)
+  for (const map of ['blockdash', 'legendary']) layoutSets[map].slots.forEach((L, i) => checkSlot(L, i, map));
+})();
+const serializeLayouts = (set) => JSON.stringify({ v: 3, only: set.only, slots: set.slots.map((L) => ({ name: L.name, vox: L.vox.join(''), on: L.on ? 1 : 0 })) });
+let layoutSaveT = 0, layoutSaveSet = null;
+function flushLayoutSave() {                             // (a save that was waiting, now: before switching creators, say)
+  if (!layoutSaveSet) return;
+  clearTimeout(layoutSaveT);
+  store.set(layoutSaveSet.key, serializeLayouts(layoutSaveSet));
+  layoutSaveSet = null;
+}
+function saveLayouts() {
+  const set = layoutSets[waveSet];
+  if (layoutSaveSet && layoutSaveSet !== set) flushLayoutSave();
+  clearTimeout(layoutSaveT);
+  layoutSaveSet = set;
+  layoutSaveT = setTimeout(flushLayoutSave, 250);
+}
+// The layouts of a map that are in game (the editor's creator, unless you say which).
+const layoutsInGame = (map = waveSet) => layoutSets[map].slots.filter((L) => L.on && L.pattern).map((L) => L.pattern);
 function vibrate(pattern) {
   if (!settings.vibration || !CAN_VIBRATE) return;
   try { navigator.vibrate(pattern); } catch { /* ignored */ }
@@ -2588,17 +2642,20 @@ TEX.marker = canvasTex(128, 128, (g, w) => {
   g.moveTo(a + L, b); g.lineTo(a, b); g.lineTo(a, b - L);
   g.stroke();
 });
-TEX.floor = canvasTex(1024, 512, (g, w, h) => {
+// The floor: a checkerboard, one tile per block. Legendary Block Dash's is red.
+const floorTex = (rim, a, b, line) => canvasTex(1024, 512, (g, w, h) => {
   const ux = w / FLOOR_W, uz = h / 8;
-  g.fillStyle = '#2e2968'; g.fillRect(0, 0, w, h);                        // rims
+  g.fillStyle = rim; g.fillRect(0, 0, w, h);                              // rims
   for (let i = 0; i < LANES; i++) for (let j = 0; j < 4; j++) {            // checkerboard: one tile per block
-    g.fillStyle = (i + j) % 2 ? '#2c2862' : '#1b1842';
+    g.fillStyle = (i + j) % 2 ? a : b;
     g.fillRect((RIM + i * LANE_W) * ux, j * 2 * uz, LANE_W * ux, 2 * uz);
   }
-  g.fillStyle = 'rgba(190,180,255,.42)';                                   // grid lines, front-to-back and side-to-side
+  g.fillStyle = line;                                                      // grid lines, front-to-back and side-to-side
   for (let k = 0; k <= LANES; k++) g.fillRect((RIM + k * LANE_W) * ux - 1.5, 0, 3, h);
   for (let j = 0; j <= 4; j++) g.fillRect(RIM * ux, j * 2 * uz - 1.5, LANES * LANE_W * ux, 3);
 });
+TEX.floor = floorTex('#2e2968', '#2c2862', '#1b1842', 'rgba(190,180,255,.42)');
+TEX.floorRed = floorTex('#6a1626', '#7a1a2a', '#4a0c18', 'rgba(255,190,170,.45)');
 TEX.crack = canvasTex(128, 128, (g, w) => {              // breakable: pale glass with cracks running through it
   const gr = g.createLinearGradient(0, 0, w, w);
   gr.addColorStop(0, '#d9fbff'); gr.addColorStop(1, '#79d3ec');
@@ -2616,8 +2673,7 @@ TEX.bar = canvasTex(128, 128, (g, w, h) => {              // hazard stripes, wou
 });
 TEX.bar.wrapS = TEX.bar.wrapT = THREE.RepeatWrapping;
 TEX.bar.repeat.set(1, 3);
-TEX.floor.wrapT = THREE.RepeatWrapping;
-TEX.floor.repeat.set(1, ARENA_LEN / 8);
+for (const t of [TEX.floor, TEX.floorRed]) { t.wrapT = THREE.RepeatWrapping; t.repeat.set(1, ARENA_LEN / 8); }
 TEX.radial = canvasTex(128, 128, (g, w) => {
   const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
   gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.4, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
@@ -2671,6 +2727,7 @@ scene.add(sunSprite);
 
 const arena = new THREE.Group();
 scene.add(arena);
+const arenaMats = {};                                     // (the ones setArenaTheme recolours)
 (function buildArena() {
   const W = FLOOR_W, FULL = ARENA_HALF * 2;
   const topMat = new THREE.MeshStandardMaterial({ map: TEX.floor, roughness: 0.85, metalness: 0.04 });
@@ -2698,6 +2755,7 @@ scene.add(arena);
   arena.add(t2);
   const edgeMat = new THREE.MeshBasicMaterial({ color: 0xa48bff, toneMapped: false });
   const accentMat = new THREE.MeshBasicMaterial({ color: 0xff5fb0, toneMapped: false });
+  Object.assign(arenaMats, { top: topMat, side: sideMat, strip: stripMat, t1: t1.material, t2: t2.material, edge: edgeMat });
   const bar = (w, h, d, x, y, z, m) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); arena.add(b); };
   for (const s of [-1, 1]) {
     bar(0.12, 0.12, ARENA_LEN, s * ARENA_HALF, 0, ARENA_MID, edgeMat);              // outer edge, under the lasers
@@ -2711,7 +2769,26 @@ scene.add(arena);
     new THREE.MeshBasicMaterial({ map: TEX.radial, color: 0x7a3cff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
   under.position.set(0, -7, ARENA_MID);
   arena.add(under);
+  arenaMats.under = under.material;
 })();
+// Legendary Block Dash's arena: a red floor, with dark red sides and orange edges. (Lite quality's plain copies of these
+// materials share their colours and floor texture, so they follow.)
+const ARENA_THEMES = {
+  blockdash: { map: TEX.floor, side: [0x2b2468, 0x150c3c], strip: [0x231d50, 0x0d0828], t1: [0x1e1750, 0x0b0626], t2: [0x150f3a, 0x08041c], edge: 0xa48bff, under: 0x7a3cff },
+  legendary: { map: TEX.floorRed, side: [0x5e1424, 0x2c0610], strip: [0x4c1020, 0x1e040c], t1: [0x3e0c1a, 0x18030a], t2: [0x2c0812, 0x100206], edge: 0xffa24a, under: 0xff3c3c },
+};
+let arenaTheme = 'blockdash';
+function setArenaTheme(legendary) {
+  const name = legendary ? 'legendary' : 'blockdash';
+  if (name === arenaTheme) return;
+  arenaTheme = name;
+  const T = ARENA_THEMES[name], M = arenaMats;
+  M.top.map = T.map;
+  for (const k of ['side', 'strip', 't1', 't2']) { M[k].color.setHex(T[k][0]); M[k].emissive.setHex(T[k][1]); }
+  M.edge.color.setHex(T.edge);
+  M.under.color.setHex(T.under);
+  stillDrawn = false;                                     // (a paused frame is drawn again)
+}
 
 // Floating background cubes
 const decor = (() => {
@@ -5531,7 +5608,7 @@ const rivals = {
     if (!r.alive) return;
     r.alive = false;
     r.hide();
-    r.respawnAt = run.mode === 'respawn' && state === 'playing' ? run.time + RESPAWN.rival : 0;
+    r.respawnAt = run.respawn && state === 'playing' ? run.time + RESPAWN.rival : 0;
     hud.setRivals(this.alive().length, this.total);
     const by = r.ko ? r.koBy : r.punchedT < 3 ? r.lastHitBy : null;   // (a zap counts for whoever punched them into it)
     if (by === player) game.onRivalOut(r);
@@ -6820,8 +6897,23 @@ function drawLayoutThumb(i) {                          // seen from above: the t
     if (top > 0) { g.fillStyle = `rgba(255,255,255,${Math.min(0.5, top * 0.12)})`; g.fillRect(x, y, S, S); }
   }
 }
+// Switch the WAVES editor to the other creator (Block Dash's or Legendary's): its 30 slots, its floor.
+function setLayoutMap(map) {
+  if (!layoutSets[map]) return;
+  if (map !== waveSet) {
+    flushLayoutSave();
+    waveSet = map;
+    layoutSets[map].slots.forEach((L, i) => { layouts[i] = L; });
+    build.undo = [];                                     // (the undo steps were the other creator's)
+    if ($('lt-slots').children.length) layouts.forEach((L, i) => drawLayoutThumb(i));
+  }
+  if (currentScreen === 'waves') { setArenaTheme(map === 'legendary'); syncLayoutUI(); }
+}
 function syncLayoutUI() {
   const L = buildLayout(), inGame = layoutsInGame().length, n = L.vox.reduce((s, c) => s + (c !== '.'), 0);
+  for (const b of $('lt-maps').children) { const on = b.dataset.map === waveSet; b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on)); }
+  $('lt-title').textContent = waveSet === 'legendary' ? 'LEGENDARY WAVES' : 'WAVES';
+  document.body.classList.toggle('lt-legendary', waveSet === 'legendary');
   [...$('lt-slots').children].forEach((b, i) => {
     b.setAttribute('aria-selected', String(i === build.slot));
     b.classList.toggle('on', layouts[i].on);
@@ -6842,7 +6934,9 @@ function syncLayoutUI() {
   syncBuildHud();
 }
 const FOG_NEAR = scene.fog.near, FOG_FAR = scene.fog.far;
-function openWaves() {
+function openWaves(map) {
+  if (map) setLayoutMap(map);
+  setArenaTheme(waveSet === 'legendary');
   camCtl.mode = 'editor';
   world.paused = true;
   layoutView.g.visible = true;
@@ -6854,6 +6948,9 @@ function openWaves() {
 }
 function closeWaves() {
   leaveBuild();
+  flushLayoutSave();
+  document.body.classList.remove('lt-legendary');
+  if (state === 'menu') setArenaTheme(false);
   layoutView.g.visible = false;
   world.paused = false;
   player.showYaw = null;
@@ -6902,6 +6999,7 @@ function buildLayoutUI() {
   });
   $('lt-try').addEventListener('click', () => { if (buildLayout().pattern) { audio.play('click'); game.start(build.slot); } });
   $('lt-done').addEventListener('click', () => { audio.play('click'); showScreen('menu'); });
+  for (const b of $('lt-maps').children) b.addEventListener('click', () => { if (b.dataset.map !== waveSet) { audio.play('click'); setLayoutMap(b.dataset.map); } });
   // the hotbar
   const bar = $('bld-bar');
   HOTBAR.forEach((h, i) => {
@@ -7254,16 +7352,26 @@ function syncDifficultyUI() {
   $('diff-about').textContent = L.about;
   if (state === 'menu' || state === 'loading' || state === 'gameover') { bestWave = loadBest(L.n); updateMenuBest(); }
 }
-// The game mode switch over PLAY: REGULAR (one fall and you're out) or RESPAWN (fall off and you drop back in).
-const MODE_NOTES = { regular: 'One fall and you\u2019re out.', respawn: 'Fall off and you drop back in, as long as you like.' };
+// The game mode switch over PLAY: REGULAR (one fall and you're out) or RESPAWN (fall off and you drop back in), on
+// Block Dash or on LEGENDARY Block Dash (a red floor, and the waves of its own creator under WAVES).
+const MODE_NOTES = {
+  regular: 'One fall and you\u2019re out.',
+  respawn: 'Fall off and you drop back in, as long as you like.',
+  legendary: 'Legendary: the red floor and your Legendary waves. One fall and you\u2019re out.',
+  'legendary-respawn': 'Legendary, and you drop back in when you fall.',
+};
 function syncModeUI() {
   for (const b of $('mode-pick').querySelectorAll('button')) {
     const on = b.dataset.mode === settings.mode;
     b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on));
   }
   $('mode-note').textContent = MODE_NOTES[settings.mode];
+  if (state === 'menu' || state === 'loading' || state === 'gameover') { bestWave = loadBest(settings.difficulty); updateMenuBest(); }   // (Legendary has its own best)
 }
 function updateMenuBest() {
+  const lg = modeLegendary(settings.mode);
+  $('menu-best-lbl').textContent = lg ? 'LEGENDARY ' : '';
+  document.querySelector('.best-card').classList.toggle('lg', lg);   // ("LEGENDARY BEST": no room for "PERSONAL" too)
   $('menu-best').textContent = bestWave;
   $('menu-best-unit').textContent = bestWave === 1 ? 'WAVE' : 'WAVES';
 }
@@ -7995,7 +8103,7 @@ const roomsUI = {
     }
     const L = LEVELS[clamp(s.difficulty || 3, 1, 5) - 1];
     $('room-diff-about').textContent = L.about;
-    $('room-mode-about').textContent = s.mode === 'respawn' ? 'Fall off and you drop back in. The host ends the round: fewest falls wins.' : 'One fall and you’re out. The last one standing wins.';
+    $('room-mode-about').textContent = (modeLegendary(s.mode) ? 'Legendary: the red floor. ' : '') + (modeRespawn(s.mode) ? 'Fall off and you drop back in. The host ends the round: fewest falls wins.' : 'One fall and you’re out. The last one standing wins.');
     const hostName = (r.players.find((p) => p.id === r.host) || {}).name;
     $('room-wait').textContent = r.state === 'playing' ? 'A round is on…' : host ? (r.players.length < 2 ? 'Waiting for others to join (or start on your own).' : '')
       : `Waiting for ${cleanName(hostName)} to start…`;
@@ -8034,6 +8142,7 @@ function leaveRooms() { net.close(); showScreen('menu'); }
 let state = 'loading';
 let timeScale = 1, deathTimer = 0, countdownT = 0, countdownLast = 0, bgTime = 0;
 const run = { waves: 0, time: 0, bestAtStart: 0, newBest: false, cause: '', causeText: '', pipResetAt: 0, practice: null, mode: 'regular', falls: 0, respawnT: 0,
+  respawn: false, legendary: false,                       // (from the mode: you drop back in; Legendary Block Dash)
   net: false, netOut: false, netMenu: false, netStart: 0, steps: 0, outAt: 0, lastSnap: -1, endAt: 0, spot: null, kos: 0 };   // (net…: a round in a room, see 17b)
 const debug = { timeScale: 1, manual: false, forcePattern: null };
 const OBSTACLE_NAME = { '#': 'block', J: 'low barrier', M: 'crusher' };
@@ -8061,10 +8170,14 @@ const game = {
     if (run.net) { net.leave(); this.leaveNetRun(); }     // (not in a room's round any more)
     world.seed = 0; world.syncSpeed = false;
     run.practice = practice;
+    // (before the first wave is picked: a Legendary run's walls come from the Legendary creator; a practice run from the
+    //  WAVES editor is on the map of the creator it came from)
+    run.legendary = practice !== null ? waveSet === 'legendary' : modeLegendary(settings.mode);
+    run.respawn = modeRespawn(settings.mode);
     document.body.classList.toggle('practice', practice !== null);
     showScreen(null);
     level = LEVELS[settings.difficulty - 1];                // the run keeps this level until it ends
-    bestWave = loadBest(level.n);
+    bestWave = loadBest(level.n, run.legendary);
     leaveLobby();
     world.reset('game');
     particles.clear();
@@ -8072,7 +8185,9 @@ const game = {
     player.reset();
     rivals.spawn(settings.rivals);
     Object.assign(run, { waves: 0, time: 0, bestAtStart: bestWave, newBest: false, cause: '', causeText: '', pipResetAt: 0, practice, mode: settings.mode, falls: 0, respawnT: 0 });
-    document.body.classList.toggle('respawn', run.mode === 'respawn');
+    document.body.classList.toggle('respawn', run.respawn);
+    document.body.classList.toggle('legendary', run.legendary);
+    setArenaTheme(run.legendary);                         // Legendary Block Dash: the red floor
     hud.setFalls(0);
     timeScale = 1; deathTimer = 0;
     Object.assign(camCtl, { mode: 'follow', yaw: 0, pitch: 0, shake: 0, ease: true });
@@ -8089,6 +8204,7 @@ const game = {
     audio.music('game');
     audio.play('go');
     if (practice !== null) hud.showBanner('PRACTICE', layouts[practice].name.toUpperCase(), '', 1.6);
+    else if (run.legendary) hud.showBanner('LEGENDARY BLOCK DASH', 'SURVIVE THE INCOMING WAVES', 'legend', 1.8);
     else hud.showBanner('GET READY', 'SURVIVE THE INCOMING WAVES', '', 1.4);
     hud.busyUntil = performance.now() + 1300;
   },
@@ -8136,7 +8252,8 @@ const game = {
     if (run.net) { net.leave(); this.leaveNetRun(); return; }   // (LEAVE THE ROOM: back to the rooms)
     const back = run.practice;                           // a practice run goes back to the WAVES editor
     run.practice = null; run.respawnT = 0;
-    document.body.classList.remove('practice', 'respawn');
+    document.body.classList.remove('practice', 'respawn', 'legendary');
+    setArenaTheme(false);                                 // (the lobby's arena is the usual one; the WAVES editor sets its own)
     setState('menu');
     unlockPointer();
     world.setMode('demo');
@@ -8151,7 +8268,7 @@ const game = {
   },
   die(cause, info) {
     if (state !== 'playing' || run.netOut) return;
-    if (run.mode === 'respawn') { this.knockedOut(cause, info); return; }
+    if (run.respawn) { this.knockedOut(cause, info); return; }
     if (run.net) { this.netOut(cause, info); return; }
     setState('dying');
     const by = player.punchedT < 1.8 ? player.lastHitBy : null;   // whoever punched you off has a laugh about it
@@ -8230,6 +8347,8 @@ const game = {
     level = LEVELS[clamp((st.difficulty | 0) || 3, 1, 5) - 1];
     leaveLobby();
     world.seed = (m.seed >>> 0) || 1; world.syncSpeed = true; world.time = 0;   // (the crushers keep time with world.time)
+    run.net = true;                                      // (before the first wave is picked: only built-in walls in a room)
+    run.legendary = modeLegendary(st.mode); run.respawn = modeRespawn(st.mode);
     world.reset('game');
     particles.clear();
     pops.clear();
@@ -8241,9 +8360,11 @@ const game = {
     Object.assign(player, { x: run.spot.x, y: 0, z: run.spot.z, grounded: true });
     ghosts.setup(players);
     Object.assign(run, { waves: 0, time: 0, bestAtStart: 0, newBest: false, cause: '', causeText: '', pipResetAt: 0, practice: null,
-      mode: st.mode === 'respawn' ? 'respawn' : 'regular', falls: 0, respawnT: 0,
+      mode: MODES.includes(st.mode) ? st.mode : 'regular', respawn: modeRespawn(st.mode), legendary: modeLegendary(st.mode), falls: 0, respawnT: 0,
       net: true, netOut: false, netMenu: false, netStart: goAt, steps: 0, outAt: 0, lastSnap: -1, endAt: 0, kos: 0 });
-    document.body.classList.toggle('respawn', run.mode === 'respawn');
+    document.body.classList.toggle('respawn', run.respawn);
+    document.body.classList.toggle('legendary', run.legendary);
+    setArenaTheme(run.legendary);
     document.body.classList.add('net');
     document.body.classList.remove('netout', 'watching');
     this.netRoster();
@@ -8261,13 +8382,13 @@ const game = {
     countdownT = (goAt - performance.now()) / 1000; countdownLast = 0;
     setState('countdown');
     audio.music('game');
-    hud.showBanner(net.room ? String(net.room.name).toUpperCase() : 'ROOM', `${players.length} RUNNER${players.length === 1 ? '' : 'S'} · ${run.mode === 'respawn' ? 'RESPAWN' : 'LAST ONE STANDING'}`, '', Math.max(1.6, countdownT));
+    hud.showBanner(net.room ? String(net.room.name).toUpperCase() : 'ROOM', `${run.legendary ? 'LEGENDARY · ' : ''}${players.length} RUNNER${players.length === 1 ? '' : 'S'} · ${run.respawn ? 'RESPAWN' : 'LAST ONE STANDING'}`, run.legendary ? 'legend' : '', Math.max(1.6, countdownT));
     hud.busyUntil = performance.now() + Math.max(1.6, countdownT) * 1000;
   },
   netRoster() {                                          // who's still in (the chip), and whether you're the host (END THE ROUND)
     document.body.classList.toggle('net-host', net.isHost);
     if (!run.net) return;
-    const respawn = run.mode === 'respawn';
+    const respawn = run.respawn;
     $('hud-players').textContent = respawn ? 1 + ghosts.list.length : (run.netOut ? 0 : 1) + ghosts.list.filter((g) => !g.out).length;
     $('hud-players-lbl').textContent = respawn ? 'PLAYERS' : 'STILL IN';
   },
@@ -8332,7 +8453,7 @@ const game = {
   },
   netEnd(m) {                                            // the round's over: the results, once the arena's had a moment
     net.results = Array.isArray(m.results) ? m.results : null;
-    net.resultsMode = m.mode === 'respawn' ? 'respawn' : 'regular';
+    net.resultsMode = modeRespawn(m.mode) ? 'respawn' : 'regular';
     if (!run.net) { roomsUI.render(); return; }
     if (!run.endAt) {
       run.endAt = run.time + NET.endWait;
@@ -8342,7 +8463,7 @@ const game = {
   },
   netTick() {                                            // every frame of a room's round: spectating, and the end of it
     if (run.endAt && run.time >= run.endAt) { this.leaveNetRun(); return; }
-    if (!run.netOut || run.mode === 'respawn') return;
+    if (!run.netOut || run.respawn) return;
     const w = camCtl.watch;
     if (run.time - run.outAt > NET.outWatch && (!w || !w.visible || w.left)) this.watchNext(1);
   },
@@ -8370,7 +8491,8 @@ const game = {
     Object.assign(run, { net: false, netOut: false, netMenu: false, endAt: 0 });
     world.seed = 0; world.syncSpeed = false;
     ghosts.clear();
-    document.body.classList.remove('net', 'netout', 'watching', 'respawn', 'net-host');
+    document.body.classList.remove('net', 'netout', 'watching', 'respawn', 'legendary', 'net-host');
+    setArenaTheme(false);
     setState('menu');
     unlockPointer();
     world.setMode('demo');
@@ -8515,7 +8637,7 @@ const game = {
     if (!practice && n > bestWave) { bestWave = n; saveBest(); }
     $('go-cause').textContent = run.causeText;
     $('go-best').textContent = practice ? layouts[run.practice].name : bestWave;
-    $('go-best-lbl').textContent = practice ? 'PRACTICE' : `BEST ON ${level.name}`;
+    $('go-best-lbl').textContent = practice ? 'PRACTICE' : `${run.legendary ? 'LEGENDARY ' : ''}BEST ON ${level.name}`;
     $('btn-go-menu').textContent = practice ? 'BACK TO EDITOR' : 'MAIN MENU';
     $('go-time').textContent = fmtTime(run.time);
     $('go-newbest').classList.toggle('show', isBest);
@@ -8600,7 +8722,7 @@ const game = {
       { speed: 6, up: 9, size: [0.1, 0.22], life: [0.8, 1.4], grav: 0.8, carry: 2 });
     audio.play('wave');
     vibrate(30);
-    if (run.practice !== null || run.mode === 'respawn' || run.net) return;   // practice, respawn and room runs don't count for your best
+    if (run.practice !== null || run.respawn || run.net) return;   // practice, respawn and room runs don't count for your best
     if (run.waves > bestWave) { bestWave = run.waves; saveBest(); }
     hud.setBest(bestWave, run.waves > run.bestAtStart);
     if (!run.newBest && run.bestAtStart > 0 && run.waves > run.bestAtStart) {
@@ -8727,7 +8849,7 @@ function playStep(h) {
   }
   const zap = lasers.check(player);
   if (zap) { game.die('zap', { side: zap }); return; }
-  if (run.mode === 'respawn' ? !player.grounded && player.y < -2.5 : player.fell()) { game.die('fall'); return; }   // (respawn mode: no long drop to wait through)
+  if (run.respawn ? !player.grounded && player.y < -2.5 : player.fell()) { game.die('fall'); return; }   // (respawn mode: no long drop to wait through)
   if (player.y > -1) world.checkPassed(player);           // no wave credit while dropping off the edge
 }
 // A room's round (17b): the round's clock says how far the walls should be, and the run takes as many fixed steps
@@ -8879,7 +9001,11 @@ function wireButtons() {
   $('btn-howto').addEventListener('click', () => { audio.play('click'); showScreen('howto'); });
   $('btn-skins').addEventListener('click', () => { audio.play('click'); showScreen('skins'); });
   $('btn-blocks').addEventListener('click', () => { audio.play('click'); showScreen('blocks'); });
-  $('btn-waves').addEventListener('click', () => { audio.play('click'); showScreen('waves'); });
+  $('btn-waves').addEventListener('click', () => {      // (on the creator of the mode picked: Legendary's for a Legendary mode)
+    audio.play('click');
+    setLayoutMap(modeLegendary(settings.mode) ? 'legendary' : 'blockdash');
+    showScreen('waves');
+  });
   // ROOMS (17b)
   $('btn-rooms').addEventListener('click', () => { audio.play('click'); openRooms(); });
   $('btn-rooms-back').addEventListener('click', () => { audio.play('click'); leaveRooms(); });
@@ -8969,6 +9095,7 @@ function init() {
       tick(dt) { update(dt); }, draw() { if (skinUI.thumbQueue.length) renderSkinThumbs(skinUI.thumbQueue.splice(0)); renderer.render(scene, camera); },
       skins: { SKINS, state: skinState, select: selectSkin },
       designs, meshCounts: () => ({ hash: MESH['#'].count, ghost: MESH.ghost.count, spikes: MESH.spikes.count, bars: MESH.bar.count, breakables: MESH.brk.count }), layouts, layoutOpts,
+      layoutSets, setLayoutMap, get waveSet() { return waveSet; }, saveLayouts, flushLayoutSave, setArenaTheme, get arenaTheme() { return arenaTheme; }, arenaMats, TEX, MODES,
       checkLayouts: () => layouts.forEach((L, i) => checkLayout(i)),
       layoutBlockCount: () => layoutView.meshes.map((m) => m.count),
       rivals, combat, createRunner, PUNCH, SUPER_PUNCH, blockedBetween, net, ghosts, packSnap, NET, netSpot, seededRandom, roomsUI, EMOTES, EMOTE_LIST, emoteLoadout, setEmoteSlot, playEmoteSlot, emoteTray, czUI: () => czUI, setCzTab, pops, keymap, setKey, resetKeys, keyName, keyCapture, heldKeys: () => ({ keys: [...keys], bkeys: [...bkeys] }),

@@ -40,6 +40,8 @@ const TRUST_LOCAL = process.env.BLOCKDASH_TRUST_LOCAL !== '0';
 const OPEN = process.argv.includes('--open') || (!!sea && !process.argv.includes('--no-open'));
 const GAME = path.join(__dirname, 'index.html');
 const MAX_PLAYERS = 8;
+const MODES = ['regular', 'respawn', 'legendary', 'legendary-respawn'];   // (Legendary Block Dash: the red floor)
+const isRespawn = (mode) => mode === 'respawn' || mode === 'legendary-respawn';
 const START_DELAY = 3200;                               // ms from START to GO (everyone's countdown ends together)
 const LAST_ONE_WAIT = 2500;                             // ms the last runner standing gets to celebrate before the results
 let roomsOn = process.env.BLOCKDASH_START_OFF !== '1';
@@ -235,7 +237,7 @@ function leaveRoom(c) {
 // Regular rounds end when everybody is out, or soon after only one runner is left standing (if more than one
 // started): that one wins. Respawn rounds go on until the host ends them.
 function checkRoundOver(r) {
-  if (r.state !== 'playing' || r.settings.mode === 'respawn') return;
+  if (r.state !== 'playing' || isRespawn(r.settings.mode)) return;
   const left = r.members.filter((id) => !r.outs.has(id));
   if (!left.length) { endRound(r); return; }
   if (left.length === 1 && r.startedWith > 1 && !r.lastTimer) {
@@ -259,7 +261,7 @@ function endRound(r) {
     return { id, name: c ? c.name : '?', waves: o.waves || 0, time: o.time || 0, falls: Math.max(o.falls || 0, st.falls), kos: st.kos,
       out: r.outs.has(id), winner: r.winner === id };
   });
-  if (r.settings.mode === 'respawn') results.sort((a, b) => a.falls - b.falls || b.kos - a.kos || b.waves - a.waves);
+  if (isRespawn(r.settings.mode)) results.sort((a, b) => a.falls - b.falls || b.kos - a.kos || b.waves - a.waves);
   else results.sort((a, b) => (a.out - b.out) || b.time - a.time || b.waves - a.waves || b.kos - a.kos);   // (still in first, then whoever lasted longest)
   toRoom(r, { t: 'end', results, mode: r.settings.mode });
   log(`"${r.name}": round over${results.length ? `, ${results[0].name} first` : ''}`);
@@ -357,7 +359,7 @@ function onMessage(c, m) {
 function sanitizeSettings(s) {
   const out = {};
   if (Number.isInteger(+s.difficulty) && +s.difficulty >= 1 && +s.difficulty <= 5) out.difficulty = +s.difficulty;
-  if (s.mode === 'regular' || s.mode === 'respawn') out.mode = s.mode;
+  if (MODES.includes(s.mode)) out.mode = s.mode;
   return out;
 }
 
