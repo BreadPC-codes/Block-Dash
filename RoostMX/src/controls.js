@@ -172,14 +172,13 @@ export class Input {
   }
 
   /** Free camera movement keys (IJKL/UO + Shift). */
-  freeCam() {
+  freeCam(out = {}) {
     const k = this.keys;
-    return {
-      fz: (k.has('KeyI') ? 1 : 0) - (k.has('KeyK') ? 1 : 0),
-      fx: (k.has('KeyL') ? 1 : 0) - (k.has('KeyJ') ? 1 : 0),
-      fy: (k.has('KeyO') ? 1 : 0) - (k.has('KeyU') ? 1 : 0),
-      fast: k.has('ShiftLeft') || k.has('ShiftRight'),
-    };
+    out.fz = (k.has('KeyI') ? 1 : 0) - (k.has('KeyK') ? 1 : 0);
+    out.fx = (k.has('KeyL') ? 1 : 0) - (k.has('KeyJ') ? 1 : 0);
+    out.fy = (k.has('KeyO') ? 1 : 0) - (k.has('KeyU') ? 1 : 0);
+    out.fast = k.has('ShiftLeft') || k.has('ShiftRight');
+    return out;
   }
 
   endFrame() {

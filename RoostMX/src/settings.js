@@ -57,6 +57,9 @@ export const DEFAULT_SETTINGS = {
   },
   graphics: {
     quality: 'high',
+    renderScale: 1.0,
+    dynamicRes: true,
+    antialias: 'auto',
     fullscreen: true,
     showFps: false,
     units: 'kmh',

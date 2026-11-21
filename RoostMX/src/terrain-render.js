@@ -1,13 +1,41 @@
-// Terrain rendering: the heightfield is split into chunks with a static level of detail
-// (full resolution near the track, coarser far away). Chunk edges are stitched to the
-// coarser neighbour so there are no cracks. A splat shader blends dirt / grass / sand /
-// gravel textures in world space, darkens the worn racing line and adds detail normals.
+// Terrain rendering: the heightfield is split into 64 m chunks. Each chunk has up to three
+// levels of detail picked by camera distance every frame (THREE.LOD); a base step is
+// chosen per chunk from its distance to the track. Skirts along every chunk edge hide
+// the small cracks between neighbours at different levels. A splat shader blends dirt /
+// grass / sand / gravel in world space; layers that are absent are skipped and distant
+// pixels use fewer texture fetches.
 import * as THREE from 'three';
+import { patchRough, roughKey } from './ambient.js';
 
 const CH = 128; // cells per chunk side (64 m at 0.5 m cells)
 
-export function makeTerrainMaterial(tex, { sandy = false } = {}) {
+/** Mean linear colour of a (sRGB) canvas texture, used for distant terrain. */
+function meanColor(tex) {
+  const img = tex.image;
+  const c = document.createElement('canvas');
+  c.width = c.height = 32;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0, 32, 32);
+  const d = ctx.getImageData(0, 0, 32, 32).data;
+  const lin = (v) => {
+    v /= 255;
+    return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  let r = 0, g = 0, b = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    r += lin(d[i]);
+    g += lin(d[i + 1]);
+    b += lin(d[i + 2]);
+  }
+  const n = d.length / 4;
+  return new THREE.Vector3(r / n, g / n, b / n);
+}
+
+export function makeTerrainMaterial(tex, { sandy = false, quality = 'high' } = {}) {
+  const Q = quality === 'low' ? 0 : quality === 'medium' ? 1 : 2;
   const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.96, metalness: 0 });
+  mat.defines = { TERRAIN_Q: Q };
+  if (!tex.avg) tex.avg = { dirt: meanColor(tex.dirt), grass: meanColor(tex.grass), sand: meanColor(tex.sand) };
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.tDirt = { value: tex.dirt };
     shader.uniforms.tGrass = { value: tex.grass };
@@ -15,6 +43,9 @@ export function makeTerrainMaterial(tex, { sandy = false } = {}) {
     shader.uniforms.tGravel = { value: tex.gravel };
     shader.uniforms.tNormal = { value: tex.normal };
     shader.uniforms.tMacro = { value: tex.macro };
+    shader.uniforms.uAvgDirt = { value: tex.avg.dirt };
+    shader.uniforms.uAvgGrass = { value: tex.avg.grass };
+    shader.uniforms.uAvgSand = { value: tex.avg.sand };
     shader.uniforms.uWearTint = { value: sandy ? new THREE.Vector3(0.82, 0.78, 0.72) : new THREE.Vector3(0.74, 0.7, 0.66) };
     shader.vertexShader = shader.vertexShader
       .replace(
@@ -43,6 +74,9 @@ export function makeTerrainMaterial(tex, { sandy = false } = {}) {
         uniform sampler2D tGravel;
         uniform sampler2D tNormal;
         uniform sampler2D tMacro;
+        uniform vec3 uAvgDirt;
+        uniform vec3 uAvgGrass;
+        uniform vec3 uAvgSand;
         uniform vec3 uWearTint;
         varying vec4 vSplat;
         varying float vWear;
@@ -52,14 +86,42 @@ export function makeTerrainMaterial(tex, { sandy = false } = {}) {
         '#include <map_fragment>',
         `
         vec4 sw = vSplat / max(dot(vSplat, vec4(1.0)), 0.001);
-        vec2 uvA = vWPos.xz * 0.17;
-        vec2 uvB = vWPos.xz * 0.041 + vec2(0.37, 0.11);
-        float macro = texture2D(tMacro, vWPos.xz * 0.0045).r;
-        vec3 cd = mix(texture2D(tDirt, uvA).rgb, texture2D(tDirt, uvB).rgb, 0.4);
-        vec3 cg = mix(texture2D(tGrass, uvA * 1.25).rgb, texture2D(tGrass, uvB * 1.1).rgb, 0.45);
-        vec3 cs = mix(texture2D(tSand, uvA * 0.8).rgb, texture2D(tSand, uvB).rgb, 0.45);
-        vec3 cv = texture2D(tGravel, uvA * 1.35).rgb;
-        vec3 tcol = cd * sw.x + cg * sw.y + cs * sw.z + cv * sw.w;
+        float camDist = length(vViewPosition);
+        vec2 wp = vWPos.xz;
+        // explicit gradients: texture fetches below sit inside branches
+        vec2 gx = dFdx(wp), gy = dFdy(wp);
+        float macro = texture2D(tMacro, wp * 0.0045).r;
+        vec3 tcol = vec3(0.0);
+        #if TERRAIN_Q == 0
+          vec2 uM = wp * 0.11;
+          vec2 mx = gx * 0.11, my = gy * 0.11;
+          if (sw.x > 0.004) tcol += textureGrad(tDirt, uM, mx, my).rgb * sw.x;
+          if (sw.y > 0.004) tcol += textureGrad(tGrass, uM * 1.2, mx * 1.2, my * 1.2).rgb * sw.y;
+          if (sw.z > 0.004) tcol += textureGrad(tSand, uM * 0.9, mx * 0.9, my * 0.9).rgb * sw.z;
+          if (sw.w > 0.004) tcol += textureGrad(tGravel, uM * 1.4, mx * 1.4, my * 1.4).rgb * sw.w;
+        #else
+          // near detail fades into the texture's mean colour (what its far mips converge to)
+          float nearW = 1.0 - smoothstep(24.0, 44.0, camDist);
+          vec2 uvA = wp * 0.17;
+          vec2 uvB = wp * 0.041 + vec2(0.37, 0.11);
+          vec2 ax = gx * 0.17, ay = gy * 0.17, bx = gx * 0.041, by = gy * 0.041;
+          if (sw.x > 0.004) {
+            vec3 cA = uAvgDirt;
+            if (nearW > 0.0) cA = mix(uAvgDirt, textureGrad(tDirt, uvA, ax, ay).rgb, nearW);
+            tcol += mix(cA, textureGrad(tDirt, uvB, bx, by).rgb, 0.4) * sw.x;
+          }
+          if (sw.y > 0.004) {
+            vec3 cA = uAvgGrass;
+            if (nearW > 0.0) cA = mix(uAvgGrass, textureGrad(tGrass, uvA * 1.25, ax * 1.25, ay * 1.25).rgb, nearW);
+            tcol += mix(cA, textureGrad(tGrass, uvB * 1.1, bx * 1.1, by * 1.1).rgb, 0.45) * sw.y;
+          }
+          if (sw.z > 0.004) {
+            vec3 cA = uAvgSand;
+            if (nearW > 0.0) cA = mix(uAvgSand, textureGrad(tSand, uvA * 0.8, ax * 0.8, ay * 0.8).rgb, nearW);
+            tcol += mix(cA, textureGrad(tSand, uvB, bx, by).rgb, 0.45) * sw.z;
+          }
+          if (sw.w > 0.004) tcol += textureGrad(tGravel, uvA * 1.35, ax * 1.35, ay * 1.35).rgb * sw.w;
+        #endif
         tcol *= mix(vec3(1.0), uWearTint, vWear);
         tcol *= 0.8 + macro * 0.4;
         diffuseColor.rgb *= tcol;
@@ -68,22 +130,32 @@ export function makeTerrainMaterial(tex, { sandy = false } = {}) {
       .replace(
         '#include <normal_fragment_maps>',
         `#include <normal_fragment_maps>
-        {
-          vec3 nt = texture2D(tNormal, vWPos.xz * 0.23).xyz * 2.0 - 1.0;
-          vec3 nt2 = texture2D(tNormal, vWPos.xz * 0.061).xyz * 2.0 - 1.0;
-          nt = normalize(nt + nt2 * 0.6);
-          float ns = (sw.x * 0.9 + sw.z * 0.55 + sw.w * 1.1 + sw.y * 0.35);
+        #if TERRAIN_Q > 0
+        if (camDist < 60.0) {
+          vec3 nt = textureGrad(tNormal, wp * 0.23, gx * 0.23, gy * 0.23).xyz * 2.0 - 1.0;
+          #if TERRAIN_Q > 1
+          if (camDist < 32.0) {
+            vec3 nt2 = textureGrad(tNormal, wp * 0.061, gx * 0.061, gy * 0.061).xyz * 2.0 - 1.0;
+            nt = normalize(nt + nt2 * 0.6 * (1.0 - smoothstep(22.0, 32.0, camDist)));
+          }
+          #endif
+          float ns = (sw.x * 0.9 + sw.z * 0.55 + sw.w * 1.1 + sw.y * 0.35) * (1.0 - smoothstep(38.0, 60.0, camDist));
           vec3 wN = normalize((vec4(normal, 0.0) * viewMatrix).xyz);
           vec3 T = normalize(vec3(1.0, 0.0, 0.0) - wN * wN.x);
           vec3 B = normalize(cross(T, wN));
           vec3 pN = normalize(wN + (T * nt.x + B * nt.y) * ns * 0.55);
           normal = normalize((viewMatrix * vec4(pN, 0.0)).xyz);
-        }`
+        }
+        #endif`
       );
+    patchRough(shader);
   };
-  mat.customProgramCacheKey = () => 'roost-terrain-v1' + (sandy ? 's' : 'd');
+  mat.customProgramCacheKey = () => 'roost-terrain-v3' + (sandy ? 's' : 'd') + Q + roughKey();
   return mat;
 }
+
+/** Camera distances (to a chunk centre) at which the 2nd and 3rd detail levels take over. */
+const LOD_DIST = { low: [70, 170], medium: [80, 190], high: [85, 210] };
 
 export class TerrainView {
   constructor(hf, track) {
@@ -92,6 +164,7 @@ export class TerrainView {
     this.group = new THREE.Group();
     this.group.name = 'terrain';
     this.meshes = [];
+    this.lods = [];
   }
 
   chunkSteps(quality) {
@@ -117,101 +190,164 @@ export class TerrainView {
     return { cn, steps };
   }
 
+  /** Largest height error along a chunk's edges when sampled every `s` cells. */
+  _edgeError(gx0, gz0, size, sizeZ, s) {
+    const H = this.hf.h, n = this.hf.n;
+    let err = 0;
+    const along = (fixed, len, isX) => {
+      for (let a = 0; a <= len; a++) {
+        const c0 = Math.min(Math.floor(a / s) * s, len), c1 = Math.min(c0 + s, len);
+        const t = c1 > c0 ? (a - c0) / (c1 - c0) : 0;
+        const hA = isX ? H[fixed * n + gx0 + c0] : H[(gz0 + c0) * n + fixed];
+        const hB = isX ? H[fixed * n + gx0 + c1] : H[(gz0 + c1) * n + fixed];
+        const h = isX ? H[fixed * n + gx0 + a] : H[(gz0 + a) * n + fixed];
+        err = Math.max(err, Math.abs(h - (hA + (hB - hA) * t)));
+      }
+    };
+    along(gz0, size, true);
+    along(gz0 + sizeZ, size, true);
+    along(gx0, sizeZ, false);
+    along(gx0 + size, sizeZ, false);
+    return err;
+  }
+
+  _chunkGeo(gx0, gz0, size, sizeZ, s, ox, oy, oz, skirt) {
+    const hf = this.hf;
+    const n = hf.n, H = hf.h, cell = hf.cell, half = hf.half;
+    const mx = Math.ceil(size / s), mz = Math.ceil(sizeZ / s);
+    const vx = mx + 1, vz = mz + 1;
+    const nMain = vx * vz;
+    const total = nMain + 2 * (vx + vz);
+    const pos = new Float32Array(total * 3);
+    const nor = new Float32Array(total * 3);
+    const spl = new Uint8Array(total * 4);
+    const wear = new Uint8Array(total);
+    const d = Math.max(1, Math.round(s * 0.75)); // normal sampling radius in cells
+    let k = 0;
+    for (let j = 0; j < vz; j++) {
+      const gz = gz0 + Math.min(j * s, sizeZ);
+      const zm = Math.max(0, gz - d), zp = Math.min(n - 1, gz + d);
+      for (let i = 0; i < vx; i++, k++) {
+        const gx = gx0 + Math.min(i * s, size);
+        const xm = Math.max(0, gx - d), xp = Math.min(n - 1, gx + d);
+        const c = gz * n + gx;
+        pos[k * 3] = gx * cell - half - ox;
+        pos[k * 3 + 1] = H[c] - oy;
+        pos[k * 3 + 2] = gz * cell - half - oz;
+        const nx = -(H[gz * n + xp] - H[gz * n + xm]) / ((xp - xm) * cell);
+        const nz = -(H[zp * n + gx] - H[zm * n + gx]) / ((zp - zm) * cell);
+        const il = 1 / Math.sqrt(nx * nx + 1 + nz * nz);
+        nor[k * 3] = nx * il;
+        nor[k * 3 + 1] = il;
+        nor[k * 3 + 2] = nz * il;
+        spl[k * 4] = hf.splat[c * 4];
+        spl[k * 4 + 1] = hf.splat[c * 4 + 1];
+        spl[k * 4 + 2] = hf.splat[c * 4 + 2];
+        spl[k * 4 + 3] = hf.splat[c * 4 + 3];
+        wear[k] = hf.wear[c];
+      }
+    }
+    const idx = [];
+    for (let j = 0; j < mz; j++) {
+      for (let i = 0; i < mx; i++) {
+        const a = j * vx + i, b = a + 1, c = a + vx, dd = c + 1;
+        // diagonal (1,0)-(0,1) matches Heightfield.height()
+        idx.push(a, c, b, b, c, dd);
+      }
+    }
+    // skirts: a strip hanging below every edge, facing outward
+    const edge = (list, ox_, oz_) => {
+      const base = k;
+      for (const v of list) {
+        pos[k * 3] = pos[v * 3];
+        pos[k * 3 + 1] = pos[v * 3 + 1] - skirt;
+        pos[k * 3 + 2] = pos[v * 3 + 2];
+        nor[k * 3] = nor[v * 3]; nor[k * 3 + 1] = nor[v * 3 + 1]; nor[k * 3 + 2] = nor[v * 3 + 2];
+        spl[k * 4] = spl[v * 4]; spl[k * 4 + 1] = spl[v * 4 + 1]; spl[k * 4 + 2] = spl[v * 4 + 2]; spl[k * 4 + 3] = spl[v * 4 + 3];
+        wear[k] = wear[v];
+        k++;
+      }
+      for (let q = 0; q < list.length - 1; q++) {
+        const A = list[q], B = list[q + 1], A2 = base + q, B2 = base + q + 1;
+        // outward test: (B - A) x (A2 - A) . outward  (A2 - A is straight down)
+        const ex = pos[B * 3] - pos[A * 3], ez = pos[B * 3 + 2] - pos[A * 3 + 2];
+        // (ex, ey, ez) x (0, -1, 0) = (ez, 0, -ex)
+        if (ez * ox_ - ex * oz_ > 0) idx.push(A, B, A2, B, B2, A2);
+        else idx.push(A, A2, B, B, A2, B2);
+      }
+    };
+    const row = (j) => Array.from({ length: vx }, (_, i) => j * vx + i);
+    const col = (i) => Array.from({ length: vz }, (_, j) => j * vx + i);
+    edge(row(0), 0, -1);
+    edge(row(vz - 1), 0, 1);
+    edge(col(0), -1, 0);
+    edge(col(vx - 1), 1, 0);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+    geo.setAttribute('aSplat', new THREE.BufferAttribute(spl, 4, true));
+    geo.setAttribute('aWear', new THREE.BufferAttribute(wear, 1, true));
+    geo.setIndex(new THREE.BufferAttribute(total > 65535 ? new Uint32Array(idx) : new Uint16Array(idx), 1));
+    geo.computeBoundingSphere();
+    geo.computeBoundingBox();
+    return { geo, tris: idx.length / 3 };
+  }
+
   build(quality, material) {
     this.dispose();
     const hf = this.hf;
     const { cn, steps } = this.chunkSteps(quality);
-    const stepAt = (cx, cz) => (cx < 0 || cz < 0 || cx >= cn || cz >= cn ? 0 : steps[cz * cn + cx]);
+    const dist = LOD_DIST[quality] || LOD_DIST.medium;
     const n = hf.n, H = hf.h, cell = hf.cell, half = hf.half;
-    const nrm = { x: 0, y: 1, z: 0 };
-    let tris = 0;
+    // per-chunk levels and the skirt depth needed to cover the worst neighbour mismatch
+    const info = [];
     for (let cz = 0; cz < cn; cz++) {
       for (let cx = 0; cx < cn; cx++) {
-        const s = steps[cz * cn + cx];
+        const s0 = steps[cz * cn + cx];
         const gx0 = cx * CH, gz0 = cz * CH;
         const size = Math.min(CH, n - 1 - gx0), sizeZ = Math.min(CH, n - 1 - gz0);
-        if (size <= 0 || sizeZ <= 0) continue;
-        const mx = Math.ceil(size / s), mz = Math.ceil(sizeZ / s);
-        const vx = mx + 1, vz = mz + 1;
-        const pos = new Float32Array(vx * vz * 3);
-        const nor = new Float32Array(vx * vz * 3);
-        const spl = new Uint8Array(vx * vz * 4);
-        const wear = new Uint8Array(vx * vz);
-        const sN = stepAt(cx, cz - 1), sS = stepAt(cx, cz + 1), sW = stepAt(cx - 1, cz), sE = stepAt(cx + 1, cz);
-        const hAt = (gx, gz) => H[Math.min(n - 1, gz) * n + Math.min(n - 1, gx)];
-        const edgeH = (gx, gz, along, ns, isX) => {
-          // interpolate along an edge at a coarser neighbour step
-          const a = Math.floor(along / ns) * ns, t = (along - a) / ns;
-          if (t === 0) return hAt(gx, gz);
-          if (isX) return hAt(gx0 + a, gz) * (1 - t) + hAt(gx0 + a + ns, gz) * t;
-          return hAt(gx, gz0 + a) * (1 - t) + hAt(gx, gz0 + a + ns) * t;
-        };
-        let k = 0;
-        for (let j = 0; j < vz; j++) {
-          const lj = Math.min(j * s, sizeZ);
-          const gz = gz0 + lj;
-          for (let i = 0; i < vx; i++, k++) {
-            const li = Math.min(i * s, size);
-            const gx = gx0 + li;
-            let h = hAt(gx, gz);
-            if (j === 0 && sN > s) h = edgeH(gx, gz, li, sN, true);
-            else if (j === vz - 1 && sS > s) h = edgeH(gx, gz, li, sS, true);
-            if (i === 0 && sW > s) h = edgeH(gx, gz, lj, sW, false);
-            else if (i === vx - 1 && sE > s) h = edgeH(gx, gz, lj, sE, false);
-            const x = gx * cell - half, z = gz * cell - half;
-            pos[k * 3] = x;
-            pos[k * 3 + 1] = h;
-            pos[k * 3 + 2] = z;
-            hf.normal(x, z, nrm, Math.max(0.35, s * cell * 0.75));
-            nor[k * 3] = nrm.x;
-            nor[k * 3 + 1] = nrm.y;
-            nor[k * 3 + 2] = nrm.z;
-            const c = Math.min(n - 1, gz) * n + Math.min(n - 1, gx);
-            spl[k * 4] = hf.splat[c * 4];
-            spl[k * 4 + 1] = hf.splat[c * 4 + 1];
-            spl[k * 4 + 2] = hf.splat[c * 4 + 2];
-            spl[k * 4 + 3] = hf.splat[c * 4 + 3];
-            wear[k] = hf.wear[c];
-          }
-        }
-        const idx = new (vx * vz > 65535 ? Uint32Array : Uint16Array)(mx * mz * 6);
-        let t = 0;
-        for (let j = 0; j < mz; j++) {
-          for (let i = 0; i < mx; i++) {
-            const a = j * vx + i, b = a + 1, c = a + vx, d = c + 1;
-            // diagonal (1,0)-(0,1) matches Heightfield.height()
-            idx[t++] = a; idx[t++] = c; idx[t++] = b;
-            idx[t++] = b; idx[t++] = c; idx[t++] = d;
-          }
-        }
-        tris += t / 3;
-        const geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-        geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-        geo.setAttribute('aSplat', new THREE.BufferAttribute(spl, 4, true));
-        geo.setAttribute('aWear', new THREE.BufferAttribute(wear, 1, true));
-        geo.setIndex(new THREE.BufferAttribute(idx, 1));
-        geo.computeBoundingSphere();
-        geo.computeBoundingBox();
+        const levels = [s0];
+        while (levels.length < 3 && levels[levels.length - 1] * 2 <= Math.min(32, size)) levels.push(levels[levels.length - 1] * 2);
+        const err = size > 0 && sizeZ > 0 ? this._edgeError(gx0, gz0, size, sizeZ, levels[levels.length - 1]) : 0;
+        info.push({ cx, cz, gx0, gz0, size, sizeZ, levels, err });
+      }
+    }
+    const errAt = (cx, cz) => (cx < 0 || cz < 0 || cx >= cn || cz >= cn ? 0 : info[cz * cn + cx].err);
+    let tris = 0;
+    for (const c of info) {
+      if (c.size <= 0 || c.sizeZ <= 0) continue;
+      const neigh = Math.max(errAt(c.cx - 1, c.cz), errAt(c.cx + 1, c.cz), errAt(c.cx, c.cz - 1), errAt(c.cx, c.cz + 1));
+      const skirt = c.err + neigh + 0.35;
+      // LOD origin at the chunk centre (mean height) so distances are measured from there
+      const gxc = c.gx0 + (c.size >> 1), gzc = c.gz0 + (c.sizeZ >> 1);
+      const ox = gxc * cell - half, oz = gzc * cell - half, oy = H[gzc * n + gxc];
+      const lod = new THREE.LOD();
+      lod.position.set(ox, oy, oz);
+      lod.updateMatrix();
+      lod.matrixAutoUpdate = false;
+      c.levels.forEach((st, li) => {
+        const { geo, tris: t } = this._chunkGeo(c.gx0, c.gz0, c.size, c.sizeZ, st, ox, oy, oz, skirt);
+        if (li === 0) tris += t;
         const mesh = new THREE.Mesh(geo, material);
         mesh.receiveShadow = true;
         mesh.castShadow = false;
         mesh.matrixAutoUpdate = false;
-        mesh.updateMatrix();
-        this.group.add(mesh);
+        lod.addLevel(mesh, li === 0 ? 0 : dist[li - 1], 0.06);
         this.meshes.push(mesh);
-      }
+      });
+      this.group.add(lod);
+      this.lods.push(lod);
     }
+    this.group.updateMatrixWorld(true);
     this.triangles = tris;
     return this.group;
   }
 
   dispose() {
-    for (const m of this.meshes) {
-      m.geometry.dispose();
-      this.group.remove(m);
-    }
+    for (const m of this.meshes) m.geometry.dispose();
+    for (const l of this.lods) this.group.remove(l);
     this.meshes.length = 0;
+    this.lods.length = 0;
   }
 }
 
@@ -261,6 +397,8 @@ export function buildBackdrop(track, hf, style, quality) {
   geo.setIndex(idx);
   geo.computeVertexNormals();
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 });
+  mat.onBeforeCompile = (sh) => patchRough(sh);
+  mat.customProgramCacheKey = () => 'backdrop-' + roughKey();
   const mesh = new THREE.Mesh(geo, mat);
   mesh.name = 'backdrop';
   mesh.receiveShadow = false;

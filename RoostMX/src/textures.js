@@ -92,7 +92,7 @@ function sprinkleStones(ctx, size, count, rng, colors, minR, maxR) {
   }
 }
 
-export function makeTerrainTextures(size = 1024) {
+export function makeTerrainTextures(size = 1024, aniso = 8) {
   const rng = makeRng(42);
   // --- dirt
   const n1 = tileNoise(size, 8, 6, 11, 0.55);
@@ -165,12 +165,12 @@ export function makeTerrainTextures(size = 1024) {
   });
 
   return {
-    dirt: toTexture(dirtC),
-    grass: toTexture(grassC),
-    sand: toTexture(sandC),
-    gravel: toTexture(gravelC),
-    normal: toTexture(nrmC, { srgb: false }),
-    macro: toTexture(macroC, { srgb: false }),
+    dirt: toTexture(dirtC, { aniso }),
+    grass: toTexture(grassC, { aniso }),
+    sand: toTexture(sandC, { aniso }),
+    gravel: toTexture(gravelC, { aniso }),
+    normal: toTexture(nrmC, { srgb: false, aniso }),
+    macro: toTexture(macroC, { srgb: false, aniso: 1 }),
   };
 }
 
@@ -243,26 +243,48 @@ export function makeBarkTexture(size = 128) {
   return toTexture(c);
 }
 
-/** Text banner (trackside advertising) with fictional sponsor names. */
-export function makeBannerTexture(text, bg, fg, accent) {
-  const w = 1024, h = 256;
-  const c = canvas(w, h);
-  const ctx = c.getContext('2d');
+function drawBanner(ctx, x0, y0, w, h, text, bg, fg, accent) {
+  const k = w / 1024;
+  ctx.save();
+  ctx.translate(x0, y0);
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, w, h);
   ctx.fillStyle = accent;
   ctx.beginPath();
-  ctx.moveTo(0, 0); ctx.lineTo(150, 0); ctx.lineTo(90, h); ctx.lineTo(0, h);
+  ctx.moveTo(0, 0); ctx.lineTo(150 * k, 0); ctx.lineTo(90 * k, h); ctx.lineTo(0, h);
   ctx.fill();
   ctx.beginPath();
-  ctx.moveTo(w, 0); ctx.lineTo(w - 90, 0); ctx.lineTo(w - 150, h); ctx.lineTo(w, h);
+  ctx.moveTo(w, 0); ctx.lineTo(w - 90 * k, 0); ctx.lineTo(w - 150 * k, h); ctx.lineTo(w, h);
   ctx.fill();
   ctx.fillStyle = fg;
-  ctx.font = 'italic 900 150px "Barlow Condensed", "Arial Narrow", Impact, sans-serif';
+  ctx.font = `italic 900 ${Math.round(150 * k)}px "Barlow Condensed", "Arial Narrow", Impact, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(text, w / 2, h / 2 + 8, w - 320);
+  ctx.fillText(text, w / 2, h / 2 + 8 * k, w - 320 * k);
+  ctx.restore();
+}
+
+/** Text banner (trackside advertising) with fictional sponsor names. */
+export function makeBannerTexture(text, bg, fg, accent) {
+  const w = 1024, h = 256;
+  const c = canvas(w, h);
+  drawBanner(c.getContext('2d'), 0, 0, w, h, text, bg, fg, accent);
   return toTexture(c, { repeat: false });
+}
+
+/**
+ * All sponsor banners stacked in one texture (one material, one draw call).
+ * Returns { texture, rect(i) -> [v0, v1] } with v measured bottom-up (flipY).
+ */
+export function makeBannerAtlas(sponsors) {
+  const w = 512, h = 128, n = sponsors.length;
+  const c = canvas(w, h * n);
+  const ctx = c.getContext('2d');
+  sponsors.forEach((sp, i) => drawBanner(ctx, 0, i * h, w, h, sp[0], sp[1], sp[2], sp[3]));
+  const texture = toTexture(c, { repeat: false, aniso: 4 });
+  texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+  const pad = 1.5 / (h * n);
+  return { texture, rect: (i) => [1 - (i + 1) / n + pad, 1 - i / n - pad] };
 }
 
 export function makeCheckerTexture() {
@@ -288,6 +310,44 @@ export function makeTapeTexture() {
   return toTexture(c, { aniso: 2 });
 }
 
+/**
+ * Bike atlas: number plate (4:3) in the top three quarters, plain white below so the
+ * untextured parts of the bike can share the same material.
+ */
+export function makeBikeAtlas(number = '27', bg = '#f2f2f2', fg = '#111') {
+  const w = 256, h = 256;
+  const c = canvas(w, h);
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, w, 192);
+  ctx.fillStyle = fg;
+  ctx.font = '900 150px "Barlow Condensed", Impact, "Arial Narrow", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(number, w / 2, 96 + 8, w - 24);
+  const t = toTexture(c, { repeat: false, aniso: 4 });
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  return t;
+}
+
+/** Rider atlas: jersey graphic (top), helmet graphic (middle) and a white strip (bottom). */
+export function drawRiderAtlas(c, primary) {
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, c.width, c.height);
+  drawGraphic(ctx, 0, 0, 512, 256, primary, '#ffffff', '#111111', 7);
+  drawGraphic(ctx, 0, 256, 512, 256, '#f4f4f4', primary, '#111111', 11);
+}
+export function makeRiderAtlas(primary) {
+  const c = canvas(512, 576);
+  drawRiderAtlas(c, primary);
+  const t = toTexture(c, { repeat: false, aniso: 4 });
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  return t;
+}
+
 /** Number plate with a race number. */
 export function makeNumberPlate(number = '27', bg = '#f2f2f2', fg = '#111') {
   const w = 256, h = 256;
@@ -303,11 +363,12 @@ export function makeNumberPlate(number = '27', bg = '#f2f2f2', fg = '#111') {
   return toTexture(c, { repeat: false });
 }
 
-/** Helmet / jersey graphics: base color with stripes. */
-export function makeGraphicTexture(base, stripe, accent, seed = 3) {
-  const w = 512, h = 256;
-  const c = canvas(w, h);
-  const ctx = c.getContext('2d');
+function drawGraphic(ctx, x0, y0, w, h, base, stripe, accent, seed) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x0, y0, w, h);
+  ctx.clip();
+  ctx.translate(x0, y0);
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, w, h);
   const rng = makeRng(seed);
@@ -320,6 +381,14 @@ export function makeGraphicTexture(base, stripe, accent, seed = 3) {
   }
   ctx.fillStyle = accent;
   ctx.fillRect(0, h * 0.46, w, h * 0.08);
+  ctx.restore();
+}
+
+/** Helmet / jersey graphics: base color with stripes. */
+export function makeGraphicTexture(base, stripe, accent, seed = 3) {
+  const w = 512, h = 256;
+  const c = canvas(w, h);
+  drawGraphic(c.getContext('2d'), 0, 0, w, h, base, stripe, accent, seed);
   return toTexture(c, { repeat: true });
 }
 

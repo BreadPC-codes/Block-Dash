@@ -5,7 +5,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { GEO, AXIS_FRONT, SWINGARM_LENGTH } from './bike-geometry.js';
-import { makeNumberPlate } from './textures.js';
+import { makeBikeAtlas } from './textures.js';
+import { makePartMaterial, setPaint, bakePart, mergeBaked } from './part-material.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
@@ -19,56 +20,74 @@ export const BIKE_COLORS = {
   yellow: '#f2c418',
 };
 
-function makeMaterials(color) {
-  return {
-    paint: new THREE.MeshStandardMaterial({ color, roughness: 0.38, metalness: 0.02, name: 'paint' }),
-    white: new THREE.MeshStandardMaterial({ color: 0xf1f1ef, roughness: 0.45, name: 'plasticWhite' }),
-    black: new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.62, name: 'plasticBlack' }),
-    alu: new THREE.MeshStandardMaterial({ color: 0xb9bec5, roughness: 0.32, metalness: 0.85, name: 'aluminium' }),
-    darkAlu: new THREE.MeshStandardMaterial({ color: 0x3a3d42, roughness: 0.42, metalness: 0.8, name: 'darkAlu' }),
-    chrome: new THREE.MeshStandardMaterial({ color: 0xe8e8ea, roughness: 0.1, metalness: 1, name: 'chrome' }),
-    gold: new THREE.MeshStandardMaterial({ color: 0xd1a12a, roughness: 0.28, metalness: 0.9, name: 'gold' }),
-    rubber: new THREE.MeshStandardMaterial({ color: 0x18181a, roughness: 0.93, name: 'rubber' }),
-    engine: new THREE.MeshStandardMaterial({ color: 0x2b2c2f, roughness: 0.5, metalness: 0.55, name: 'engine' }),
-    pipe: new THREE.MeshStandardMaterial({ color: 0x9c8c7c, roughness: 0.3, metalness: 0.9, name: 'pipe' }),
-    muffler: new THREE.MeshStandardMaterial({ color: 0xc7c9cc, roughness: 0.25, metalness: 0.9, name: 'muffler' }),
-    seat: new THREE.MeshStandardMaterial({ color: 0x161617, roughness: 0.82, name: 'seat' }),
-    spring: new THREE.MeshStandardMaterial({ color: 0xe3b41a, roughness: 0.35, metalness: 0.4, name: 'spring' }),
-    disc: new THREE.MeshStandardMaterial({ color: 0x8b8e93, roughness: 0.25, metalness: 1, name: 'disc' }),
-    plate: null, // number plate textures assigned later
-  };
+// Material looks, baked per vertex into one shared "part" material (see part-material.js).
+const LOOKS = {
+  paint: { color: 0xffffff, roughness: 0.38, metalness: 0.02, paint: 1 },
+  white: { color: 0xf1f1ef, roughness: 0.45 },
+  black: { color: 0x141416, roughness: 0.62 },
+  alu: { color: 0xb9bec5, roughness: 0.32, metalness: 0.85 },
+  darkAlu: { color: 0x3a3d42, roughness: 0.42, metalness: 0.8 },
+  chrome: { color: 0xe8e8ea, roughness: 0.1, metalness: 1 },
+  gold: { color: 0xd1a12a, roughness: 0.28, metalness: 0.9 },
+  rubber: { color: 0x18181a, roughness: 0.93 },
+  engine: { color: 0x2b2c2f, roughness: 0.5, metalness: 0.55 },
+  pipe: { color: 0x9c8c7c, roughness: 0.3, metalness: 0.9 },
+  muffler: { color: 0xc7c9cc, roughness: 0.25, metalness: 0.9 },
+  seat: { color: 0x161617, roughness: 0.82 },
+  spring: { color: 0xe3b41a, roughness: 0.35, metalness: 0.4 },
+  disc: { color: 0x8b8e93, roughness: 0.25, metalness: 1 },
+  plate: { color: 0xffffff, roughness: 0.45 },
+};
+// number plate occupies the top 3/4 of the atlas, everything else samples the white strip
+const PLATE_UV = (u, v, o) => { o[0] = 0.02 + u * 0.96; o[1] = 0.255 + v * 0.74; };
+const WHITE_UV = [0.5, 0.1];
+
+/** Collects pieces of every rigid part; baked into a single skinned mesh (1 draw call). */
+class SkinBuilder {
+  constructor() {
+    this.items = [];
+    this.skinBones = [];
+  }
+  /** A bone that carries geometry. */
+  part(name, parent) {
+    const b = new THREE.Bone();
+    b.name = name;
+    if (parent) parent.add(b);
+    this.skinBones.push(b);
+    return new Parts(this, this.skinBones.length - 1, b);
+  }
+  add(key, geo, bone) {
+    this.items.push({ key, geo, bone });
+  }
+  build(material) {
+    const baked = this.items.map(({ key, geo, bone }) => {
+      const look = LOOKS[key];
+      const g = bakePart(geo, { ...look, bone, uv: key === 'plate' ? undefined : WHITE_UV, uvMap: key === 'plate' ? PLATE_UV : undefined });
+      geo.dispose();
+      return g;
+    });
+    const geo = mergeBaked(baked);
+    geo.computeBoundingSphere();
+    const mesh = new THREE.SkinnedMesh(geo, material);
+    mesh.name = 'bikeMesh';
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.frustumCulled = false;
+    const skeleton = new THREE.Skeleton(this.skinBones, this.skinBones.map(() => new THREE.Matrix4()));
+    mesh.bind(skeleton, new THREE.Matrix4());
+    return mesh;
+  }
 }
 
 class Parts {
-  constructor() {
-    this.map = new Map();
+  constructor(builder, index, bone) {
+    this.builder = builder;
+    this.index = index;
+    this.bone = bone;
   }
   add(key, geo) {
-    if (!this.map.has(key)) this.map.set(key, []);
-    this.map.get(key).push(geo.index ? geo.toNonIndexed() : geo);
+    this.builder.add(key, geo, this.index);
     return geo;
-  }
-  build(mats, name) {
-    const g = new THREE.Group();
-    g.name = name;
-    for (const [key, geos] of this.map) {
-      const clean = geos.map((x) => {
-        const y = new THREE.BufferGeometry();
-        y.setAttribute('position', x.getAttribute('position'));
-        if (x.getAttribute('normal')) y.setAttribute('normal', x.getAttribute('normal'));
-        else y.computeVertexNormals();
-        if (x.getAttribute('uv')) y.setAttribute('uv', x.getAttribute('uv'));
-        else y.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(x.getAttribute('position').count * 2), 2));
-        return y;
-      });
-      const merged = mergeGeometries(clean, false);
-      const mesh = new THREE.Mesh(merged, typeof key === 'string' ? mats[key] : key);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      mesh.name = name + ':' + (typeof key === 'string' ? key : key.name);
-      g.add(mesh);
-    }
-    return g;
   }
 }
 
@@ -135,8 +154,7 @@ function arcBand(cy, cz, r1, r2, a0, a1, width, bevel = 0.008) {
 }
 
 // --- wheel ---------------------------------------------------------------------------
-function buildWheel(isFront, mats) {
-  const P = new Parts();
+function buildWheel(isFront, P) {
   const R = isFront ? GEO.rFront : GEO.rRear;
   const tubeR = isFront ? 0.046 : 0.058;
   const rimR = isFront ? GEO.rimFront : GEO.rimRear;
@@ -210,17 +228,16 @@ function buildWheel(isFront, mats) {
     spr.translate(0.075, 0, 0);
     P.add('darkAlu', spr);
   }
-  return P.build(mats, isFront ? 'frontWheel' : 'rearWheel');
 }
 
 // --- full bike -----------------------------------------------------------------------
 export function buildProceduralBike(color = BIKE_COLORS.orange, number = '27') {
-  const mats = makeMaterials(color);
-  const plateTex = makeNumberPlate(number, '#f4f4f2', '#111');
-  mats.plate = new THREE.MeshStandardMaterial({ map: plateTex, roughness: 0.45, name: 'numberPlate' });
+  const atlas = makeBikeAtlas(number, '#f4f4f2', '#111');
+  const material = makePartMaterial({ map: atlas, paint: color, name: 'bike' });
 
   const root = new THREE.Group();
   root.name = 'proceduralBike';
+  const SB = new SkinBuilder();
 
   const fa = V(...GEO.frontAxle), ra = V(...GEO.rearAxle);
   const axis = V(...AXIS_FRONT); // up along the fork
@@ -229,7 +246,7 @@ export function buildProceduralBike(color = BIKE_COLORS.orange, number = '27') {
   const pivot = V(...GEO.swingPivot);
 
   // ---------------- chassis
-  const C = new Parts();
+  const C = SB.part('chassis', root);
   // frame: twin spars from head tube to pivot, cradle under the engine
   for (const s of [1, -1]) {
     C.add('alu', tube([
@@ -308,7 +325,7 @@ export function buildProceduralBike(color = BIKE_COLORS.orange, number = '27') {
     const pl = new THREE.PlaneGeometry(0.2, 0.15);
     pl.rotateY(s > 0 ? Math.PI / 2 : -Math.PI / 2);
     pl.translate(s * 0.139, 0.78, -0.42);
-    C.add(mats.plate, pl);
+    C.add('plate', pl);
   }
   // airbox
   C.add('black', rbox(0.2, 0.2, 0.26, 0.04, 0, 0.74, -0.32));
@@ -335,10 +352,15 @@ export function buildProceduralBike(color = BIKE_COLORS.orange, number = '27') {
   C.add('black', rbox(0.012, 0.01, 0.01, 0.002, 0.1, 0.46, -0.08));
   // rear shock top mount
   C.add('darkAlu', rbox(0.06, 0.05, 0.05, 0.01, 0, 0.8, -0.1));
-  const chassis = C.build(mats, 'chassis');
+  const chassis = C.bone;
 
   // ---------------- steering assembly (rotates about steering axis through the front axle)
-  const S = new Parts();
+  const steerPivot = new THREE.Bone();
+  steerPivot.name = 'steerPivot';
+  steerPivot.position.copy(fa);
+  root.add(steerPivot);
+  const S = SB.part('steer', steerPivot);
+  S.bone.position.copy(fa).negate();
   const fkx = 0.085;
   const topClampY = headTop.clone().addScaledVector(axis, 0.03);
   const botClamp = headBot.clone().addScaledVector(axis, -0.04);
@@ -377,14 +399,18 @@ export function buildProceduralBike(color = BIKE_COLORS.orange, number = '27') {
   const npl = new THREE.PlaneGeometry(0.17, 0.13);
   npl.rotateX(-0.36);
   npl.translate(npC.x, npC.y - 0.01, npC.z + 0.008);
-  S.add(mats.plate, npl);
+  S.add('plate', npl);
   // front fender (mounted on lower clamp, above the tire at full extension)
   const faExt = fa.clone().addScaledVector(axis, -GEO.sagF);
   S.add('paint', arcBand(faExt.y, faExt.z + 0.03, GEO.rFront + 0.085, GEO.rFront + 0.1, 0.12 * Math.PI, 0.62 * Math.PI, 0.145, 0.01));
-  const steer = S.build(mats, 'steer');
+  const steer = S.bone;
 
   // ---------------- fork lowers (slide along the fork axis)
-  const L = new Parts();
+  const forkSlide = new THREE.Bone();
+  forkSlide.name = 'forkSlide';
+  steerPivot.add(forkSlide);
+  const L = SB.part('forkLower', forkSlide);
+  L.bone.position.copy(fa).negate();
   for (const s of [1, -1]) {
     const bot = fa.clone().add(V(s * fkx, 0, 0)).addScaledVector(axis, -0.02);
     const top = bot.clone().addScaledVector(axis, 0.5);
@@ -397,10 +423,15 @@ export function buildProceduralBike(color = BIKE_COLORS.orange, number = '27') {
   }
   // caliper (left)
   L.add('darkAlu', rbox(0.04, 0.09, 0.06, 0.012, 0.07, fa.y + 0.06, fa.z - 0.1, 0.4));
-  const forkLower = L.build(mats, 'forkLower');
+  const forkLower = L.bone;
 
   // ---------------- swingarm
-  const A = new Parts();
+  const swingPivot = new THREE.Bone();
+  swingPivot.name = 'swingPivot';
+  swingPivot.position.copy(pivot);
+  root.add(swingPivot);
+  const A = SB.part('swingarm', swingPivot);
+  A.bone.position.copy(pivot).negate();
   for (const s of [1, -1]) {
     A.add('alu', tube([V(s * 0.115, pivot.y, pivot.z), V(s * 0.12, (pivot.y + ra.y) / 2 + 0.02, (pivot.z + ra.z) / 2), V(s * 0.105, ra.y + 0.01, ra.z + 0.04)], 0.026, 16, 8));
     A.add('alu', rbox(0.03, 0.06, 0.09, 0.01, s * 0.105, ra.y, ra.z));
@@ -415,16 +446,18 @@ export function buildProceduralBike(color = BIKE_COLORS.orange, number = '27') {
   A.add('darkAlu', rbox(0.035, 0.08, 0.06, 0.012, -0.08, ra.y + 0.1, ra.z + 0.05, 0.5));
   // linkage point for the shock
   A.add('darkAlu', rbox(0.06, 0.06, 0.08, 0.012, 0, pivot.y - 0.1, pivot.z - 0.08));
-  const swingarm = A.build(mats, 'swingarm');
+  const swingarm = A.bone;
 
   // ---------------- shock (stretched between mounts every frame)
-  const K = new Parts();
+  const shock = new THREE.Bone();
+  shock.name = 'shock';
+  root.add(shock);
+  const K = SB.part('shockBody', shock);
   K.add('darkAlu', cylBetween(V(0, 0, 0), V(0, 0.16, 0), 0.026, 0.026, 14));
   K.add('chrome', cylBetween(V(0, 0.16, 0), V(0, 0.3, 0), 0.011, 0.011, 10));
   K.add('darkAlu', cylBetween(V(0, -0.03, 0), V(0, 0.0, 0), 0.02, 0.02, 10));
   // reservoir
   K.add('darkAlu', cylBetween(V(0.045, 0.02, 0), V(0.045, 0.14, 0), 0.02, 0.02, 10));
-  const shockBody = K.build(mats, 'shockBody');
   // spring as a helix (scaled with travel)
   const helixPts = [];
   const turns = 9;
@@ -433,64 +466,44 @@ export function buildProceduralBike(color = BIKE_COLORS.orange, number = '27') {
     helixPts.push(V(Math.cos(a) * 0.036, (i / (turns * 16)), Math.sin(a) * 0.036));
   }
   const springGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(helixPts), turns * 16, 0.0065, 6, false);
-  const springMesh = new THREE.Mesh(springGeo, mats.spring);
-  springMesh.castShadow = true;
+  const SP = SB.part('spring', shock);
+  SP.add('spring', springGeo);
+  const springMesh = SP.bone;
 
   // ---------------- wheels
-  const frontWheel = buildWheel(true, mats);
-  const rearWheel = buildWheel(false, mats);
-
-  // ---------------- hierarchy
-  root.add(chassis);
-  // steering pivot: at the front axle, rotate about the fork axis
-  const steerPivot = new THREE.Group();
-  steerPivot.name = 'steerPivot';
-  steerPivot.position.copy(fa);
-  root.add(steerPivot);
-  steer.position.copy(fa).negate();
-  steerPivot.add(steer);
-  const forkSlide = new THREE.Group();
-  forkSlide.name = 'forkSlide';
-  steerPivot.add(forkSlide);
-  forkLower.position.copy(fa).negate();
-  forkSlide.add(forkLower);
-  frontWheel.position.set(0, 0, 0);
-  forkSlide.add(frontWheel);
-
-  const swingPivot = new THREE.Group();
-  swingPivot.name = 'swingPivot';
-  swingPivot.position.copy(pivot);
-  root.add(swingPivot);
-  swingarm.position.copy(pivot).negate();
-  swingPivot.add(swingarm);
+  const FW = SB.part('frontWheel', forkSlide);
+  buildWheel(true, FW);
+  const frontWheel = FW.bone;
+  const RW = SB.part('rearWheel', swingPivot);
+  buildWheel(false, RW);
+  const rearWheel = RW.bone;
   rearWheel.position.subVectors(ra, pivot);
-  swingPivot.add(rearWheel);
 
-  const shock = new THREE.Group();
-  shock.name = 'shock';
-  shock.add(shockBody);
-  shock.add(springMesh);
-  root.add(shock);
+  const mesh = SB.build(material);
+  root.add(mesh);
 
   return {
     root,
-    mats,
+    mesh,
+    material,
+    atlas,
     parts: { chassis, steer, steerPivot, forkSlide, forkLower, frontWheel, rearWheel, swingPivot, swingarm, shock, springMesh },
   };
 }
-
 // ---------------------------------------------------------------------------------
 // Visual binding: drives a bike model from the physics state.
 // ---------------------------------------------------------------------------------
 const _q = new THREE.Quaternion();
 const _axis = new THREE.Vector3(...AXIS_FRONT);
-const _v = new THREE.Vector3();
+const _v = new THREE.Vector3(), _v2 = new THREE.Vector3();
 
 export class ProceduralBikeVisual {
   constructor(color, number) {
     const b = buildProceduralBike(color, number);
     this.root = b.root;
-    this.mats = b.mats;
+    this.mesh = b.mesh;
+    this.material = b.material;
+    this.atlas = b.atlas;
     this.p = b.parts;
     this.kind = 'procedural';
     this.shockTop = V(0, 0.79, -0.1);
@@ -499,7 +512,7 @@ export class ProceduralBikeVisual {
   }
 
   setColor(hex) {
-    this.mats.paint.color.set(hex);
+    setPaint(this.material, hex);
   }
 
   /** state: steer (rad), compF/compR (m from full extension), spinF/spinR (rad) */
@@ -517,34 +530,29 @@ export class ProceduralBikeVisual {
     // shock between top mount and linkage on the swingarm
     const pv = p.swingPivot.position;
     _v.copy(this.linkLocal).sub(pv).applyAxisAngle(V1X, a).add(pv);
-    const dir = this.shockTop.clone().sub(_v);
+    const dir = _v2.copy(this.shockTop).sub(_v);
     const len = dir.length();
     p.shock.position.copy(_v);
-    p.shock.quaternion.setFromUnitVectors(V1Y, dir.normalize());
+    p.shock.quaternion.setFromUnitVectors(V1Y, dir.divideScalar(Math.max(1e-6, len)));
     p.springMesh.scale.set(1, Math.max(0.1, len - 0.07), 1);
     p.springMesh.position.y = 0.04;
   }
 
   /** Grip positions in bike space (follow steering). */
   grips(outL, outR, steer) {
-    const fa = V(...GEO.frontAxle);
+    const fa = FA;
     _q.setFromAxisAngle(_axis, -steer);
     outL.set(GEO.grips[0], GEO.grips[1], GEO.grips[2]).sub(fa).applyQuaternion(_q).add(fa);
     outR.set(-GEO.grips[0], GEO.grips[1], GEO.grips[2]).sub(fa).applyQuaternion(_q).add(fa);
   }
 
   dispose() {
-    this.root.traverse((o) => {
-      if (o.isMesh) o.geometry.dispose();
-    });
-    for (const k in this.mats) {
-      const m = this.mats[k];
-      if (m) {
-        if (m.map) m.map.dispose();
-        m.dispose();
-      }
-    }
+    this.mesh.geometry.dispose();
+    if (this.mesh.skeleton) this.mesh.skeleton.dispose();
+    this.material.dispose();
+    this.atlas.dispose();
   }
 }
 const V1X = V(1, 0, 0);
 const V1Y = V(0, 1, 0);
+const FA = V(...GEO.frontAxle);

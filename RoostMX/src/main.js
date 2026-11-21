@@ -35,7 +35,9 @@ class Game {
     this.canvas = document.getElementById('gl');
     this.quality = QUALITY_PRESETS[this.settings.graphics.quality] || QUALITY_PRESETS.medium;
     const firstRun = !hasSavedSettings();
-    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: this.quality.antialias, powerPreference: 'high-performance', stencil: false });
+    const aaSetting = this.settings.graphics.antialias;
+    this.antialias = aaSetting === 'on' ? true : aaSetting === 'off' ? false : this.quality.antialias;
+    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: this.antialias, powerPreference: 'high-performance', stencil: false });
     if (firstRun) this.autoQuality();
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -57,6 +59,15 @@ class Game {
     this.acc = 0;
     this.renderPos = new THREE.Vector3();
     this.renderQuat = new THREE.Quaternion();
+    // reused every frame (no garbage in the hot path)
+    this._ride = { throttle: 0, brakeF: 0, brakeR: 0, steer: 0, lean: 0, side: 0 };
+    this._ctx = { quat: null, vel: null, speed: 0, airborne: false, crashed: false, focus: null, eye: null, lookBack: false };
+    this._eye = new THREE.Vector3();
+    this._free = { fx: 0, fy: 0, fz: 0, fast: false, wheel: 0 };
+    this._pose = { stance: 0, riderLean: 0, side: 0, legE: 0, lean: 0, steer: 0, speed: 0, airborne: false, whip: 0, brake: 0 };
+    this._bikeState = { steer: 0, compF: 0, compR: 0, spinF: 0, spinR: 0 };
+    // dynamic resolution: scales the render resolution to hold the display's frame rate
+    this.dyn = { scale: 1, acc: 0, frames: 0, ok: 0, upDelay: 2, since: 0, lastUp: -1e9, refresh: 60, pAcc: 0 };
     this.crashAuto = 0;
     this.lastHud = 0;
     this.countdown = 0;
@@ -135,15 +146,22 @@ class Game {
     if (pads.connected) this.ui.setPadStatus(pads.id.replace(/\(.*?\)/g, '').trim().slice(0, 40));
   }
 
+  /** Device pixel ratio actually rendered: preset cap x render scale x dynamic scale. */
+  pixelRatio() {
+    const base = Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio) * clamp(this.settings.graphics.renderScale || 1, 0.5, 1);
+    return Math.max(0.3, base * (this.dyn ? this.dyn.scale : 1));
+  }
+
   resize() {
     const w = window.innerWidth, h = window.innerHeight;
-    const pr = Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio);
+    const pr = this.pixelRatio();
     this.renderer.setPixelRatio(pr);
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     if (this.world && this.world.particles) this.world.particles.setViewport(h * pr, this.camera.fov);
     this.garage.resize(w, h);
+    this.pausedDirty = true;
   }
 
   // ---------------------------------------------------------------------------------
@@ -157,26 +175,38 @@ class Game {
     await nextFrame();
     this.disposeWorld();
     const q = this.quality;
+    const T = (this.loadTimes = {});
+    let tm = performance.now();
+    const lap = (k) => { const n = performance.now(); T[k] = Math.round(n - tm); tm = n; };
     const track = new Track(def);
+    lap('track');
     this.ui.setLoading(0.12, 'Shaping terrain…');
     await nextFrame();
+    tm = performance.now();
     const hf = generateTerrain(track);
+    lap('heightfield');
     this.ui.setLoading(0.42, 'Painting dirt and grass…');
     await nextFrame();
+    tm = performance.now();
     const texSize = q.terrain === 'low' ? 512 : 1024;
-    if (!this.terrainTex || this.terrainTexSize !== texSize) {
-      if (this.terrainTex) Object.values(this.terrainTex).forEach((t) => t.dispose());
-      this.terrainTex = makeTerrainTextures(texSize);
-      this.terrainTexSize = texSize;
+    const texKey = texSize + ':' + q.aniso;
+    if (!this.terrainTex || this.terrainTexKey !== texKey) {
+      if (this.terrainTex) Object.values(this.terrainTex).forEach((t) => t && t.isTexture && t.dispose());
+      this.terrainTex = makeTerrainTextures(texSize, q.aniso);
+      this.terrainTexKey = texKey;
     }
-    const terrainMat = makeTerrainMaterial(this.terrainTex, { sandy: def.surface === 'sand' });
+    const terrainMat = makeTerrainMaterial(this.terrainTex, { sandy: def.surface === 'sand', quality: q.terrain });
+    lap('textures');
     const terrainView = new TerrainView(hf, track);
     this.scene.add(terrainView.build(q.terrain, terrainMat));
     const backdrop = buildBackdrop(track, hf, def.groundStyle, q.terrain);
     this.scene.add(backdrop);
+    lap('terrainMesh');
     this.ui.setLoading(0.6, 'Planting trees and building the venue…');
     await nextFrame();
+    tm = performance.now();
     const env = new Environment({ renderer: this.renderer, scene: this.scene, track, hf, quality: this.settings.graphics.quality, terrainStyle: def.groundStyle }).build();
+    lap('environment');
     this.renderer.shadowMap.enabled = q.shadows;
     this.ui.setLoading(0.78, 'Preparing the bike…');
     await nextFrame();
@@ -192,13 +222,16 @@ class Game {
     this.spawnAtStart();
     this.ui.buildMinimap(track);
     this.resize();
+    lap('bike');
     this.ui.setLoading(0.92, 'Warming up the engine…');
     await nextFrame();
+    tm = performance.now();
     try {
       if (this.renderer.compileAsync) await this.renderer.compileAsync(this.scene, this.camera);
     } catch (e) {
       /* not critical */
     }
+    lap('shaders');
     this.ui.setLoading(1, 'Ready');
     this.state = prevState === 'loading' ? 'menu' : prevState;
     return this.world;
@@ -314,6 +347,7 @@ class Game {
 
   applySetting(path, value) {
     const [group] = path.split('.');
+    this.pausedDirty = true;
     if (group === 'bike') {
       this.applyPhysicsTune();
       if (path === 'bike.color') {
@@ -327,10 +361,14 @@ class Game {
       this.audio.applyVolumes();
     } else if (path === 'graphics.fullscreen') {
       this.setFullscreen(value);
+    } else if (path === 'graphics.antialias') {
+      this.ui.toast('Anti-aliasing changes apply after restarting the game.');
+    } else if (path === 'graphics.renderScale' || path === 'graphics.dynamicRes') {
+      if (path === 'graphics.dynamicRes' && !value) this.dyn.scale = 1;
+      this.resize();
     } else if (path === 'graphics.quality') {
-      const prevAA = this.quality.antialias;
       this.quality = QUALITY_PRESETS[value];
-      if (prevAA !== this.quality.antialias) this.ui.toast('Antialiasing changes apply after restarting the game.');
+      if (this.settings.graphics.antialias === 'auto' && this.antialias !== this.quality.antialias) this.ui.toast('Anti-aliasing changes apply after restarting the game.');
       this.ui.toast('Applying ' + value + ' quality…');
       this.reloadWorld();
     }
@@ -558,23 +596,37 @@ class Game {
       f.value = f.frames / f.t;
       f.frames = 0;
       f.t = 0;
-      // one-time hint when riding stays slow
+      // the fastest sustained rate seen is the display's refresh rate
+      if (f.value > this.dyn.refresh * 1.05) this.dyn.refresh = Math.min(240, f.value);
+      // one-time hint when riding stays slow even at the lowest dynamic resolution
       if (this.state === 'riding' && !this.slowHintShown) {
-        f.slow = f.value < 38 ? (f.slow || 0) + 0.5 : 0;
+        const floor = !this.settings.graphics.dynamicRes || this.dyn.scale <= 0.52;
+        f.slow = f.value < 38 && floor ? (f.slow || 0) + 0.5 : 0;
         if (f.slow > 8 && this.settings.graphics.quality !== 'low') {
           this.slowHintShown = true;
           this.ui.toast('Low frame rate — try a lower Graphics quality in Settings.', 'bad', 6000);
         }
       }
     }
+    if (this.state === 'riding' || this.state === 'countdown' || this.state === 'menu') this.updateDynRes(dt);
     const inp = this.input.update(dt);
     try {
       switch (this.state) {
         case 'menu':
-        case 'paused':
           this.menuInput(dt, inp);
           this.updateMenuScene(dt);
           this.render();
+          break;
+        case 'paused':
+          // the world is frozen behind the pause menu: redraw it rarely to save power
+          this.menuInput(dt, inp);
+          this.dyn.pAcc += dt;
+          if (this.dyn.pAcc > 0.1 || this.pausedDirty) {
+            this.dyn.pAcc = 0;
+            this.pausedDirty = false;
+            this.updateMenuScene(dt);
+            this.render();
+          }
           break;
         case 'riding':
         case 'countdown':
@@ -600,6 +652,49 @@ class Game {
   render() {
     if (!this.world) return;
     this.renderer.render(this.scene, this.camera);
+  }
+
+  /**
+   * Dynamic resolution: when the frame rate drops below the display rate (max 60) the
+   * render resolution is lowered step by step; when there is headroom it is raised again.
+   * A rise that immediately drops frames doubles the wait before the next attempt, so the
+   * scale settles instead of oscillating.
+   */
+  updateDynRes(dt) {
+    const d = this.dyn;
+    d.acc += dt;
+    d.frames++;
+    if (d.acc < 0.5) return;
+    const fps = d.frames / d.acc;
+    d.acc = 0;
+    d.frames = 0;
+    d.since += 0.5;
+    if (!this.settings.graphics.dynamicRes) {
+      if (d.scale !== 1) {
+        d.scale = 1;
+        this.resize();
+      }
+      return;
+    }
+    const goal = Math.min(60, d.refresh);
+    if (fps < goal * 0.92 && d.scale > 0.5 && d.since >= 1) {
+      d.scale = Math.max(0.5, d.scale * (fps < goal * 0.7 ? 0.8 : 0.9));
+      if (this.time - d.lastUp < 4) d.upDelay = Math.min(40, d.upDelay * 2);
+      d.since = 0;
+      d.ok = 0;
+      this.resize();
+    } else if (fps >= goal * 0.97) {
+      d.ok += 0.5;
+      if (d.ok >= d.upDelay && d.scale < 1) {
+        d.scale = Math.min(1, d.scale * 1.08 + 0.01);
+        d.lastUp = this.time;
+        d.since = 0;
+        d.ok = 0;
+        this.resize();
+      }
+    } else {
+      d.ok = 0;
+    }
   }
 
   menuInput(dt, inp) {
@@ -652,7 +747,7 @@ class Game {
       _v.y += 0.4;
       w.rig.updateMenu(dt, _v);
     }
-    w.env.update(dt, w.physics.pos);
+    w.env.update(dt, w.physics.pos, this.camera);
     w.particles.update(dt, w.hf);
   }
 
@@ -712,7 +807,13 @@ class Game {
     if (ph.pos.y < -1.6 && w.def.seaSide) this.resetBike();
 
     // fixed-step physics
-    const ride = { throttle: inp.throttle, brakeF: inp.brakeF, brakeR: inp.brakeR, steer: inp.steer, lean: inp.lean };
+    const ride = this._ride;
+    ride.throttle = inp.throttle;
+    ride.brakeF = inp.brakeF;
+    ride.brakeR = inp.brakeR;
+    ride.steer = inp.steer;
+    ride.lean = inp.lean;
+    ride.side = inp.side || 0;
     if (frozen) {
       ride.throttle = Math.min(ride.throttle, 0.35);
       ride.brakeF = 1;
@@ -736,14 +837,18 @@ class Game {
     if (orbit.dx || orbit.dy) w.rig.orbit(orbit.dx, orbit.dy);
     const wheel = this.input.wheel();
     const ctx = this._camCtx(inp);
-    const free = w.rig.mode === 'free' ? { ...this.input.freeCam(), wheel: -wheel } : null;
+    let free = null;
+    if (w.rig.mode === 'free') {
+      free = this.input.freeCam(this._free);
+      free.wheel = -wheel;
+    }
     if (w.rig.mode !== 'free' && wheel) {
       this.settings.camera.distance = clamp(this.settings.camera.distance + wheel * 0.06, 0.7, 1.6);
       this.applyCameraSettings();
     }
     w.rig.update(dt, ctx, free);
     // world
-    w.env.update(dt, ph.pos);
+    w.env.update(dt, ph.pos, this.camera);
     this.emitEffects(dt);
     w.particles.update(dt, w.hf);
     w.marks.update(dt);
@@ -788,19 +893,21 @@ class Game {
     else focus.copy(this.renderPos);
     let eye = null;
     if (w.rig.mode === 'helmet' && this.rider && !crashed) {
-      eye = new THREE.Vector3().copy(this.rider.j.headC).add(new THREE.Vector3(0, 0.03, 0.14));
+      eye = this._eye.copy(this.rider.j.headC);
+      eye.y += 0.03;
+      eye.z += 0.14;
       this.rider.group.localToWorld(eye);
     }
-    return {
-      quat: crashed ? ph.quat : this.renderQuat,
-      vel: ph.vel,
-      speed: ph.speed,
-      airborne: ph.airborne,
-      crashed,
-      focus,
-      eye,
-      lookBack: inp.lookBack,
-    };
+    const c = this._ctx;
+    c.quat = crashed ? ph.quat : this.renderQuat;
+    c.vel = ph.vel;
+    c.speed = ph.speed;
+    c.airborne = ph.airborne;
+    c.crashed = crashed;
+    c.focus = focus;
+    c.eye = eye;
+    c.lookBack = inp.lookBack;
+    return c;
   }
 
   /** Place the visual bike/rider from the (interpolated) physics state. */
@@ -815,7 +922,13 @@ class Game {
     _v.set(-ph.com.x, -ph.com.y + ph.chassisShift, -ph.com.z).applyQuaternion(this.renderQuat);
     vis.root.position.copy(this.renderPos).add(_v);
     vis.root.quaternion.copy(this.renderQuat);
-    vis.update({ steer: ph.steerAngle, compF: ph.front.visComp, compR: ph.rear.visComp, spinF: ph.front.angle, spinR: ph.rear.angle }, dt);
+    const bs = this._bikeState;
+    bs.steer = ph.steerAngle;
+    bs.compF = ph.front.visComp;
+    bs.compR = ph.rear.visComp;
+    bs.spinF = ph.front.angle;
+    bs.spinR = ph.rear.angle;
+    vis.update(bs, dt);
     const rider = this.rider;
     if (!rider) return;
     if (ph.crashed && ph.ragdoll.active) {
@@ -831,17 +944,18 @@ class Game {
       if (rider.group.parent !== vis.root) this.attachRider();
       const gl = _gl, gr = _gr;
       vis.grips(gl, gr, ph.steerAngle);
-      rider.updateRiding(dt, {
-        stance: idle ? 0.15 : ph.stance,
-        riderLean: ph.riderLean,
-        legE: ph.riderE,
-        lean: ph.leanAngle,
-        steer: ph.steerAngle,
-        speed: ph.speed,
-        airborne: ph.airborne,
-        whip: ph.airborne ? ph.steerIn : 0,
-        brake: ph.brakeF,
-      }, gl, gr);
+      const ps = this._pose;
+      ps.stance = idle ? 0.15 : ph.stance;
+      ps.riderLean = ph.riderLean;
+      ps.side = idle ? 0 : ph.riderSide || 0;
+      ps.legE = ph.riderE;
+      ps.lean = ph.leanAngle;
+      ps.steer = ph.steerAngle;
+      ps.speed = ph.speed;
+      ps.airborne = ph.airborne;
+      ps.whip = ph.airborne ? ph.steerIn : 0;
+      ps.brake = ph.brakeF;
+      rider.updateRiding(dt, ps, gl, gr);
       const fp = w.rig.mode === 'helmet' && this.state !== 'menu';
       if (rider.firstPerson !== fp) rider.setFirstPerson(fp);
     }
@@ -992,7 +1106,7 @@ class Game {
       crashed: ph.crashed,
       crashReason: ph.crashReason,
       crashHint: crashHint + ` · auto reset in ${auto.toFixed(0)}`,
-      fpsText: `${this.fps.value.toFixed(0)} FPS · ${this.renderer.info.render.calls} calls · ${(this.renderer.info.render.triangles / 1000).toFixed(0)}k tris`,
+      fpsText: `${this.fps.value.toFixed(0)} FPS · ${Math.round(this.renderer.getPixelRatio() / Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio) * 100)}% res · ${this.renderer.info.render.calls} calls · ${(this.renderer.info.render.triangles / 1000).toFixed(0)}k tris`,
     });
     const hdg = Math.atan2(ph.fwd.x, ph.fwd.z);
     this.ui.drawMinimap(ph.pos.x, ph.pos.z, hdg, tm.nextCheckpoint());

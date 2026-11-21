@@ -27,6 +27,12 @@ void main() {
   #include <fog_fragment>
 }`;
 
+function upload(attr, count) {
+  attr.clearUpdateRanges();
+  attr.addUpdateRange(0, count);
+  attr.needsUpdate = true;
+}
+
 export class Particles {
   constructor(scene, max = 1200) {
     this.max = max;
@@ -129,14 +135,18 @@ export class Particles {
       size[i] = this.s0[i] + (this.s1[i] - this.s0[i]) * t;
     }
     this.geo.setDrawRange(0, n);
-    this.geo.attributes.position.needsUpdate = true;
-    this.geo.attributes.aColor.needsUpdate = true;
-    this.geo.attributes.aSize.needsUpdate = true;
+    if (n > 0) {
+      // upload only the live part of each buffer
+      const A = this.geo.attributes;
+      upload(A.position, n * 3);
+      upload(A.aColor, n * 4);
+      upload(A.aSize, n);
+    }
   }
 
   _copy(from, to) {
-    const arrs = [this.px, this.py, this.pz, this.vx, this.vy, this.vz, this.life, this.maxLife, this.s0, this.s1, this.r, this.g, this.b, this.a0, this.grav, this.drag];
-    for (const a of arrs) a[to] = a[from];
+    const arrs = this._arrs || (this._arrs = [this.px, this.py, this.pz, this.vx, this.vy, this.vz, this.life, this.maxLife, this.s0, this.s1, this.r, this.g, this.b, this.a0, this.grav, this.drag]);
+    for (let k = 0; k < arrs.length; k++) arrs[k][to] = arrs[k][from];
   }
 
   dispose() {
@@ -217,6 +227,8 @@ export class TireMarks {
     this.age[i] = 0;
     this.alpha[i] = alpha;
     last.copy(p);
+    this.geo.attributes.position.addUpdateRange(o, 12);
+    this.geo.attributes.color.addUpdateRange(c, 16);
     this.dirty = true;
     void n;
   }
@@ -231,6 +243,7 @@ export class TireMarks {
       // fade old marks slowly
       const t = this.timer;
       this.timer = 0;
+      let lo = -1, hi = -1;
       for (let i = 0; i < this.max; i++) {
         if (this.age[i] > 1e8) continue;
         this.age[i] += t;
@@ -238,13 +251,17 @@ export class TireMarks {
           const a = Math.max(0, this.alpha[i] * (1 - (this.age[i] - 25) / 15));
           for (let v = 0; v < 4; v++) this.col[i * 16 + v * 4 + 3] = a;
           if (a <= 0) this.age[i] = 1e9;
+          if (lo < 0) lo = i;
+          hi = i;
           this.dirty = true;
         }
       }
+      if (lo >= 0) this.geo.attributes.color.addUpdateRange(lo * 16, (hi - lo + 1) * 16);
     }
     if (this.dirty) {
-      this.geo.attributes.position.needsUpdate = true;
-      this.geo.attributes.color.needsUpdate = true;
+      const A = this.geo.attributes;
+      if (A.position.updateRanges.length) A.position.needsUpdate = true;
+      if (A.color.updateRanges.length) A.color.needsUpdate = true;
       this.dirty = false;
     }
   }
@@ -253,6 +270,9 @@ export class TireMarks {
     this.col.fill(0);
     this.age.fill(1e9);
     this.last = [null, null];
+    const A = this.geo.attributes;
+    A.color.clearUpdateRanges();
+    A.color.addUpdateRange(0, this.col.length);
     this.dirty = true;
   }
 

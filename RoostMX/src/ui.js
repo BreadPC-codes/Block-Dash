@@ -48,6 +48,9 @@ export const SETTINGS_SCHEMA = {
   graphics: [
     { section: 'Display' },
     { type: 'seg', path: 'graphics.quality', label: 'Quality preset', options: [['low', 'Low'], ['medium', 'Medium'], ['high', 'High']] },
+    { type: 'range', path: 'graphics.renderScale', label: 'Render scale', min: 0.5, max: 1, step: 0.05, fmt: pct },
+    { type: 'toggle', path: 'graphics.dynamicRes', label: 'Dynamic resolution (holds 60 FPS)' },
+    { type: 'seg', path: 'graphics.antialias', label: 'Anti-aliasing', options: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
     { type: 'toggle', path: 'graphics.fullscreen', label: 'Fullscreen' },
     { type: 'seg', path: 'graphics.units', label: 'Speed units', options: [['kmh', 'KM/H'], ['mph', 'MPH']] },
     { type: 'toggle', path: 'graphics.minimap', label: 'Minimap' },
@@ -323,7 +326,7 @@ export class UI {
       n.className = 'note';
       n.style.gridColumn = '1 / -1';
       n.style.marginTop = '12px';
-      n.innerHTML = '<b>Low</b>: no shadows, 75% render scale, no grass, sparse trees, no antialiasing. <b>Medium</b>: 1K shadows, full render scale, some grass. <b>High</b>: 2K soft shadows, up to 1.5× render scale on high-DPI screens, dense grass and forests, full detail terrain near the track. Press F11 (or Alt+Enter) to toggle fullscreen at any time.';
+      n.innerHTML = '<b>Low</b>: no shadows, 75% render scale, no grass, sparse trees, no anti-aliasing. <b>Medium</b>: 1K shadows, full render scale, some grass. <b>High</b>: 2K soft shadows, up to 1.5× render scale on high-DPI screens, dense grass and forests, full detail terrain near the track.<br><b>Dynamic resolution</b> lowers the render resolution only while the frame rate is below 60 FPS (or your screen\'s refresh rate) and raises it again when there is headroom. <b>Render scale</b> sets the maximum. Anti-aliasing changes apply after a restart. Press F11 (or Alt+Enter) to toggle fullscreen at any time.';
       grid.appendChild(n);
     }
     if (tab === 'controls') {
@@ -675,7 +678,10 @@ export class UI {
       this.hudCache.splitCls = h.splitCls;
       sEl.className = h.splitCls || '';
     }
-    $('hud-split-row').style.visibility = split ? 'visible' : 'hidden';
+    if (this.hudCache.splitVis !== !!split) {
+      this.hudCache.splitVis = !!split;
+      $('hud-split-row').style.visibility = split ? 'visible' : 'hidden';
+    }
     this._set('hud-cam', h.camLabel);
     const showTimer = h.showTimer !== false;
     if (this.hudCache.showTimer !== showTimer) {
@@ -702,10 +708,17 @@ export class UI {
       this._set('crash-hint', h.crashHint);
     }
     // fps
-    const fpsEl = $('fps');
-    if (this.settings.graphics.showFps) this._set('fps', h.fpsText);
-    fpsEl.style.display = this.settings.graphics.showFps ? 'block' : 'none';
-    $('minimap').style.display = this.settings.graphics.minimap ? 'block' : 'none';
+    const showFps = !!this.settings.graphics.showFps;
+    if (showFps) this._set('fps', h.fpsText);
+    if (this.hudCache.showFps !== showFps) {
+      this.hudCache.showFps = showFps;
+      $('fps').style.display = showFps ? 'block' : 'none';
+    }
+    const showMap = !!this.settings.graphics.minimap;
+    if (this.hudCache.showMap !== showMap) {
+      this.hudCache.showMap = showMap;
+      $('minimap').style.display = showMap ? 'block' : 'none';
+    }
   }
 
   // ---------------------------------------------------------------------------------
