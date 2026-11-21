@@ -26,7 +26,7 @@ export const GEO = {
   massBike: 104,
   massRider: 76,
   comBike: [0, 0.6, 0.04],
-  riderSeated: [0, 1.04, -0.24],
+  riderSeated: [0, 1.04, -0.14],
   riderStanding: [0, 1.2, -0.1],
   seat: [0, 0.96, -0.26],
   pegs: [0.19, 0.37, -0.1], // mirrored in X

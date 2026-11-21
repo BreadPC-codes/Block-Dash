@@ -207,6 +207,8 @@ class Wheel {
     this.fy = 0;
     this.bottomed = false;
     this.airTime = 0;
+    this.xdF = 0;
+    this.loadF = 0;
   }
 }
 
@@ -360,7 +362,7 @@ export class BikePhysics {
       const mEff = load / G;
       const crit = 2 * Math.sqrt(w.k * mEff);
       w.cComp = crit * 0.32 * kd;
-      w.cReb = crit * 0.72 * kd;
+      w.cReb = crit * 0.58 * kd;
     }
   }
 
@@ -391,6 +393,7 @@ export class BikePhysics {
     this.maxAirHeight = 0;
     this.impactTimer = 0;
     this.frontTuck = 0;
+    this.muLat = 1;
     this.speed = 0;
     this.forwardSpeed = 0;
     this.throttle = 0;
@@ -510,7 +513,7 @@ export class BikePhysics {
       this.stance += clamp((wantStand ? 1 : 0) - this.stance, -dt * 2.2, dt * 2.2);
       // riders lean forward to accelerate and back when braking
       const auto = tune.assist > 0 && !this.airborne ? 1 : 0.5;
-      const autoLean = auto * (0.45 * input.throttle * (this.engine.gear <= 3 ? 1 : 0.6) - 0.5 * input.brakeF - 0.2 * input.brakeR);
+      const autoLean = auto * (0.7 * input.throttle * (this.engine.gear <= 3 ? 1 : 0.6) - 0.5 * input.brakeF - 0.2 * input.brakeR);
       const leanGoal = clamp(this.leanIn + (this.airborne ? 0 : autoLean), -1, 1);
       this.riderLean += clamp(leanGoal - this.riderLean, -dt * 4, dt * 4);
       this._updateCom(false);
@@ -544,7 +547,23 @@ export class BikePhysics {
       const nb = nAvgX * rhx + nAvgZ * rhz; // ground tilt toward the bike's right
       const dirSign = this.steerIn >= 0 ? 1 : -1;
       const beta = Math.asin(clamp(nb, -0.85, 0.85)) * dirSign;
-      const muEst = muAvg * (assist === 2 ? 0.8 : assist === 1 ? 0.9 : 1.15);
+      // lateral grip actually left in each tire's friction circle (drive/brake use some of it)
+      // each axle must carry its share of the cornering force (yaw-moment balance), so the
+      // weaker axle (e.g. a front unloaded by throttle) limits how far the bike can lean
+      let muNow = 1.4;
+      let anyContact = false;
+      for (const w of this.wheels) {
+        if (!w.contact) continue;
+        anyContact = true;
+        const Fm = SURFACES[w.surface].mu * w.loadF;
+        const lat = Math.sqrt(Math.max(0, Fm * Fm - w.fx * w.fx));
+        const share = w.isFront ? 0.49 : 0.51;
+        muNow = Math.min(muNow, lat / (this.mass * G * share));
+      }
+      muNow = anyContact && !this.airborne ? clamp(muNow, 0.12, 1.4) : muAvg;
+      this.muLat += (muNow - this.muLat) * (1 - Math.exp(-dt / 0.15));
+      const muBase = assist === 0 ? muAvg : Math.min(muAvg, this.muLat);
+      const muEst = muBase * (assist === 2 ? 0.82 : assist === 1 ? 0.87 : 1.15);
       const tb = Math.tan(beta);
       const tanMax = clamp((muEst + tb) / Math.max(0.2, 1 - muEst * tb), 0.15, 2.0);
       const leanSpeed = lerp(0.12, 0.98, smoothstep(0.6, 11.5, speed));
@@ -578,9 +597,16 @@ export class BikePhysics {
     const pitchRate = this.angVel.dot(right);
     if (!crashed && assist > 0 && this.rear.contact && !this.front.contact) {
       // wheelie control (rider modulating throttle), anticipating the pitch rate
-      const lim = assist === 2 ? 0.22 : 0.42;
-      const predicted = this.wheelieAngle + 0.22 * pitchRate;
-      throttle *= 1 - smoothstep(lim, lim + 0.14, predicted);
+      // with full assists the front is kept just skimming the ground, and lower still when turning
+      const turning = Math.min(1, Math.abs(this.steerIn) * 2);
+      const lim = (assist === 2 ? 0.07 : 0.2) * (1 - 0.6 * turning);
+      const predicted = this.wheelieAngle + 0.25 * pitchRate;
+      throttle *= 1 - smoothstep(lim, lim + 0.12, predicted);
+    }
+    if (!crashed && assist === 2 && Math.abs(phi) > 0.3) {
+      // the rider modulates brakes when a tire starts sliding while leaned over
+      if (this.rear.slip > 1.3) this.brakeR *= 0.45;
+      if (this.front.slip > 1.6) this.brakeF *= 0.6;
     }
     if (!crashed && assist > 0 && this.front.contact && !this.rear.contact && !this.airborne) {
       // stoppie control: ease off the front brake when the rear lifts
@@ -672,23 +698,27 @@ export class BikePhysics {
         const hEff = 0.8;
         const Iroll = this.inertia.z + this.mass * hEff * hEff;
         const frontGrip = this.front.contact ? 1 - smoothstep(1.4, 3.0, this.front.slip) : 0.7;
-        const cap = 1500 * (0.15 + 0.85 * frontGrip);
+        // at low speed MX riders dab a foot, which can save a lot of lean
+        const dab = (assist > 0 ? 1700 : 900) * (1 - smoothstep(5, 13, speed));
+        const cap = 1500 * (0.15 + 0.85 * frontGrip) + dab;
         let tau = Iroll * (26 * (this.leanTarget - phi) - 8 * phiDot);
         tau = clamp(tau, -cap, cap);
+        this.dbgTau = tau;
+        this.dbgCap = cap;
         T.addScaledVector(fwd, tau);
         // rider pushes the chassis fore/aft with arms and legs
         T.addScaledVector(right, -this.leanIn * 150);
         // wheelie assist: rider leans forward automatically when looping
-        if (assist > 0 && !this.front.contact) {
-          const lim = assist === 2 ? 0.36 : 0.55;
-          if (this.wheelieAngle > lim) T.addScaledVector(right, -(this.wheelieAngle - lim) * (assist === 2 ? 900 : 450));
+        if (assist > 0 && !this.front.contact && this.rear.contact) {
+          const lim = assist === 2 ? 0.1 : 0.4;
+          if (this.wheelieAngle > lim) T.addScaledVector(right, -(this.wheelieAngle - lim) * (assist === 2 ? 1400 : 600));
         }
         // rider keeps the yaw rate consistent with the lean (throttle/brake/body control)
         const yawRate = this.angVel.dot(up);
         if (speed > 2.5 && assist > 0) {
           const target = -(G * Math.tan(clamp(phi, -1.1, 1.1))) / speed;
-          const k = this.inertia.y * (assist === 2 ? 7 : 3.5);
-          const capY = assist === 2 ? 520 : 300;
+          const k = this.inertia.y * (assist === 2 ? 7 : 5);
+          const capY = assist === 2 ? 520 : 400;
           T.addScaledVector(up, clamp(k * (target - yawRate), -capY, capY));
         } else {
           T.addScaledVector(up, -yawRate * 4);
@@ -875,6 +905,7 @@ export class BikePhysics {
     }
 
     // ---- suspension
+    const wasContact = w.contact;
     w.contact = true;
     w.airTime = 0;
     w.normal.set(nx, ny, nz);
@@ -891,19 +922,27 @@ export class BikePhysics {
     const vhy = this.vel.y + av.z * _r.x - av.x * _r.z + up.y * sv;
     const vhz = this.vel.z + av.x * _r.y - av.y * _r.x + up.z * sv;
     const vn = vhx * nx + vhy * ny + vhz * nz;
-    const xd = -vn / anc;
+    // tire compliance: the carcass soaks up the sharpest velocity spikes
+    const xdRaw = -vn / anc;
+    if (!wasContact) w.xdF = xdRaw;
+    w.xdF += (xdRaw - w.xdF) * (1 - Math.exp(-dt / 0.012));
+    const xd = w.xdF;
     const travel = w.travel;
     const xr = Math.min(x, travel) / travel;
     let Fs = w.k * Math.min(x, travel) * (1 + w.prog * xr * xr);
     const ramp = Math.min(1, x / 0.025);
-    // digressive high-speed damping (valve blow-off)
+    // digressive high-speed damping (valve blow-off); rebound blows off earlier so the
+    // wheel can drop into holes and braking bumps instead of skipping over them
     const axd = Math.abs(xd);
-    const xdEff = axd < 0.8 ? xd : Math.sign(xd) * (0.8 + (axd - 0.8) * 0.35);
+    let xdEff;
+    if (xd >= 0) xdEff = axd < 0.8 ? xd : 0.8 + (axd - 0.8) * 0.35;
+    else xdEff = -(axd < 0.35 ? axd : 0.35 + (axd - 0.35) * 0.25);
     Fs += (xd > 0 ? w.cComp : w.cReb) * xdEff * ramp;
     w.bottomed = false;
     if (x > travel) {
+      // hydraulic bottoming cone: stiff, and damped in both directions so it doesn't kick back
       const e = x - travel;
-      Fs += 2.6e5 * e + 5000 * Math.max(0, xd);
+      Fs += 1.8e5 * e + 4500 * xd;
       w.bottomed = true;
     }
     const N = Math.max(0, Fs);
@@ -944,9 +983,13 @@ export class BikePhysics {
     const vLat = _vc.dot(_tt);
 
     const surf = SURFACES[w.surface];
-    const loadFactor = 1 - 0.07 * (N / 1000 - 1);
+    // tire relaxation: grip follows the load over ~0.35 m of rolling, not instantly
+    const tau = 0.35 / Math.max(Math.abs(vLong), 3);
+    w.loadF += (N - w.loadF) * (1 - Math.exp(-dt / tau));
+    const Ng = Math.min(w.loadF, N * 2.5 + 200);
+    const loadFactor = 1 - 0.07 * (Ng / 1000 - 1);
     const mu = surf.mu * clamp(loadFactor, 0.75, 1.1);
-    const Fmax = mu * N;
+    const Fmax = mu * Ng;
     const denom = Math.max(Math.abs(vLong), V_SLIP_MIN);
     const aN = vLat / denom / (TAN_ALPHA_PEAK * (1 + surf.loose));
 
@@ -1008,6 +1051,7 @@ export class BikePhysics {
   _noContact(w, dt, driveTorque, driveInertia) {
     w.contact = false;
     w.load = 0;
+    w.loadF *= Math.exp(-dt / 0.03);
     w.slip = 0;
     w.slideSpeed = 0;
     w.slipRatio = 0;

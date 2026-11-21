@@ -30,6 +30,9 @@ const opts = {
   sourcemap: dev ? 'linked' : false,
   legalComments: 'none',
   logLevel: 'info',
+  // three's DRACO/KTX2 loaders compute default decoder URLs from import.meta.url at load
+  // time; in a classic-script bundle use the document URL instead (paths are set explicitly).
+  define: { 'import.meta.url': 'document.baseURI' },
 };
 if (watch) {
   const ctx = await esbuild.context(opts);

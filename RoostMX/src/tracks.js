@@ -35,7 +35,7 @@ export const TRACKS = [
       ['S', 124, {
         features: [
           { type: 'whoops', at: 14, n: 12, h: 0.45, spacing: 3.6 },
-          { type: 'rollers', at: 72, n: 4, h: 0.85, len: 8.5 },
+          { type: 'rollers', at: 72, n: 4, h: 0.65, len: 9 },
         ],
       }],
       ['R', 90, 16],
@@ -43,8 +43,8 @@ export const TRACKS = [
       ['R', 90, 15],
       ['S', 134, {
         features: [
-          { type: 'double', at: 22, h1: 2.1, face: 27, gap: 25, h2: 2.1, land: 22, mid: { h: 1.4, w: 7 } },
-          { type: 'rollers', at: 88, n: 3, h: 0.7, len: 8 },
+          { type: 'double', at: 22, h1: 2.1, face: 26, gap: 23, h2: 2.1, land: 22, mid: { h: 1.8, w: 10 } },
+          { type: 'rollers', at: 88, n: 3, h: 0.6, len: 8.5 },
         ],
       }],
       ['S', 52, {}],
@@ -91,7 +91,7 @@ export const TRACKS = [
       ['L', 180, 13],
       ['S', 84, { features: [{ type: 'table', at: 18, h: 1.4, face: 25, top: 8, land: 22 }] }],
       ['R', 180, 12],
-      ['S', 74, { features: [{ type: 'rollers', at: 10, n: 5, h: 0.75, len: 7.5 }] }],
+      ['S', 74, { features: [{ type: 'rollers', at: 12, n: 4, h: 0.6, len: 8.5 }] }],
       ['L', 90, 12],
       ['S', 50, { features: [{ type: 'double', at: 9, h1: 1.4, face: 25, gap: 10, h2: 1.4, land: 22 }] }],
       ['L', 90, 12],
@@ -132,7 +132,7 @@ export const TRACKS = [
       ['L', 165, 15],
       ['S', 196, {
         features: [
-          { type: 'rollers', at: 12, n: 5, h: 1.0, len: 9 },
+          { type: 'rollers', at: 12, n: 5, h: 0.75, len: 9.5 },
           { type: 'table', at: 72, h: 1.8, face: 26, top: 10, land: 21 },
           { type: 'whoops', at: 136, n: 10, h: 0.45, spacing: 3.7 },
         ],

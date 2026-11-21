@@ -104,7 +104,8 @@ export class CameraRig {
       cam.position.copy(ctx.eye);
       _e.setFromQuaternion(ctx.quat, 'YXZ');
       const roll = _e.z * 0.55;
-      _e.set(-_e.x * 1.0 + this.pitchOff * 0.6, _e.y + Math.PI + this.yawOff + (ctx.lookBack ? Math.PI : 0), -roll, 'YXZ');
+      // tilt down a little so the bars and number plate are in view
+      _e.set(-_e.x * 1.0 - 0.24 + this.pitchOff * 0.6, _e.y + Math.PI + this.yawOff + (ctx.lookBack ? Math.PI : 0), -roll, 'YXZ');
       // camera looks down -Z; bike forward is +Z, so add PI to yaw and flip pitch
       cam.quaternion.setFromEuler(_e);
       this._setFov(84, dt);

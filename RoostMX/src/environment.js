@@ -560,13 +560,13 @@ export class Environment {
     group.position.set(p0.x, h0, p0.z);
     group.rotation.y = heading;
     this.group.add(group);
-    const metal = this.track_(new THREE.MeshStandardMaterial({ color: 0x9aa2ab, metalness: 0.8, roughness: 0.4 }));
+    const metal = this.track_(new THREE.MeshStandardMaterial({ color: 0x6b7178, metalness: 0.6, roughness: 0.55 }));
     const dark = this.track_(new THREE.MeshStandardMaterial({ color: 0x2a2c30, metalness: 0.5, roughness: 0.6 }));
-    const pad = this.track_(new THREE.MeshStandardMaterial({ color: 0x8b8378, roughness: 0.95 }));
-    // concrete pad behind the gate (thin decal, no collision)
-    const padGeo = this.track_(new THREE.BoxGeometry(width + 0.6, 0.04, 3.2));
+    const pad = this.track_(new THREE.MeshStandardMaterial({ color: 0x5f5a52, roughness: 1 }));
+    // concrete pad behind the gate (flush with the dirt, no collision)
+    const padGeo = this.track_(new THREE.BoxGeometry(width + 0.6, 0.3, 3.2));
     const padMesh = new THREE.Mesh(padGeo, pad);
-    padMesh.position.set(0, 0.0, -1.7);
+    padMesh.position.set(0, -0.12, -1.7);
     padMesh.receiveShadow = true;
     group.add(padMesh);
     // base bar and side posts

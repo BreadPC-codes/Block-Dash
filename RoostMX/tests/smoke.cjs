@@ -6,6 +6,10 @@ const url = process.argv[3] || 'http://localhost:8765/';
 (async () => {
   const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
+  const quality = process.argv[4] || 'low';
+  await page.addInitScript((q) => {
+    try { if (!localStorage.getItem('roostmx.settings.v1')) localStorage.setItem('roostmx.settings.v1', JSON.stringify({ graphics: { quality: q, fullscreen: false, showFps: true } })); } catch (e) {}
+  }, quality);
   const logs = [];
   page.on('console', (m) => { if (['error', 'warning'].includes(m.type())) logs.push(`[${m.type()}] ${m.text()}`); });
   page.on('pageerror', (e) => logs.push('[pageerror] ' + e.message + '\n' + e.stack));
@@ -14,6 +18,7 @@ const url = process.argv[3] || 'http://localhost:8765/';
   await page.waitForSelector('#screen-main.active', { timeout: 120000 });
   console.log('main menu after', ((Date.now() - t0) / 1000).toFixed(1), 's');
   await page.waitForTimeout(1500);
+  console.log('menu fps', await page.evaluate(() => window.__roost.fps.value.toFixed(1)));
   await page.screenshot({ path: path.join(out, 's1-menu.png') });
   await page.click('[data-action="play"]');
   await page.waitForTimeout(400);

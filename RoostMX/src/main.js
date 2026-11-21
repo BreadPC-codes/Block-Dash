@@ -532,6 +532,7 @@ class Game {
     this.pausedFrom = this.state;
     this.state = 'paused';
     this.audio.silenceRide();
+    this.ui.showHud(false);
     this.ui.go('pause', { push: false });
   }
 

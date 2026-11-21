@@ -4,7 +4,7 @@
 // gravel textures in world space, darkens the worn racing line and adds detail normals.
 import * as THREE from 'three';
 
-const CH = 64; // cells per chunk side
+const CH = 128; // cells per chunk side (64 m at 0.5 m cells)
 
 export function makeTerrainMaterial(tex, { sandy = false } = {}) {
   const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.96, metalness: 0 });

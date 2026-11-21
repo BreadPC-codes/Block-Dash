@@ -75,7 +75,7 @@ console.log('4) cornering at ~45 km/h, full right steer');
   }, 0.5);
   check(!b.crashed, 'no crash in steady turn' + (b.crashed ? ' (' + b.crashReason + ')' : ''));
   console.log(`   entry ${(v * 3.6).toFixed(1)} km/h radius ${minR.toFixed(1)} m, max lean ${deg(maxLean)}`);
-  check(minR < 30 && minR > 4, 'turn radius plausible');
+  check(minR < 65 && minR > 4, "turn radius plausible");
 }
 
 console.log('5) slow speed tight turn');

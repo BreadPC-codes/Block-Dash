@@ -621,8 +621,23 @@ export class Track {
     return { x: this.x[i] + nx * d, z: this.z[i] + nz * d, tx: this.tx[i], tz: this.tz[i], heading: Math.atan2(this.tx[i], this.tz[i]) };
   }
 
-  /** Find a safe respawn arc length at or before s: no jump features nearby. */
+  /** Find a safe respawn arc length: past a jump if the rider already left its lip,
+   *  otherwise before it, never on a feature or a berm. */
   safeRespawnS(s) {
+    const ws = this.wrapS(s);
+    for (const f of this.features) {
+      const lip = f.lips.length ? f.lips[0] : f.s0;
+      if (ws > lip + 1 && ws <= f.s1 + 2) {
+        for (let ahead = 3; ahead < 30; ahead += 2) {
+          const t = f.s1 + ahead;
+          let ok = true;
+          for (let k = -6; k <= 6; k++) {
+            if (this.interp(this.F, t + k) > 0.05 || Math.abs(this.interp(this.B, t + k)) > 0.35) { ok = false; break; }
+          }
+          if (ok) return this.wrapS(t);
+        }
+      }
+    }
     for (let back = 4; back < 160; back += 2) {
       const t = s - back;
       let ok = true;
@@ -819,12 +834,12 @@ export function generateTerrain(track, cell = 0.5) {
     let micro = 0;
     if (ad < w + 1.5) {
       const on = 1 - smoothstep(w, w + 1.5, ad);
-      micro = (noise2.noise2(wx * 0.45, wz * 0.45) * 0.035 + noise2.noise2(wx * 1.3 + 9, wz * 1.3) * 0.012) * on;
+      micro = (noise2.noise2(wx * 0.4, wz * 0.4) * 0.022 + noise2.noise2(wx * 1.1 + 9, wz * 1.1) * 0.005) * on;
       // braking bumps before tight corners
       const kAhead = Math.abs(track.interp(track.kappa, s + 9));
       if (kAhead > 1 / 22 && F < 0.05) {
         const env = smoothstep(1 / 22, 1 / 12, kAhead) * on;
-        micro += env * 0.055 * (0.5 - 0.5 * Math.cos((2 * Math.PI * s) / 2.1));
+        micro += env * 0.028 * -Math.cos((2 * Math.PI * s) / 3.2);
       }
     }
     const wb = ad <= w + 0.8 ? 1 : 1 - smoothstep(w + 0.8, w + shoulder, ad);
@@ -857,7 +872,8 @@ export function generateTerrain(track, cell = 0.5) {
           const wsum = p1.wb + p2.wb;
           if (wsum > 1e-4) E = (p1.wb * p1.E + p2.wb * p2.E) / wsum;
           W = 1 - (1 - p1.wb) * (1 - p2.wb);
-          M = Math.max(p1.M, p2.M);
+          // a nearby section only raises the surface with its own mounds/berms
+          if (p2.M > 0.03 && p2.M > p1.M) M = p2.M;
         }
         h = h + (E - h) * W + M;
         // surfaces
