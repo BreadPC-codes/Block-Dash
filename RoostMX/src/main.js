@@ -1,6 +1,6 @@
 // Roost MX — game bootstrap, state machine and main loop.
 import * as THREE from 'three';
-import { loadSettings, saveSettings, loadRecords, saveRecords } from './settings.js';
+import { loadSettings, saveSettings, loadRecords, saveRecords, hasSavedSettings } from './settings.js';
 import { TRACKS, getTrackDef } from './tracks.js';
 import { Track, generateTerrain } from './track.js';
 import { TerrainView, makeTerrainMaterial, buildBackdrop } from './terrain-render.js';
@@ -34,7 +34,9 @@ class Game {
     this.state = 'loading';
     this.canvas = document.getElementById('gl');
     this.quality = QUALITY_PRESETS[this.settings.graphics.quality] || QUALITY_PRESETS.medium;
+    const firstRun = !hasSavedSettings();
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: this.quality.antialias, powerPreference: 'high-performance', stencil: false });
+    if (firstRun) this.autoQuality();
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.shadowMap.enabled = true;
@@ -90,6 +92,25 @@ class Game {
       }
     });
     this.resize();
+  }
+
+  /** First launch: choose a graphics preset that suits the detected GPU. */
+  autoQuality() {
+    let name = '';
+    try {
+      const gl = this.renderer.getContext();
+      const ext = gl.getExtension('WEBGL_debug_renderer_info');
+      name = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+    } catch (e) {
+      /* ignore */
+    }
+    let q = 'high';
+    if (/swiftshader|llvmpipe|software|basic render/i.test(name)) q = 'low';
+    else if (/intel|uhd|iris|mali|adreno|powervr|apple m1|vega \d graphics|radeon\(tm\) graphics/i.test(name)) q = 'medium';
+    this.gpuName = name;
+    this.settings.graphics.quality = q;
+    this.quality = QUALITY_PRESETS[q];
+    saveSettings(this.settings);
   }
 
   // ---------------------------------------------------------------------------------
@@ -537,6 +558,14 @@ class Game {
       f.value = f.frames / f.t;
       f.frames = 0;
       f.t = 0;
+      // one-time hint when riding stays slow
+      if (this.state === 'riding' && !this.slowHintShown) {
+        f.slow = f.value < 38 ? (f.slow || 0) + 0.5 : 0;
+        if (f.slow > 8 && this.settings.graphics.quality !== 'low') {
+          this.slowHintShown = true;
+          this.ui.toast('Low frame rate — try a lower Graphics quality in Settings.', 'bad', 6000);
+        }
+      }
     }
     const inp = this.input.update(dt);
     try {
@@ -892,6 +921,8 @@ class Game {
       this.burst(ph.pos, 40, SURFACES[ph.rear.surface].color, 3);
       this.input.pad.rumble(1, 1, 450);
       this.crashAuto = 0;
+    } else if (e.type === 'takeoff') {
+      this.audio.takeoff(e.speed);
     } else if (e.type === 'shift') {
       this.audio.shift();
     } else if (e.type === 'scrape') {

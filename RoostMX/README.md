@@ -191,7 +191,8 @@ Open **Garage** from the main or pause menu. Drag to rotate, scroll to zoom.
 - **Adjust** — scale (log slider, so centimetre and millimetre models work), position
   X/Y/Z, rotation X/Y/Z, rider offset and visibility, model animation; *Auto-fit to
   wheels*, *Reset adjustments*, *Save configuration*, *Apply & use*.
-- **Parts** — assign the front wheel, rear wheel, steering assembly, handlebar, front
+- **Parts** — assign the bike root (everything outside it, such as a stand or ground
+  plane, is hidden), front wheel, rear wheel, steering assembly, handlebar, front
   fork (sliding part), swingarm/rear suspension and rider attachment point. Parts are
   auto-detected from names (e.g. `wheel_front`, `Rear_Tyre`, `fork`, `swingarm`, also
   some German/French/Italian/Spanish names) or by geometry (two disk-shaped parts at the
@@ -286,7 +287,8 @@ test files in `tests/fixtures/`.
 
 - **Black screen / "Could not start"** — the game needs WebGL 2. Update your graphics
   driver. On laptops, make sure the app uses the dedicated GPU.
-- **Low frame rate** — use Graphics → Low or Medium, or a smaller window.
+- **Low frame rate** — use Graphics → Low or Medium, or a smaller window. On first
+  launch the game picks a preset from your GPU (integrated graphics start on Medium).
 - **No sound** — click or press a key once (browsers only start audio after input) and
   check the Audio volumes.
 - **Controller not detected** — press any button on it; Windows browsers only expose a

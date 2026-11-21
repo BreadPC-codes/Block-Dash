@@ -106,6 +106,10 @@ function safeSet(key, val) {
   }
 }
 
+export function hasSavedSettings() {
+  return !!safeGet(KEY);
+}
+
 export function loadSettings() {
   const raw = safeGet(KEY);
   let s = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));

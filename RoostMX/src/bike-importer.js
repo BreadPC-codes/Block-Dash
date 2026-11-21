@@ -43,6 +43,7 @@ const PIBOSO_EXT = {
 };
 
 export const COMPONENT_SLOTS = [
+  { key: 'root', label: 'Bike root (hide everything else)', multi: false },
   { key: 'frontWheel', label: 'Front wheel', multi: true },
   { key: 'rearWheel', label: 'Rear wheel', multi: true },
   { key: 'steering', label: 'Steering assembly', multi: true },
@@ -57,7 +58,7 @@ export function defaultConfig() {
     scale: 1,
     pos: [0, 0, 0],
     rot: [0, 0, 0],
-    comps: { frontWheel: [], rearWheel: [], steering: [], handlebar: [], fork: [], swingarm: [], riderPoint: [] },
+    comps: { root: [], frontWheel: [], rearWheel: [], steering: [], handlebar: [], fork: [], swingarm: [], riderPoint: [] },
     rider: { show: true, offset: [0, 0, 0] },
     paint: [],
     animation: '',
@@ -468,7 +469,8 @@ export function autoFit(root, comps) {
   root.updateWorldMatrix(true, true);
   const nodesOf = (key) => (comps[key] || []).map((p) => nodeByPath(root, p)).filter(Boolean);
   const fw = nodesOf('frontWheel'), rw = nodesOf('rearWheel');
-  const whole = bboxOf(root, root);
+  const bikeRoot = nodesOf('root')[0] || root;
+  const whole = bboxOf(bikeRoot, root);
   if (!fw.length || !rw.length) {
     // fallback: longest horizontal axis as forward, Y up, overall length scaled to 2.15 m
     const s = whole.getSize(new THREE.Vector3());
@@ -541,6 +543,7 @@ export class ImportedBikeVisual {
   constructor(source, config, animations = []) {
     this.kind = 'imported';
     this.config = config;
+    if (!config.comps.root) config.comps.root = [];
     this.root = new THREE.Group();
     this.root.name = 'importedBike';
     this.model = SkeletonUtils.clone(source);
@@ -641,6 +644,14 @@ export class ImportedBikeVisual {
       const b = bboxOf(rp, root);
       const c = b.isEmpty() ? rp.getWorldPosition(new THREE.Vector3()) : b.getCenter(new THREE.Vector3());
       this.riderAnchor = root.worldToLocal(c);
+    }
+    // optional bike root: hide anything outside it (stands, ground planes, extra props)
+    const rootPath = (this.config.comps.root || [])[0];
+    if (rootPath != null && rootPath !== '') {
+      const inside = (p) => p === rootPath || (typeof p === 'string' && p.startsWith(rootPath + '.'));
+      this.model.traverse((o) => {
+        if (o.isMesh && !inside(o.userData.srcPath)) o.visible = false;
+      });
     }
     // paintable materials
     const paint = new Set(this.config.paint || []);

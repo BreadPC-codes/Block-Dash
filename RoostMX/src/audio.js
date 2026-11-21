@@ -274,6 +274,12 @@ export class AudioSystem {
     this._tone(70, 0.18, 'sine', Math.min(0.6, amount * 0.08), 40);
   }
 
+  takeoff(speed) {
+    // short air rush as the bike leaves the lip
+    const k = Math.min(1, speed / 20);
+    this._burst(0.5, 'bandpass', 700 + k * 500, 0.7, 0.12 + k * 0.12, this.fxBus, 0.04);
+  }
+
   shift() {
     this._burst(0.05, 'bandpass', 3200, 6, 0.12);
     this._tone(180, 0.05, 'square', 0.05, 120);

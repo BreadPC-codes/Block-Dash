@@ -690,6 +690,7 @@ export class BikePhysics {
 
     const wasAir = this.airborne;
     this.airborne = groundedCount === 0;
+    if (this.airborne && !wasAir && !crashed && this.speed > 7 && this.vel.y > 1.5) this.events.push({ type: 'takeoff', speed: this.speed });
 
     // ---- rider control torques
     if (!crashed) {
