@@ -11,6 +11,7 @@
     "bundle": "node scripts/build-bundle.mjs",
     "bundle:dev": "node scripts/build-bundle.mjs --dev",
     "watch": "node scripts/build-bundle.mjs --watch",
+    "build:html": "node scripts/build-standalone.mjs",
     "prestart": "npm run bundle",
     "start": "electron .",
     "serve": "npm run bundle && node tests/serve.cjs 8765",

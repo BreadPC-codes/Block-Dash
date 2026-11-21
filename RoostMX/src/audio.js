@@ -110,8 +110,17 @@ export class AudioSystem {
     // engine
     try {
       const url = URL.createObjectURL(new Blob([WORKLET], { type: 'application/javascript' }));
-      await ctx.audioWorklet.addModule(url);
-      URL.revokeObjectURL(url);
+      try {
+        await ctx.audioWorklet.addModule(url);
+      } catch (blobErr) {
+        // pages opened from file:// cannot load blob: worklets, but data: URLs work
+        const bytes = new TextEncoder().encode(WORKLET);
+        let bin = '';
+        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        await ctx.audioWorklet.addModule('data:application/javascript;base64,' + btoa(bin));
+      } finally {
+        URL.revokeObjectURL(url);
+      }
       this.engineNode = new AudioWorkletNode(ctx, 'roost-engine', { outputChannelCount: [2] });
       const body = ctx.createBiquadFilter();
       body.type = 'peaking';

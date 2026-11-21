@@ -13,6 +13,15 @@ runs **fully offline** and needs no asset downloads.
 
 ---
 
+## Play instantly (no install)
+
+Open **`play/index.html`** — double-click it and it starts in your browser (Chrome,
+Edge or Firefox). It is a single self-contained file (about 1.7 MB) with the whole game
+inside, so you can copy it anywhere. Your settings, best laps and imported bikes are
+saved in that browser.
+
+To regenerate it after changing the code: `npm run build:html`.
+
 ## Quick start
 
 Requirements: [Node.js](https://nodejs.org) 18 or newer (with npm). A GPU with WebGL 2.

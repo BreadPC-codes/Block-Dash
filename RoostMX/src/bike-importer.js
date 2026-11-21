@@ -174,9 +174,12 @@ export const CONVERSION_GUIDE = [
 // ---------------------------------------------------------------------------------
 let _draco = null, _ktx2 = null;
 function sharedDecoders(renderer) {
+  // the single-file build embeds the decoder and provides it as in-memory URLs
+  const embedded = typeof window !== 'undefined' ? window.__ROOST_DECODERS : null;
   if (!_draco) {
     _draco = new DRACOLoader();
-    _draco.setDecoderPath(new URL('dist/draco/', document.baseURI).href);
+    if (embedded && embedded.draco) _draco.setDecoderPath(embedded.draco);
+    else _draco.setDecoderPath(new URL('dist/draco/', document.baseURI).href);
   }
   if (!_ktx2) {
     _ktx2 = new KTX2Loader();
