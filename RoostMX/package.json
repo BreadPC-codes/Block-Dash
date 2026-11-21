@@ -1,15 +1,81 @@
 {
   "name": "roost-mx",
+  "productName": "Roost MX",
   "version": "1.0.0",
-  "private": true,
   "description": "Roost MX - a 3D motocross simulator built with Three.js and Electron",
   "main": "electron-main.js",
   "author": "Roost MX",
   "license": "MIT",
-  "dependencies": {
-    "three": "0.187.0"
+  "private": true,
+  "scripts": {
+    "bundle": "node scripts/build-bundle.mjs",
+    "bundle:dev": "node scripts/build-bundle.mjs --dev",
+    "watch": "node scripts/build-bundle.mjs --watch",
+    "prestart": "npm run bundle",
+    "start": "electron .",
+    "serve": "npm run bundle && node tests/serve.cjs 8765",
+    "test": "node tests/physics-sim.mjs",
+    "test:tracks": "node scripts/analyze-tracks.mjs . --terrain",
+    "test:autopilot": "node tests/autopilot.mjs all 2",
+    "prebuild": "npm run bundle",
+    "build": "electron-builder --win nsis --x64",
+    "prebuild:portable": "npm run bundle",
+    "build:portable": "electron-builder --win portable --x64",
+    "prebuild:all": "npm run bundle",
+    "build:all": "electron-builder --win nsis portable --x64"
   },
   "devDependencies": {
-    "esbuild": "0.28.2"
+    "electron": "45.4.1",
+    "electron-builder": "26.18.0",
+    "esbuild": "0.28.2",
+    "three": "0.187.0"
+  },
+  "build": {
+    "appId": "com.roostmx.game",
+    "productName": "Roost MX",
+    "copyright": "Roost MX",
+    "directories": {
+      "output": "release",
+      "buildResources": "assets/icons"
+    },
+    "files": [
+      "index.html",
+      "styles.css",
+      "electron-main.js",
+      "electron-preload.js",
+      "package.json",
+      "dist/**/*",
+      "!dist/**/*.map",
+      "assets/**/*"
+    ],
+    "asar": true,
+    "win": {
+      "icon": "assets/icons/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "${productName} ${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Roost MX",
+      "installerIcon": "assets/icons/icon.ico",
+      "uninstallerIcon": "assets/icons/icon.ico",
+      "uninstallDisplayName": "Roost MX",
+      "runAfterFinish": true,
+      "artifactName": "${productName} Setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}.${ext}"
+    }
   }
 }
