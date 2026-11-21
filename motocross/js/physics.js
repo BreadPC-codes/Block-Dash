@@ -41,6 +41,8 @@ MX.module('physics', function (THREE, MX) {
   const _v1 = new V(), _v2 = new V(), _v3 = new V(), _v4 = new V(), _v5 = new V(), _v6 = new V();
   const _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
   const _hn = { h: 0, nx: 0, ny: 1, nz: 0, info: {} };
+  // Coulomb brake: slow the wheel by Tb·dt/I without crossing zero
+  function brakeApply(w0, Tb, I, dt) { const d = Tb * dt / I; return Math.abs(w0) <= d ? 0 : w0 - Math.sign(w0) * d; }
 
   class Wheel {
     constructor(front) {
@@ -707,11 +709,10 @@ MX.module('physics', function (THREE, MX) {
       this.frontBrakeEff = bfIn;
       const bf = bfIn * pf.brake;
       const br = Math.max(clamp(inp.rear, 0, 1), this.assistBrake || 0) * pr.brake;
-      const brakeApply = (w0, Tb, I) => { const d = Tb * dt / I; return Math.abs(w0) <= d ? 0 : w0 - Math.sign(w0) * d; };
 
       // front wheel
       let wfNew = wf.spin + Text_f / pf.I * dt;
-      wfNew = brakeApply(wfNew, bf, pf.I);
+      wfNew = brakeApply(wfNew, bf, pf.I, dt);
       wf.locked = bf > 0 && wfNew === 0 && Math.abs(wf.vLong || 0) > 0.5;
       wf.spin = wfNew;
       wf.braking = bf;
@@ -726,7 +727,7 @@ MX.module('physics', function (THREE, MX) {
         en.locked = false;
         en.w = Math.max(0, en.w + Teng / Ie * dt);
         let w = wr.spin + Text_r / pr.I * dt;
-        wr.spin = brakeApply(w, br, pr.I);
+        wr.spin = brakeApply(w, br, pr.I, dt);
       } else {
         const g = gearR;
         let done = false;
@@ -736,7 +737,7 @@ MX.module('physics', function (THREE, MX) {
           const Tc = Teng - Ie * g * ar;
           if (Math.abs(Tc) <= cap) {
             let w = wr.spin + ar * dt;
-            w = brakeApply(w, br, Ic);
+            w = brakeApply(w, br, Ic, dt);
             wr.spin = w; en.w = g * w;
             done = true;
           } else en.locked = false;
@@ -746,7 +747,7 @@ MX.module('physics', function (THREE, MX) {
           const Tc = cap * clamp(slip / 2.0, -1, 1);
           let we = en.w + (Teng - Tc) / Ie * dt;
           let w = wr.spin + (g * Tc + Text_r) / pr.I * dt;
-          w = brakeApply(w, br, pr.I);
+          w = brakeApply(w, br, pr.I, dt);
           const slip2 = we - g * w;
           if ((Math.sign(slip2) !== Math.sign(slip) && slip !== 0) || Math.abs(slip2) < 0.6) {
             // synchronise conserving angular momentum
@@ -948,14 +949,15 @@ MX.module('physics', function (THREE, MX) {
             F.add(Fp); T.add(rr.cross(Fp));
           }
         }
-        // stadium / map walls
+        // stadium / map walls (+x, -x, +z, -z)
         const W = tr.walls;
-        const wallPen = (v, lim, dir) => (dir > 0 ? v + cp.r - lim : lim - (v - cp.r));
-        const walls = [[P.x, W.x1, 1, 1, 0], [P.x, W.x0, -1, -1, 0], [P.z, W.z1, 1, 0, 1], [P.z, W.z0, -1, 0, -1]];
-        for (const [val, lim, dir, ax, az] of walls) {
+        for (let wi = 0; wi < 4; wi++) {
+          const val = wi < 2 ? P.x : P.z;
+          const lim = wi === 0 ? W.x1 : wi === 1 ? W.x0 : wi === 2 ? W.z1 : W.z0;
+          const dir = wi & 1 ? -1 : 1;
           const pen = dir > 0 ? val + cp.r - lim : lim - val + cp.r;
           if (pen <= 0) continue;
-          const nx = -ax, nz = -az;
+          const nx = wi === 0 ? -1 : wi === 1 ? 1 : -0, nz = wi === 2 ? -1 : wi === 3 ? 1 : -0;
           const rr = _v2.copy(P).sub(this.pos);
           const vp = _v3.crossVectors(this.omega, rr).add(this.vel);
           const vn = vp.x * nx + vp.z * nz;
@@ -1129,7 +1131,14 @@ MX.module('physics', function (THREE, MX) {
     // ------------------------------------------------------------ outputs
     // compression travel in 0..1
     suspFraction(k) { return this.wheels[k].s / this.wp[k].travel; }
-    consumeEvents() { const e = this.events.slice(); this.events.length = 0; return e; }
+    // events since the last call; the returned array is reused (read it before the next call)
+    consumeEvents() {
+      const e = this.events;
+      this.events = this._evSpare || [];
+      this.events.length = 0;
+      this._evSpare = e;
+      return e;
+    }
   }
 
   BikePhysics.DT = DT;

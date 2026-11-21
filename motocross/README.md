@@ -28,7 +28,7 @@ Click or press any key on the title screen (browsers only allow sound after a cl
 - **Four cameras**: chase, helmet (first person), trackside side camera and free orbit. They blend smoothly when you switch, react to jumps and lean, and can be adjusted for distance, height and sensitivity.
 - **Sound**: the engine is synthesised live from exhaust pulses whose rate follows the RPM (one pulse per turn for the 2-strokes, one per two turns for the 4-strokes), with separate on-throttle and off-throttle sounds, 4-stroke deceleration pops and the rev limiter. Tyres, wind, skids, gear shifts, landings, bottoming and crashes are synthesised too, and a short procedural rock loop plays in the menus.
 - **HUD**: speed, gear, RPM with a tachometer and shift light, lap timer with checkpoints, last and best lap, track name, minimap, throttle/brake/clutch/lean/body bars, and messages for resets, laps, crashes and controllers.
-- **Settings** (saved in the browser): graphics quality, resolution scale, shadows, field of view, FPS counter, fullscreen, volumes, music while riding, assists, units, camera options, plus full keyboard and controller remapping with a live controller tester.
+- **Settings** (saved in the browser): graphics quality, resolution scale, dynamic resolution, shadows, field of view, FPS counter, fullscreen, volumes, music while riding, assists, units, camera options, plus full keyboard and controller remapping with a live controller tester.
 
 ## Controls
 
@@ -74,6 +74,23 @@ The physics lives in `js/physics.js` and runs at a fixed 500 steps per second.
 ## Laps and records
 
 A lap starts when you first cross the finish line and counts when you cross it again after passing every checkpoint. Resetting the bike during a lap means that lap won't count. Best laps are saved per track and bike.
+
+## Performance
+
+Under **Settings → Graphics** you can pick the quality preset (Low, Medium, High, Ultra), a resolution scale, and **dynamic resolution** (on by default). While you ride, dynamic resolution lowers the render resolution in small steps, never below half, when the frame rate drops below 60 fps (or below the display's refresh rate, if that is lower). It raises the resolution again when there is headroom. The FPS counter shows the current resolution.
+
+How the game keeps the work down:
+
+- **Bike and rider**: each is a single skinned mesh. Every part is bound to a bone (frame, steering, fork, wheels, swingarm, shock, limbs), and one material with a texture atlas carries all the colours. That is 4 draw calls including shadows, instead of about 190.
+- **Terrain and track**: both are cut into chunks with three levels of detail. Chunks outside the view are skipped and far chunks use fewer vertices. The track keeps its full width resolution at every level, so no cracks can open; terrain tiles hang a short skirt to hide theirs.
+- **Draw order**: the bike first, then track, props, terrain, and the sky last, so hidden pixels are rejected early and only sky that is actually visible gets shaded.
+- **Shadows**: trees, rocks, hay bales and tuff blocks cast shadows from a shadow-only copy that holds just the instances near the bike. Static scenery is merged into one mesh per material and its matrices are frozen.
+- **Low preset**: uses a cheaper ground shader with the same diffuse lighting and no specular.
+- **Loading and pausing**: shaders compile in parallel while the track loads, where the browser supports it. A paused game draws the scene once instead of every frame.
+- **Physics**: about 30–50% faster per step, with bit-identical results. The noise has flat gradient tables, the centreline search grid is pruned, terms with zero weight are skipped, and nothing is allocated per step.
+- **HUD and effects**: the HUD only touches the page when a shown value changes, and moves its bars with CSS transforms. Particles that have died cost nothing, and new tyre marks upload only the piece just added.
+
+On the outdoor track at High quality, a frame now draws about 290,000 triangles in about 80 draw calls. Before these changes it drew about 980,000 triangles in about 230 calls.
 
 ## Files
 

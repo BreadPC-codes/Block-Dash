@@ -200,8 +200,10 @@ body[data-state=playing] #hud, body[data-state=paused] #hud { opacity: 1; }
 .hud-sub { display: flex; justify-content: space-between; gap: 12px; font-size: 18px; font-variant-numeric: tabular-nums; }
 .hud-sub b { font-weight: 700; }
 .hud-cp { margin-top: 6px; height: 4px; background: rgba(255,255,255,0.1); }
-.hud-cp i { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+.hud-cp i { display: block; height: 100%; background: var(--accent); transform-origin: 0 50%; transform: scaleX(0); transition: transform .3s; }
 .hud-map { position: absolute; top: 22px; right: 26px; width: 170px; height: 170px; opacity: 0.9; }
+.hud-mapdot { position: absolute; top: 22px; right: 26px; width: 170px; height: 170px; opacity: 0.9; pointer-events: none; }
+.hud-mapdot i { position: absolute; left: 0; top: 0; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; border-radius: 50%; background: #ff7a00; border: 2px solid #000; box-sizing: border-box; will-change: transform; }
 .hud-br { position: absolute; right: 26px; bottom: 22px; width: 220px; height: 220px; }
 .tacho { position: absolute; inset: 0; }
 .tacho path { fill: none; stroke-linecap: butt; }
@@ -223,14 +225,14 @@ body[data-state=playing] #hud, body[data-state=paused] #hud { opacity: 1; }
 .hud-bl { position: absolute; left: 26px; bottom: 26px; display: flex; gap: 8px; align-items: flex-end; padding: 10px 12px; background: rgba(5,6,9,0.45); }
 .ibar { width: 24px; height: 92px; position: relative; background: rgba(255,255,255,0.08); }
 .ibar span { position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); font-size: 10px; letter-spacing: 1px; color: var(--muted); font-weight: 700; }
-.ibar i { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: var(--accent); }
+.ibar i { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; background: var(--accent); transform-origin: 50% 100%; transform: scaleY(0); will-change: transform; }
 .ibar:nth-child(2) i, .ibar:nth-child(3) i { background: #ff4d4d; }
 .ibar:nth-child(4) i { background: #4aa8ff; }
 .hud-bl { padding-bottom: 26px; }
 .lean-ind { width: 110px; height: 8px; background: rgba(255,255,255,0.1); position: relative; margin-left: 8px; align-self: center; }
-.lean-ind i { position: absolute; top: -3px; width: 6px; height: 14px; background: #fff; left: 50%; margin-left: -3px; }
+.lean-ind i { position: absolute; top: -3px; width: 6px; height: 14px; background: #fff; left: 50%; margin-left: -3px; will-change: transform; }
 .rider-ind { width: 8px; height: 70px; background: rgba(255,255,255,0.1); position: relative; align-self: center; }
-.rider-ind i { position: absolute; left: -3px; width: 14px; height: 6px; background: var(--accent2); top: 50%; margin-top: -3px; }
+.rider-ind i { position: absolute; left: -3px; width: 14px; height: 6px; background: var(--accent2); top: 50%; margin-top: -3px; will-change: transform; }
 .assist-tags { position: absolute; top: -20px; left: 0; display: flex; gap: 4px; font-size: 11px; letter-spacing: 1px; }
 .assist-tags span { padding: 1px 5px; background: rgba(255,255,255,0.12); color: var(--muted); }
 .assist-tags span.on { background: var(--accent); color: #111; }
@@ -271,7 +273,7 @@ body[data-state=paused] #settings, body[data-state=paused] #tracks { z-index: 30
   .frow > label { flex-basis: 150px; }
   .bikes-wrap { flex-direction: column; overflow-y: auto; }
   .bike-list { width: 100%; }
-  .hud-map { display: none; }
+  .hud-map, .hud-mapdot { display: none; }
 }
 
 /* short windows: tighten the menus so everything fits */

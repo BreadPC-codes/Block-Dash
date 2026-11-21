@@ -12,7 +12,7 @@ MX.module('settings', function (THREE, MX) {
   };
 
   MX.defaultSettings = () => ({
-    graphics: { quality: 'high', resScale: 1.0, shadows: true, fov: 70, showFps: false },
+    graphics: { quality: 'high', resScale: 1.0, dynamicRes: true, shadows: true, fov: 70, showFps: false },
     audio: { master: 0.8, engine: 0.85, effects: 0.8, music: 0.45, gameMusic: false },
     gameplay: { autoClutch: true, autoShift: false, tractionControl: true, riderAssist: 1, units: 'kmh', showInputs: true,
       cameraDistance: 1.0, cameraHeight: 1.0, cameraSensitivity: 1.0, invertX: false, invertY: false, defaultCamera: 'chase', mouseLook: true },

@@ -112,10 +112,13 @@ MX.module('bike-model', function (THREE, MX) {
   }
 
   // ------------------------------------------------------------ textures
-  function canvasTex(w, h, draw) {
+  function paintCanvas(w, h, draw) {
     const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
     draw(cv.getContext('2d'), w, h);
-    const t = new THREE.CanvasTexture(cv);
+    return cv;
+  }
+  function canvasTex(w, h, draw) {
+    const t = new THREE.CanvasTexture(paintCanvas(w, h, draw));
     t.colorSpace = THREE.SRGBColorSpace;
     t.anisotropy = 4;
     return t;
@@ -125,8 +128,8 @@ MX.module('bike-model', function (THREE, MX) {
     c.offsetHSL(0, 0, k);
     return '#' + c.getHexString();
   }
-  function graphicsTexture(look) {
-    return canvasTex(512, 256, (g, w, h) => {
+  function graphicsCanvas(look) {
+    return paintCanvas(512, 256, (g, w, h) => {
       const base = look.plastics, acc = look.graphicsColor || '#ffffff';
       g.fillStyle = base; g.fillRect(0, 0, w, h);
       const style = look.graphics || 'race';
@@ -161,8 +164,8 @@ MX.module('bike-model', function (THREE, MX) {
       g.restore();
     });
   }
-  function plateTexture(look) {
-    return canvasTex(256, 256, (g, w, h) => {
+  function plateCanvas(look) {
+    return paintCanvas(256, 256, (g, w, h) => {
       g.fillStyle = look.plateBg || '#ffffff'; g.fillRect(0, 0, w, h);
       g.fillStyle = look.plateNum || '#111111';
       g.font = 'italic 900 150px "Arial Black", Impact, sans-serif';
@@ -170,15 +173,15 @@ MX.module('bike-model', function (THREE, MX) {
       g.fillText(String(look.number || '27').slice(0, 3), w / 2, h * 0.56);
     });
   }
-  function tireTexture() {
-    return canvasTex(64, 256, (g, w, h) => {
+  function tireCanvas() {
+    return paintCanvas(64, 256, (g, w, h) => {
       g.fillStyle = '#1a1a1a'; g.fillRect(0, 0, w, h);
       g.fillStyle = '#2a2a2a';
       for (let y = 0; y < h; y += 16) { g.fillRect(4, y, 22, 9); g.fillRect(38, y + 8, 22, 9); }
     });
   }
-  function jerseyTexture(look) {
-    return canvasTex(256, 256, (g, w, h) => {
+  function jerseyCanvas(look) {
+    return paintCanvas(256, 256, (g, w, h) => {
       g.fillStyle = look.jersey; g.fillRect(0, 0, w, h);
       g.fillStyle = look.jersey2 || shade(look.jersey, -0.25);
       g.fillRect(0, h * 0.62, w, h * 0.1);
@@ -187,6 +190,118 @@ MX.module('bike-model', function (THREE, MX) {
       g.font = 'italic 900 70px "Arial Black", Impact, sans-serif'; g.textAlign = 'center';
       g.fillText(String(look.number || '27').slice(0, 3), w / 2, h * 0.92);
     });
+  }
+
+  // All of a bike's textures live in one atlas, so the whole bike (and the
+  // whole rider) can be drawn with a single material. Rects are canvas
+  // pixels [x, y, w, h]; untextured parts sample the white block.
+  const ATLAS = { W: 1024, H: 528, pad: 4, graphics: [4, 4, 512, 256], jersey: [524, 4, 256, 256], white: [788, 4, 64, 64], plate: [4, 268, 256, 256], tire: [268, 268, 64, 256] };
+  function drawAtlas(cv, look) {
+    const g = cv.getContext('2d'), p = ATLAS.pad;
+    g.clearRect(0, 0, ATLAS.W, ATLAS.H);
+    const put = (src, r) => {
+      const [x, y, w, h] = r;
+      g.drawImage(src, x, y, w, h);
+      // bleed the edges into the padding so mipmaps don't pick up the neighbours
+      g.drawImage(src, 0, 0, src.width, 1, x, y - p, w, p);
+      g.drawImage(src, 0, src.height - 1, src.width, 1, x, y + h, w, p);
+      g.drawImage(src, 0, 0, 1, src.height, x - p, y, p, h);
+      g.drawImage(src, src.width - 1, 0, 1, src.height, x + w, y, p, h);
+    };
+    put(graphicsCanvas(look), ATLAS.graphics);
+    put(jerseyCanvas(look), ATLAS.jersey);
+    put(plateCanvas(look), ATLAS.plate);
+    put(tireCanvas(), ATLAS.tire);
+    g.fillStyle = '#ffffff'; g.fillRect(...ATLAS.white);
+  }
+
+  // Paint slots: colour, roughness, metalness and atlas region of every
+  // kind of part (what used to be one material each).
+  function slotDefs(L, spec) {
+    return {
+      plastic: [L.plastics, 0.42, 0], graphics: ['#ffffff', 0.38, 0, 'graphics'], plate: ['#ffffff', 0.45, 0, 'plate'],
+      frame: [L.frame, 0.35, 0.75], metal: ['#c7cbd1', 0.25, 0.9], dark: ['#23252a', 0.55, 0.45], black: ['#111214', 0.75, 0.1],
+      engine: ['#8d939c', 0.38, 0.7], cylinder: ['#2a2c31', 0.5, 0.5], sprocket: ['#3d4047', 0.35, 0.8], gold: ['#c9a03a', 0.3, 0.85],
+      seat: [L.seat, 0.8, 0], rim: [L.rims, 0.3, 0.8], tire: ['#1c1c1c', 0.95, 0, 'tire'], knob: ['#202020', 0.9, 0],
+      exhaust: [spec.stroke === 2 ? '#3b3e44' : '#b9bcc2', 0.3, 0.85], silencer: ['#d4d6da', 0.35, 0.7],
+      spring: [L.helmetAccent === '#ffd23f' ? '#ffd23f' : '#ffcf2a', 0.4, 0.5], chain: ['#4a4c50', 0.5, 0.8], radiator: ['#2d3036', 0.6, 0.5],
+      jersey: ['#ffffff', 0.85, 0, 'jersey'], jerseyArm: [L.jersey, 0.85, 0], pants: [L.pants, 0.85, 0], gloves: [L.gloves, 0.8, 0],
+      boots: [L.boots, 0.55, 0.05], helmet: [L.helmet, 0.25, 0.1], helmetAcc: [L.helmetAccent, 0.3, 0.1], goggle: [L.goggle, 0.1, 0.6],
+      skinDark: ['#141414', 0.6, 0], pad: [L.helmetAccent, 0.7, 0],
+    };
+  }
+  const SLOT_KEYS = Object.keys(slotDefs({}, {}));
+
+  // MeshStandardMaterial with roughness/metalness per vertex (attribute aRM)
+  function partsMaterial(map) {
+    const m = new THREE.MeshStandardMaterial({ map, vertexColors: true, roughness: 1, metalness: 0 });
+    m.onBeforeCompile = (sh) => {
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nattribute vec2 aRM;\nvarying vec2 vRM;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRM = aRM;');
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec2 vRM;')
+        .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = vRM.x;')
+        .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = vRM.y;');
+    };
+    m.customProgramCacheKey = () => 'mxparts';
+    return m;
+  }
+
+  // Merge parts into one skinned geometry: every part is rigidly bound to
+  // one bone (the node it hangs from), its UVs remapped into the atlas.
+  function skinnedGeometry(parts, boneIndex) {
+    let nv = 0, ni = 0;
+    for (const p of parts) {
+      const g = p.geo;
+      if (!g.index) { const c = g.attributes.position.count, ix = new Uint32Array(c); for (let i = 0; i < c; i++) ix[i] = i; g.setIndex(new THREE.BufferAttribute(ix, 1)); }
+      if (!g.attributes.normal) g.computeVertexNormals();
+      nv += g.attributes.position.count; ni += g.index.count;
+    }
+    const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), uv = new Float32Array(nv * 2);
+    const rm = new Float32Array(nv * 2), col = new Float32Array(nv * 3), slot = new Uint8Array(nv);
+    const si = new Uint16Array(nv * 4), sw = new Float32Array(nv * 4);
+    const idx = nv < 65536 ? new Uint16Array(ni) : new Uint32Array(ni);
+    const W = ATLAS.W, H = ATLAS.H, wr = ATLAS.white;
+    const whiteU = (wr[0] + wr[2] / 2) / W, whiteV = 1 - (wr[1] + wr[3] / 2) / H;
+    let vo = 0, io = 0;
+    for (const p of parts) {
+      const g = p.geo, n = g.attributes.position.count;
+      pos.set(g.attributes.position.array, vo * 3);
+      nor.set(g.attributes.normal.array, vo * 3);
+      const tex = p.def[3], r = tex ? ATLAS[tex] : null, UV = g.attributes.uv;
+      const b = boneIndex(p.node), s = SLOT_KEYS.indexOf(p.slot);
+      for (let i = 0; i < n; i++) {
+        const v = vo + i;
+        if (r && UV) { uv[v * 2] = (r[0] + UV.getX(i) * r[2]) / W; uv[v * 2 + 1] = 1 - (r[1] + (1 - UV.getY(i)) * r[3]) / H; }
+        else { uv[v * 2] = whiteU; uv[v * 2 + 1] = whiteV; }
+        rm[v * 2] = p.def[1]; rm[v * 2 + 1] = p.def[2];
+        slot[v] = s;
+        si[v * 4] = b; sw[v * 4] = 1;
+      }
+      const gi = g.index.array;
+      for (let i = 0; i < gi.length; i++) idx[io + i] = gi[i] + vo;
+      vo += n; io += gi.length;
+      g.dispose();
+    }
+    const out = new THREE.BufferGeometry();
+    out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+    out.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    out.setAttribute('aRM', new THREE.BufferAttribute(rm, 2));
+    out.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    out.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
+    out.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+    out.setIndex(new THREE.BufferAttribute(idx, 1));
+    out.userData.slot = slot;
+    return out;
+  }
+
+  function paintGeometry(geo, defs) {
+    const slot = geo.userData.slot, col = geo.attributes.color.array, c = new THREE.Color();
+    const table = SLOT_KEYS.map((k) => c.set(defs[k][0]).toArray());
+    for (let v = 0; v < slot.length; v++) { const t = table[slot[v]]; col[v * 3] = t[0]; col[v * 3 + 1] = t[1]; col[v * 3 + 2] = t[2]; }
+    geo.attributes.color.needsUpdate = true;
   }
 
   // ------------------------------------------------------------- default look
@@ -207,68 +322,31 @@ MX.module('bike-model', function (THREE, MX) {
       this.opts = Object.assign({ rider: true, shadows: true, detail: 1 }, opts || {});
       this.root = new THREE.Group();
       this.root.name = 'bike';
-      this.mats = {};
-      this.textures = [];
+      this.parts = [];
+      this.defs = slotDefs(this.look, spec);
+      this.atlasCanvas = paintCanvas(ATLAS.W, ATLAS.H, () => {});
+      drawAtlas(this.atlasCanvas, this.look);
+      this.atlas = new THREE.CanvasTexture(this.atlasCanvas);
+      this.atlas.colorSpace = THREE.SRGBColorSpace;
+      this.atlas.anisotropy = 4;
+      this.material = partsMaterial(this.atlas);
       this._build();
       this.setRiderVisible(this.opts.rider);
     }
 
-    _mat(key, params) {
-      if (!this.mats[key]) this.mats[key] = new THREE.MeshStandardMaterial(params);
-      return this.mats[key];
-    }
+    // parts are collected here and merged into two skinned meshes (bike,
+    // rider) at the end of the build: 2 draw calls instead of ~100
+    _mat(key) { return key; }
 
-    _materials() {
-      const L = this.look;
-      this.disposeTextures();
-      const gtex = graphicsTexture(L), ptex = plateTexture(L), ttex = tireTexture(), jtex = jerseyTexture(L);
-      this.textures.push(gtex, ptex, ttex, jtex);
-      const M = {
-        plastic: new THREE.MeshStandardMaterial({ color: L.plastics, roughness: 0.42, metalness: 0.0 }),
-        graphics: new THREE.MeshStandardMaterial({ map: gtex, roughness: 0.38, metalness: 0.0 }),
-        plate: new THREE.MeshStandardMaterial({ map: ptex, roughness: 0.45 }),
-        frame: new THREE.MeshStandardMaterial({ color: L.frame, roughness: 0.35, metalness: 0.75 }),
-        metal: new THREE.MeshStandardMaterial({ color: '#c7cbd1', roughness: 0.25, metalness: 0.9 }),
-        dark: new THREE.MeshStandardMaterial({ color: '#23252a', roughness: 0.55, metalness: 0.45 }),
-        black: new THREE.MeshStandardMaterial({ color: '#111214', roughness: 0.75, metalness: 0.1 }),
-        engine: new THREE.MeshStandardMaterial({ color: '#8d939c', roughness: 0.38, metalness: 0.7 }),
-        cylinder: new THREE.MeshStandardMaterial({ color: '#2a2c31', roughness: 0.5, metalness: 0.5 }),
-        sprocket: new THREE.MeshStandardMaterial({ color: '#3d4047', roughness: 0.35, metalness: 0.8 }),
-        gold: new THREE.MeshStandardMaterial({ color: '#c9a03a', roughness: 0.3, metalness: 0.85 }),
-        seat: new THREE.MeshStandardMaterial({ color: L.seat, roughness: 0.8 }),
-        rim: new THREE.MeshStandardMaterial({ color: L.rims, roughness: 0.3, metalness: 0.8 }),
-        tire: new THREE.MeshStandardMaterial({ color: '#1c1c1c', roughness: 0.95, map: ttex }),
-        knob: new THREE.MeshStandardMaterial({ color: '#202020', roughness: 0.9 }),
-        exhaust: new THREE.MeshStandardMaterial({ color: this.spec.stroke === 2 ? '#3b3e44' : '#b9bcc2', roughness: 0.3, metalness: 0.85 }),
-        silencer: new THREE.MeshStandardMaterial({ color: '#d4d6da', roughness: 0.35, metalness: 0.7 }),
-        spring: new THREE.MeshStandardMaterial({ color: L.helmetAccent === '#ffd23f' ? '#ffd23f' : '#ffcf2a', roughness: 0.4, metalness: 0.5 }),
-        chain: new THREE.MeshStandardMaterial({ color: '#4a4c50', roughness: 0.5, metalness: 0.8 }),
-        radiator: new THREE.MeshStandardMaterial({ color: '#2d3036', roughness: 0.6, metalness: 0.5 }),
-        jersey: new THREE.MeshStandardMaterial({ map: jtex, roughness: 0.85 }),
-        jerseyArm: new THREE.MeshStandardMaterial({ color: L.jersey, roughness: 0.85 }),
-        pants: new THREE.MeshStandardMaterial({ color: L.pants, roughness: 0.85 }),
-        gloves: new THREE.MeshStandardMaterial({ color: L.gloves, roughness: 0.8 }),
-        boots: new THREE.MeshStandardMaterial({ color: L.boots, roughness: 0.55, metalness: 0.05 }),
-        helmet: new THREE.MeshStandardMaterial({ color: L.helmet, roughness: 0.25, metalness: 0.1 }),
-        helmetAcc: new THREE.MeshStandardMaterial({ color: L.helmetAccent, roughness: 0.3, metalness: 0.1 }),
-        goggle: new THREE.MeshStandardMaterial({ color: L.goggle, roughness: 0.1, metalness: 0.6 }),
-        skinDark: new THREE.MeshStandardMaterial({ color: '#141414', roughness: 0.6 }),
-      };
-      return M;
-    }
-
-    disposeTextures() { for (const t of this.textures) t.dispose(); this.textures.length = 0; }
-
-    _mesh(geo, mat, parent, cast) {
-      const m = new THREE.Mesh(geo, mat);
-      m.castShadow = this.opts.shadows && cast !== false;
-      m.receiveShadow = false;
-      (parent || this.chassis).add(m);
-      return m;
+    _mesh(geo, slot, parent) {
+      const part = { geo, slot, node: parent || this.chassis, def: null };
+      this.parts.push(part);
+      return part;
     }
 
     _build() {
-      const M = this.M = this._materials();
+      const M = this.M = {};
+      for (const k of SLOT_KEYS) M[k] = k;
       const two = this.spec.stroke === 2;
       const root = this.root;
       const chassis = this.chassis = new THREE.Group();
@@ -432,14 +510,13 @@ MX.module('bike-model', function (THREE, MX) {
       root.add(shock);
       this.shockTop = new V(0, 0.43, -0.07);
       this.shockLen0 = 0.42;
-      const body = this._mesh(rod([0, 0.42, 0], [0, 0.22, 0], 0.028, 12), M.dark, shock);
-      const res = this._mesh(rod([0.05, 0.40, 0.02], [0.05, 0.26, 0.02], 0.018, 10), M.dark, shock);
+      this._mesh(rod([0, 0.42, 0], [0, 0.22, 0], 0.028, 12), M.dark, shock);
+      this._mesh(rod([0.05, 0.40, 0.02], [0.05, 0.26, 0.02], 0.018, 10), M.dark, shock);
       const coil = [];
       const turns = 9;
       const helix = [];
       for (let i = 0; i <= turns * 12; i++) { const a = i / 12 * Math.PI * 2; helix.push([Math.cos(a) * 0.038, 0.04 + i / (turns * 12) * 0.30, Math.sin(a) * 0.038]); }
-      const springMesh = this._mesh(tube(helix, 0.0065, turns * 16, 6), M.spring, shock);
-      this.shockSpring = springMesh;
+      this._mesh(tube(helix, 0.0065, turns * 16, 6), M.spring, shock);
       this._mesh(rod([0, 0.0, 0], [0, 0.24, 0], 0.011, 8), M.metal, shock);
 
       // ---------------- rider
@@ -447,7 +524,7 @@ MX.module('bike-model', function (THREE, MX) {
       root.add(this.rider);
       this._buildRider();
 
-      root.traverse((o) => { if (o.isMesh) { o.frustumCulled = true; } });
+      this._skin();
       this.update({ sF: 0.07, sR: 0.1, steer: 0, wheelF: 0, wheelR: 0, rider: { x: 0, y: 0.78, z: 0, seated: 0, legOut: 0 }, lean: 0 });
     }
 
@@ -503,16 +580,18 @@ MX.module('bike-model', function (THREE, MX) {
     }
 
     // ------------------------------------------------------------ rider
+    // Every body part hangs from its own bone; the pose code below moves,
+    // turns and stretches the bones (IK arms to the grips, legs to the pegs).
     _buildRider() {
       const M = this.M, R = this.rider;
-      const mk = (geo, mat) => { const m = new THREE.Mesh(geo, mat); m.castShadow = this.opts.shadows; R.add(m); return m; };
+      const mk = (geo, slot) => { const b = new THREE.Bone(); R.add(b); this.parts.push({ geo, slot, node: b, def: null }); return b; };
       // unit-length capsules along Y, scaled per frame
-      const cap = (r, mat, L0) => { const m = mk(new THREE.CapsuleGeometry(r, L0, 4, 10), mat); m.userData.L0 = L0; return m; };
+      const cap = (r, slot, L0) => { const b = mk(new THREE.CapsuleGeometry(r, L0, 4, 10), slot); b.userData.L0 = L0; return b; };
       this.rp = {
-        torso: mk(new THREE.CapsuleGeometry(0.15, 0.32, 6, 14), M.jersey),
-        hips: mk(new THREE.SphereGeometry(0.15, 14, 10), M.pants),
+        torso: mk(new THREE.CapsuleGeometry(0.15, 0.32, 6, 14).scale(1.12, 1, 0.85), M.jersey),
+        hips: mk(new THREE.SphereGeometry(0.15, 14, 10).scale(1.15, 0.85, 1.0), M.pants),
         neck: mk(new THREE.TorusGeometry(0.09, 0.035, 8, 16), M.dark),
-        head: new THREE.Group(),
+        head: new THREE.Bone(),
         uArmL: cap(0.05, M.jerseyArm, 0.28), uArmR: cap(0.05, M.jerseyArm, 0.28),
         fArmL: cap(0.045, M.jerseyArm, 0.26), fArmR: cap(0.045, M.jerseyArm, 0.26),
         handL: mk(new THREE.SphereGeometry(0.045, 10, 8), M.gloves), handR: mk(new THREE.SphereGeometry(0.045, 10, 8), M.gloves),
@@ -520,28 +599,48 @@ MX.module('bike-model', function (THREE, MX) {
         shinL: cap(0.065, M.pants, 0.4), shinR: cap(0.065, M.pants, 0.4),
         bootL: mk(bootGeo(), M.boots), bootR: mk(bootGeo(), M.boots),
       };
-      // knee pads/boot tops look
-      // helmet: shell + chin bar + peak + goggles
+      // helmet: shell + stripe + chin bar + peak + goggles + strap
       const head = this.rp.head;
       R.add(head);
-      const shell = new THREE.Mesh(new THREE.SphereGeometry(0.135, 20, 16), M.helmet);
-      shell.scale.set(1, 1.04, 1.12);
-      shell.castShadow = this.opts.shadows;
-      head.add(shell);
-      const stripe = new THREE.Mesh(new THREE.SphereGeometry(0.137, 20, 16, 0, Math.PI * 2, 0, 0.5), M.helmetAcc);
-      stripe.scale.set(0.35, 1.04, 1.12);
-      head.add(stripe);
-      const chin = new THREE.Mesh(xf(new THREE.CylinderGeometry(0.07, 0.05, 0.16, 12), [0, -0.07, 0.11], [Math.PI / 2 + 0.45, 0, 0]), M.helmetAcc);
-      chin.castShadow = this.opts.shadows;
-      head.add(chin);
-      const peak = new THREE.Mesh(xf(new THREE.BoxGeometry(0.22, 0.012, 0.16), [0, 0.085, 0.15], [-0.25, 0, 0]), M.helmetAcc);
-      head.add(peak);
-      const gog = new THREE.Mesh(xf(new THREE.BoxGeometry(0.2, 0.06, 0.06), [0, 0.01, 0.13]), M.goggle);
-      head.add(gog);
-      const strap = new THREE.Mesh(new THREE.TorusGeometry(0.135, 0.012, 6, 24), M.black);
-      strap.rotation.x = Math.PI / 2 + 0.15; strap.position.y = 0.01;
-      head.add(strap);
+      const hp = (geo, slot) => this.parts.push({ geo, slot, node: head, def: null });
+      hp(new THREE.SphereGeometry(0.135, 20, 16).scale(1, 1.04, 1.12), M.helmet);
+      hp(new THREE.SphereGeometry(0.137, 20, 16, 0, Math.PI * 2, 0, 0.5).scale(0.35, 1.04, 1.12), M.helmetAcc);
+      hp(xf(new THREE.CylinderGeometry(0.07, 0.05, 0.16, 12), [0, -0.07, 0.11], [Math.PI / 2 + 0.45, 0, 0]), M.helmetAcc);
+      hp(xf(new THREE.BoxGeometry(0.22, 0.012, 0.16), [0, 0.085, 0.15], [-0.25, 0, 0]), M.helmetAcc);
+      hp(xf(new THREE.BoxGeometry(0.2, 0.06, 0.06), [0, 0.01, 0.13]), M.goggle);
+      hp(xf(new THREE.TorusGeometry(0.135, 0.012, 6, 24), [0, 0.01, 0], [Math.PI / 2 + 0.15, 0, 0]), M.black);
       this.headLocal = new V();
+    }
+
+    // Merge the collected parts: bike parts get one bone under each node
+    // they hang from (chassis, steering, fork slider, wheels, swingarm,
+    // shock); rider parts are bound to the limb bones.
+    _skin() {
+      const bikeParts = [], riderParts = [];
+      for (const p of this.parts) { p.def = this.defs[p.slot]; (p.node.isBone ? riderParts : bikeParts).push(p); }
+      const bikeBones = [], bIdx = new Map();
+      for (const p of bikeParts) if (!bIdx.has(p.node)) { const b = new THREE.Bone(); p.node.add(b); bIdx.set(p.node, bikeBones.length); bikeBones.push(b); }
+      const riderBones = [], rIdx = new Map();
+      for (const p of riderParts) if (!rIdx.has(p.node)) { rIdx.set(p.node, riderBones.length); riderBones.push(p.node); }
+      const make = (parts, bones, index, parent) => {
+        const geo = skinnedGeometry(parts, (n) => index.get(n));
+        paintGeometry(geo, this.defs);
+        const mesh = new THREE.SkinnedMesh(geo, this.material);
+        mesh.frustumCulled = false;            // bounds follow the bones; it is always near the camera
+        mesh.castShadow = !!this.opts.shadows; mesh.receiveShadow = false;
+        parent.add(mesh);
+        mesh.bind(new THREE.Skeleton(bones, bones.map(() => new THREE.Matrix4())), new THREE.Matrix4());
+        return mesh;
+      };
+      this.bikeMesh = make(bikeParts, bikeBones, bIdx, this.root);
+      this.riderMesh = make(riderParts, riderBones, rIdx, this.rider);
+      this.parts = null;
+    }
+
+    // helmet camera: collapse the head and neck so they don't block the view
+    setHeadVisible(v) {
+      const s = v ? 1 : 1e-5;
+      if (this.rp.head.scale.x !== s) { this.rp.head.scale.setScalar(s); this.rp.neck.scale.setScalar(s); }
     }
 
     setRiderVisible(v) { this.rider.visible = v; }
@@ -617,10 +716,8 @@ MX.module('bike-model', function (THREE, MX) {
       const spine = _r2.set(Math.sin(roll) * 0.3, Math.cos(lean), Math.sin(lean)).normalize();
       const shoulders = _r3.copy(pel).addScaledVector(spine, 0.46);
       p.hips.position.copy(pel);
-      p.hips.scale.set(1.15, 0.85, 1.0);
       p.torso.position.copy(pel).addScaledVector(spine, 0.25);
       p.torso.quaternion.setFromUnitVectors(UP, spine);
-      p.torso.scale.set(1.12, 1, 0.85);
       // head
       const headPos = _r4.copy(shoulders).addScaledVector(spine, 0.12);
       headPos.y += 0.13; headPos.z += 0.06;
@@ -697,22 +794,17 @@ MX.module('bike-model', function (THREE, MX) {
 
     setLook(look) {
       this.look = Object.assign(MX.defaultLook(), look || {});
-      const old = this.M;
-      const M = this._materials();
-      // swap materials on meshes by identity
-      const map = new Map();
-      for (const k of Object.keys(old)) map.set(old[k], M[k]);
-      this.root.traverse((o) => { if (o.isMesh && map.has(o.material)) o.material = map.get(o.material); });
-      if (this.mats.pad) this.mats.pad.color.set(this.look.helmetAccent);
-      for (const k of Object.keys(old)) old[k].dispose();
-      this.M = M;
+      this.defs = slotDefs(this.look, this.spec);
+      drawAtlas(this.atlasCanvas, this.look);
+      this.atlas.needsUpdate = true;
+      paintGeometry(this.bikeMesh.geometry, this.defs);
+      paintGeometry(this.riderMesh.geometry, this.defs);
     }
 
     dispose() {
-      this.disposeTextures();
-      this.root.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); } });
-      for (const k of Object.keys(this.M)) this.M[k].dispose();
-      for (const k of Object.keys(this.mats)) this.mats[k].dispose();
+      for (const m of [this.bikeMesh, this.riderMesh]) { m.geometry.dispose(); m.skeleton.dispose(); }
+      this.material.dispose();
+      this.atlas.dispose();
     }
   }
 

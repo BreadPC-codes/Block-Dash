@@ -15,7 +15,7 @@
   const MX = root.MX;
   const { clamp, smoothstep, lerp } = MX;
   const DS = 0.5;        // centerline sample spacing (m)
-  const CELL = 8;        // spatial hash cell (m)
+  const CELL = 4;        // spatial hash cell (m)
 
   // ------------------------------------------------------------ profiles
   // A profile is a list of pieces {u0, u1, h0, h1, shape, p}; u is the
@@ -274,22 +274,47 @@
     segS(seg, at) { return ((this.segStart[seg] + at) % this.length + this.length) % this.length; }
 
     // ------------------------------------------------------ spatial hash
+    // Grid of CELL-sized cells; each cell lists (in index order) the
+    // centerline points that can be the nearest one for a spot in the cell.
+    // All lists live in one Int32Array (start/length per cell).
     _buildHash() {
       const half = this.half + 20;
-      this.hx0 = -half; this.hz0 = -half;
-      this.hn = Math.ceil((2 * half) / CELL);
-      const lists = new Array(this.hn * this.hn);
-      const R = this.rInf + 1;
-      for (let i = 0; i < this.n; i++) {
-        const x = this.px[i], z = this.pz[i];
-        const c0 = Math.max(0, Math.floor((x - R - this.hx0) / CELL)), c1 = Math.min(this.hn - 1, Math.floor((x + R - this.hx0) / CELL));
-        const r0 = Math.max(0, Math.floor((z - R - this.hz0) / CELL)), r1 = Math.min(this.hn - 1, Math.floor((z + R - this.hz0) / CELL));
-        for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
-          const k = r * this.hn + c;
-          (lists[k] || (lists[k] = [])).push(i);
-        }
+      const hn = this.hn = Math.ceil((2 * half) / CELL);
+      const hx0 = this.hx0 = -half, hz0 = this.hz0 = -half;
+      const R = this.rInf + 1, n = this.n, px = this.px, pz = this.pz;
+      const box = new Int32Array(n * 4);
+      const count = new Int32Array(hn * hn);
+      for (let i = 0; i < n; i++) {
+        const c0 = Math.max(0, Math.floor((px[i] - R - hx0) / CELL)), c1 = Math.min(hn - 1, Math.floor((px[i] + R - hx0) / CELL));
+        const r0 = Math.max(0, Math.floor((pz[i] - R - hz0) / CELL)), r1 = Math.min(hn - 1, Math.floor((pz[i] + R - hz0) / CELL));
+        box[i * 4] = c0; box[i * 4 + 1] = c1; box[i * 4 + 2] = r0; box[i * 4 + 3] = r1;
+        for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) count[r * hn + c]++;
       }
-      this.hash = lists.map((l) => (l ? Int32Array.from(l) : null));
+      const start = new Int32Array(hn * hn + 1);
+      for (let k = 0; k < hn * hn; k++) start[k + 1] = start[k] + count[k];
+      const all = new Int32Array(start[hn * hn]), fill = start.slice(0, hn * hn);
+      for (let i = 0; i < n; i++) {
+        for (let r = box[i * 4 + 2]; r <= box[i * 4 + 3]; r++) for (let c = box[i * 4]; c <= box[i * 4 + 1]; c++) all[fill[r * hn + c]++] = i;
+      }
+      // Keep only the points that can be the nearest one for some spot in the
+      // cell. For any x in the cell, nearest(x) <= dmin(centre) + half the
+      // diagonal, so a point farther than dmin(centre) + the diagonal from the
+      // centre can never win: the search gives the same answer, faster.
+      const diag = CELL * Math.SQRT2;
+      const hStart = this.hStart = new Int32Array(hn * hn), hLen = this.hLen = new Int32Array(hn * hn);
+      const idx = [];
+      for (let k = 0; k < hn * hn; k++) {
+        const a0 = start[k], a1 = start[k + 1];
+        if (a0 === a1) continue;
+        const cx = hx0 + ((k % hn) + 0.5) * CELL, cz = hz0 + (Math.floor(k / hn) + 0.5) * CELL;
+        let d2min = Infinity;
+        for (let m = a0; m < a1; m++) { const i = all[m], dx = px[i] - cx, dz = pz[i] - cz; const d2 = dx * dx + dz * dz; if (d2 < d2min) d2min = d2; }
+        const lim = Math.sqrt(d2min) + diag + 1e-6, lim2 = lim * lim;
+        hStart[k] = idx.length;
+        for (let m = a0; m < a1; m++) { const i = all[m], dx = px[i] - cx, dz = pz[i] - cz; if (dx * dx + dz * dz <= lim2) idx.push(i); }
+        hLen[k] = idx.length - hStart[k];
+      }
+      this.hIdx = Int32Array.from(idx);
     }
 
     // Nearest point on the centerline; returns false if beyond rInf.
@@ -297,12 +322,12 @@
     query(x, z, q) {
       const c = Math.floor((x - this.hx0) / CELL), r = Math.floor((z - this.hz0) / CELL);
       if (c < 0 || r < 0 || c >= this.hn || r >= this.hn) return false;
-      const list = this.hash[r * this.hn + c];
-      if (!list) return false;
-      const px = this.px, pz = this.pz;
+      const k = r * this.hn + c, len = this.hLen[k];
+      if (!len) return false;
+      const px = this.px, pz = this.pz, L = this.hIdx, m1 = this.hStart[k] + len;
       let best = Infinity, bi = -1;
-      for (let k = 0; k < list.length; k++) {
-        const i = list[k];
+      for (let m = this.hStart[k]; m < m1; m++) {
+        const i = L[m];
         const dx = x - px[i], dz = z - pz[i];
         const d2 = dx * dx + dz * dz;
         if (d2 < best) { best = d2; bi = i; }
@@ -502,7 +527,7 @@
       const T = this.terrain(x, z);
       const surf = this.surf;
       if (!this.query(x, z, q)) {
-        if (info) { info.onTrack = false; info.dirt = surf.allDirt ? 1 : 0; info.rut = 0; info.d = 99; info.s = 0; }
+        if (info) { info.onTrack = false; info.dirt = surf.allDirt ? 1 : 0; info.rut = 0; info.d = 99; info.s = 0; info.qi = -1; }
         return T + this._grassRough(x, z);
       }
       const w = this.w, d = q.d, ad = Math.abs(d);
@@ -554,17 +579,21 @@
         h += ch * lat * (0.6 * Math.sin(6.2832 * s / 1.55 + 0.5 * Math.sin(0.9 * d)) +
                          0.4 * Math.sin(6.2832 * s / 1.18 + 1.7 + 0.7 * Math.sin(0.6 * d + 2)));
       }
-      // dirt roughness on the track, grass bumps off it
+      // dirt roughness on the track, grass bumps off it (each term is only
+      // evaluated where its weight isn't zero: same result, fewer noise calls)
       const onT = 1 - smoothstep(w - 0.2, w + 1.0, ad);
-      const n2 = this.noise2;
-      let r = surf.rough * (n2.noise(x / 2.3, z / 2.3) + 0.25 * n2.noise(x / 1.1 + 9, z / 1.1));
-      if (surf.uneven) r += surf.uneven * (0.6 * n2.noise(x / 9.5 - 4, z / 9.5 + 1) + 0.4 * n2.noise(x / 4.1 + 7, z / 4.1 - 3));
-      h += r * onT + this._grassRough(x, z) * (1 - onT);
+      let r = 0;
+      if (onT > 0) {
+        const n2 = this.noise2;
+        r = surf.rough * (n2.noise(x / 2.3, z / 2.3) + 0.25 * n2.noise(x / 1.1 + 9, z / 1.1));
+        if (surf.uneven) r += surf.uneven * (0.6 * n2.noise(x / 9.5 - 4, z / 9.5 + 1) + 0.4 * n2.noise(x / 4.1 + 7, z / 4.1 - 3));
+      }
+      h += r * onT + (onT < 1 ? this._grassRough(x, z) * (1 - onT) : 0);
       if (info) {
         info.onTrack = ad < w + 0.5;
         info.dirt = surf.allDirt ? 1 : Math.max(onT, bh > 0.05 && dOut > 0 ? 1 - smoothstep(w + 0.6 + bh, w + 1.8 + 1.2 * bh, dOut) : 0);
         info.rut = rutAmt;
-        info.d = d; info.s = q.s;
+        info.d = d; info.s = q.s; info.qi = q.i;
       }
       return h;
     }

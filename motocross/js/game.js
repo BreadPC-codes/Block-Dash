@@ -22,6 +22,8 @@ MX.module('game', function (THREE, MX) {
       this.lap = this._freshLap();
       this.autoResetIn = 0;
       this.physSteps = 0;
+      // dynamic resolution: a factor on the pixel ratio, tuned once a second while riding
+      this.dyn = { scale: 1, acc: 0, cpu: 0, n: 0, lastDown: 0, ceil: 1, ceilUntil: 0, vsync: 16.7, menuDt: [] };
     }
 
     // ------------------------------------------------------------ boot
@@ -74,15 +76,18 @@ MX.module('game', function (THREE, MX) {
       window.addEventListener('keydown', (e) => { if (this.state === 'splash' && !e.repeat) go(); });
       this._goSplash = go;
       this.last = performance.now();
-      requestAnimationFrame((t) => this._frame(t));
+      this._raf = (t) => this._frame(t);
+      requestAnimationFrame(this._raf);
     }
 
     quality() { return MX.QUALITY[this.settings.graphics.quality] || MX.QUALITY.high; }
 
     _resize() {
+      this.drawSerial = (this.drawSerial || 0) + 1;     // anything paused must be redrawn
       const w = window.innerWidth, h = window.innerHeight;
       const q = this.quality();
-      const pr = Math.min(window.devicePixelRatio || 1, q.pixelRatio) * this.settings.graphics.resScale;
+      const dyn = this.inGame && this.settings.graphics.dynamicRes ? this.dyn.scale : 1;
+      const pr = Math.min(window.devicePixelRatio || 1, q.pixelRatio) * this.settings.graphics.resScale * dyn;
       this.renderer.setPixelRatio(Math.max(0.35, pr));
       this.renderer.setSize(w, h, false);
       for (const c of [this.menuCam, this.gameCam]) { c.aspect = w / h; c.updateProjectionMatrix(); }
@@ -172,8 +177,12 @@ MX.module('game', function (THREE, MX) {
       setTimeout(() => {
         try { this._build(tid, bid); }
         catch (e) { console.error(e); MX.toast('Could not load the track: ' + e.message, 'bad', 6000); $('trackload').classList.add('hidden'); this.toMenu(); return; }
-        $('trackload').classList.add('hidden');
-        this._enterRiding();
+        const go = () => { $('trackload').classList.add('hidden'); this._enterRiding(); };
+        // compile the shaders up front so the first frames don't hitch; with
+        // KHR_parallel_shader_compile this runs in parallel without blocking the page
+        const r = this.renderer;
+        if (r.compileAsync && r.extensions.has('KHR_parallel_shader_compile')) r.compileAsync(this.world.scene, this.gameCam).then(go, (e) => { console.warn(e); go(); });
+        else { r.compile(this.world.scene, this.gameCam); go(); }
       }, 60);
     }
 
@@ -213,12 +222,12 @@ MX.module('game', function (THREE, MX) {
       this.lastTrackS = track.spawnS;
       this.accum = 0;
       this.renderer.shadowMap.needsUpdate = true;
-      // compile shaders up front to avoid a hitch on the first frames
-      this.renderer.compile(this.world.scene, this.gameCam);
     }
 
     _enterRiding() {
       this.inGame = true;
+      Object.assign(this.dyn, { scale: 1, acc: 0, cpu: 0, n: 0, lastDown: 0, ceil: 1, ceilUntil: 0 });
+      this._resize();
       this.state = 'playing';
       document.body.dataset.state = 'playing';
       this.hud.show(true);
@@ -242,6 +251,7 @@ MX.module('game', function (THREE, MX) {
     pause() {
       if (this.state !== 'playing') return;
       this.state = 'paused';
+      this.drawSerial = (this.drawSerial || 0) + 1;
       document.body.dataset.state = 'paused';
       this.ui.stack.length = 0;
       this.ui.show('pause');
@@ -265,6 +275,7 @@ MX.module('game', function (THREE, MX) {
     quitToMenu() {
       this._teardown();
       this.toMenu();
+      this._resize();
     }
 
     resetBike() {
@@ -293,17 +304,49 @@ MX.module('game', function (THREE, MX) {
 
     // ------------------------------------------------------------ frame
     _frame(now) {
-      requestAnimationFrame((t) => this._frame(t));
-      let dt = (now - this.last) / 1000;
+      requestAnimationFrame(this._raf);
+      const t0 = performance.now();
+      const dtMs = now - this.last;
+      let dt = dtMs / 1000;
       this.last = now;
       if (!(dt > 0)) dt = 0.016;
       dt = Math.min(dt, 0.1);
       this.input.update(dt);
       // splash: any pad button starts
-      if (this.state === 'splash' && this.input.nav.some((n) => n.device === 'pad')) this._goSplash();
+      if (this.state === 'splash' && this.input.nav.length && this.input.nav.some((n) => n.device === 'pad')) this._goSplash();
       if (this.inGame && (this.state === 'playing' || this.state === 'paused')) this._gameFrame(dt);
       else this._menuFrame(dt);
       this.input.endFrame();
+      this._dynRes(dtMs, performance.now() - t0);
+    }
+
+    // Dynamic resolution. Once a second while riding: if frames come slower
+    // than the target (60 fps, or the display's own rate if that is lower)
+    // and our own work per frame is well under the frame time, the GPU is
+    // the bottleneck, so render fewer pixels; with frames back at the
+    // target, creep back up, but not right away to a level that was too slow.
+    _dynRes(dtMs, cpuMs) {
+      const d = this.dyn;
+      if (!this.inGame) {
+        // learn the display refresh interval from the (light) menu frames
+        if (d.menuDt.length < 90 && dtMs > 3 && dtMs < 60) { d.menuDt.push(dtMs); if (d.menuDt.length === 90) { const a = d.menuDt.slice().sort((x, y) => x - y); d.vsync = clamp(a[45], 6, 34); } }
+        return;
+      }
+      if (this.state !== 'playing' || !this.settings.graphics.dynamicRes || !(dtMs > 0) || dtMs > 250) return;
+      d.acc += dtMs; d.cpu += cpuMs; d.n++;
+      if (d.acc < 1000) return;
+      const avg = d.acc / d.n, cpu = d.cpu / d.n, now = performance.now();
+      d.acc = d.cpu = d.n = 0;
+      const target = Math.max(d.vsync, 16.7);
+      let s = d.scale;
+      if (avg > target * 1.18 && cpu < avg * 0.7 && s > 0.5) {
+        s = Math.max(0.5, s * (avg > target * 1.6 ? 0.82 : 0.92));
+        d.lastDown = now; d.ceil = d.scale; d.ceilUntil = now + 20000;
+      } else if (avg < target * 1.06 && s < 1 && now - d.lastDown > 3000) {
+        s = Math.min(1, s * 1.06);
+        if (now < d.ceilUntil) s = Math.min(s, d.ceil * 0.97);
+      }
+      if (Math.abs(s - d.scale) > 0.004) { d.scale = s; this._resize(); }
     }
 
     _menuFrame(dt) {
@@ -321,11 +364,14 @@ MX.module('game', function (THREE, MX) {
         this.ui.handleNav(inp.nav);
         this.ui.tickTester();
         if (inp.consumePressed('pause') && this.ui.current === 'pause') this.resume();
-        this.renderer.render(this.world.scene, this.gameCam);
+        // the scene doesn't move while paused: draw it once, not every frame
+        if (this.pausedDrawn !== this.drawSerial) { this.renderer.render(this.world.scene, this.gameCam); this.pausedDrawn = this.drawSerial; }
         return;
       }
       // ---- discrete actions
-      if (inp.consumePressed('pause') || inp.nav.some((n) => n.type === 'start' && n.device === 'pad')) { this.pause(); return; }
+      let padStart = false;
+      for (let i = 0; i < inp.nav.length; i++) if (inp.nav[i].type === 'start' && inp.nav[i].device === 'pad') padStart = true;
+      if (inp.consumePressed('pause') || padStart) { this.pause(); return; }
       if (inp.consumePressed('camera')) { const m = this.rig.next(); MX.toast(this.rig.modeName(), '', 1200); this.audio.ui('hover'); void m; }
       if (inp.consumePressed('reset')) { this.resetBike(); }
       if (!p.crashed) {
@@ -333,8 +379,8 @@ MX.module('game', function (THREE, MX) {
         if (inp.consumePressed('shiftDown')) p.shift(-1);
       }
       // ---- analog input into the physics
-      const o = inp.out;
-      Object.assign(p.input, { throttle: o.throttle, front: o.front, rear: o.rear, clutch: o.clutch, lean: o.lean, rider: o.rider });
+      const o = inp.out, pi = p.input;
+      pi.throttle = o.throttle; pi.front = o.front; pi.rear = o.rear; pi.clutch = o.clutch; pi.lean = o.lean; pi.rider = o.rider;
       // ---- physics: fixed 500 Hz steps
       this.accum += dt;
       let steps = 0;
@@ -342,7 +388,8 @@ MX.module('game', function (THREE, MX) {
       if (steps >= MAX_STEPS) this.accum = 0;
       this.physSteps = steps;
       // ---- events
-      for (const e of p.consumeEvents()) this._event(e);
+      const evs = p.consumeEvents();
+      for (let i = 0; i < evs.length; i++) this._event(evs[i]);
       // ---- crash flow
       if (p.crashed) {
         if (this.autoResetIn <= 0) this.autoResetIn = 4.5;
@@ -365,7 +412,7 @@ MX.module('game', function (THREE, MX) {
       this.rig.update(dt, p, this.model);
       // helmet camera sits inside the helmet: hide the head so the peak doesn't block the view
       const hideHead = this.rig.mode === 'helmet' && !p.crashed;
-      this.model.rp.head.visible = !hideHead; this.model.rp.neck.visible = !hideHead;
+      this.model.setHeadVisible(!hideHead);
       this.fx.update(dt, p);
       this.world.update(dt, p.pos, this.gameCam);
       this.audio.updateEngine(p, dt, false);
@@ -427,7 +474,7 @@ MX.module('game', function (THREE, MX) {
       const L = this.lap, t = this.track, p = this.phys;
       if (L.running) L.time += dt;
       if (p.crashed) return;
-      const q = {};
+      const q = this._lq || (this._lq = {});
       if (!t.query(p.pos.x, p.pos.z, q)) { L.prevS = null; return; }
       if (Math.abs(q.d) < t.w + 6) this.lastTrackS = q.s;
       const s = q.s, prev = L.prevS;
@@ -436,9 +483,8 @@ MX.module('game', function (THREE, MX) {
       let d = s - prev;
       if (d < -t.length / 2) d += t.length; else if (d > t.length / 2) d -= t.length;
       if (d <= 0 || d > 25) return;              // only count forward progress
-      const crossed = (c) => { let a = c - prev; a = ((a % t.length) + t.length) % t.length; return a > 0 && a <= d; };
-      if (L.running && L.nextCp < L.cps.length && crossed(L.cps[L.nextCp])) L.nextCp++;
-      if (crossed(t.finishS)) {
+      if (L.running && L.nextCp < L.cps.length && crossedS(L.cps[L.nextCp], prev, d, t.length)) L.nextCp++;
+      if (crossedS(t.finishS, prev, d, t.length)) {
         if (!L.running) {
           L.running = true; L.started = true; L.time = 0; L.nextCp = 0; L.invalid = false;
           MX.toast('Lap timing started', '', 1500);
@@ -464,6 +510,8 @@ MX.module('game', function (THREE, MX) {
     }
   }
   const _q1 = new THREE.Quaternion(), _v1 = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
+  // did the bike pass track position c while moving from prev forward by d?
+  function crossedS(c, prev, d, len) { let a = c - prev; a = ((a % len) + len) % len; return a > 0 && a <= d; }
 
   MX.start = function () {
     const g = new Game();

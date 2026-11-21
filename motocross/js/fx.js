@@ -20,7 +20,6 @@ MX.module('fx', function (THREE, MX) {
       this.grav = new Float32Array(max);
       this.drag = new Float32Array(max);
       this.alpha0 = new Float32Array(max);
-      this.col = new Float32Array(max * 3);
       this.cursor = 0;
       const g = this.geo = new THREE.BufferGeometry();
       this.aPos = new THREE.BufferAttribute(new Float32Array(max * 3), 3);
@@ -35,16 +34,17 @@ MX.module('fx', function (THREE, MX) {
       g.setDrawRange(0, max);
       const mat = this.mat = new THREE.ShaderMaterial({
         transparent: true, depthWrite: false, fog: true,
-        uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { scale: { value: 600 } }]),
+        uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { scale: { value: 600 }, maxSize: { value: 300 } }]),
         vertexShader: `
           attribute float aSize; attribute float aAlpha; attribute vec3 aCol;
           varying float vAlpha; varying vec3 vCol;
-          uniform float scale;
+          uniform float scale, maxSize;
           #include <fog_pars_vertex>
           void main(){
             vAlpha = aAlpha; vCol = aCol;
             vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-            gl_PointSize = aSize * scale / max(0.1, -mvPosition.z);
+            // capped so a puff right in front of the camera can't cover the screen (fill rate)
+            gl_PointSize = min(aSize * scale / max(0.1, -mvPosition.z), maxSize);
             gl_Position = projectionMatrix * mvPosition;
             #include <fog_vertex>
           }`,
@@ -64,31 +64,41 @@ MX.module('fx', function (THREE, MX) {
       this.points = new THREE.Points(g, mat);
       this.points.frustumCulled = false;
       scene.add(this.points);
-      this.alive = 0;
+      this.live = 0;          // particles alive
+      this.clean = true;      // GPU buffers hold nothing visible
     }
 
-    emit(p, v, o) {
+    // (plain arguments rather than an options object: no allocation per particle)
+    emit(p, v, life, size0, size1, grav, drag, alpha, color) {
       const i = this.cursor; this.cursor = (this.cursor + 1) % this.max;
+      if (this.life[i] <= 0) this.live++;
       this.pos[i * 3] = p.x; this.pos[i * 3 + 1] = p.y; this.pos[i * 3 + 2] = p.z;
       this.vel[i * 3] = v.x; this.vel[i * 3 + 1] = v.y; this.vel[i * 3 + 2] = v.z;
-      this.life[i] = this.maxLife[i] = o.life || 1.5;
-      this.size0[i] = o.size0 || 0.4; this.size1[i] = o.size1 || 2.0;
-      this.grav[i] = o.grav != null ? o.grav : -0.3;
-      this.drag[i] = o.drag != null ? o.drag : 1.8;
-      this.alpha0[i] = o.alpha != null ? o.alpha : 0.5;
-      const c = o.color || this._c || (this._c = new THREE.Color(this.opts.color));
-      this.col[i * 3] = c.r; this.col[i * 3 + 1] = c.g; this.col[i * 3 + 2] = c.b;
+      this.life[i] = this.maxLife[i] = life;
+      this.size0[i] = size0; this.size1[i] = size1;
+      this.grav[i] = grav; this.drag[i] = drag; this.alpha0[i] = alpha;
+      // colour only changes here: write it straight into the GPU-side copy
+      const c = color || this._c || (this._c = new THREE.Color(this.opts.color));
+      const Cc = this.aCol.array;
+      Cc[i * 3] = c.r; Cc[i * 3 + 1] = c.g; Cc[i * 3 + 2] = c.b;
+      this.aCol.needsUpdate = true;
     }
 
-    setScale(h) { this.mat.uniforms.scale.value = h * 0.9; }
+    setScale(h) { this.mat.uniforms.scale.value = h * 0.9; this.mat.uniforms.maxSize.value = Math.max(32, h * 0.4); }
 
+    // Moves the live particles. Dead ones get size 0 (nothing to rasterise)
+    // and nothing is uploaded while there is nothing to show.
     update(dt) {
-      const P = this.aPos.array, S = this.aSize.array, A = this.aAlpha.array, Cc = this.aCol.array;
+      if (this.live === 0) {
+        if (this.clean) return;
+        this.clean = true;
+      } else this.clean = false;
+      const P = this.aPos.array, S = this.aSize.array, A = this.aAlpha.array;
       for (let i = 0; i < this.max; i++) {
         let l = this.life[i];
-        if (l <= 0) { A[i] = 0; continue; }
+        if (l <= 0) { A[i] = 0; S[i] = 0; continue; }
         l -= dt; this.life[i] = l;
-        if (l <= 0) { A[i] = 0; continue; }
+        if (l <= 0) { A[i] = 0; S[i] = 0; this.live--; continue; }
         const k = Math.exp(-this.drag[i] * dt);
         const j = i * 3;
         this.vel[j] *= k; this.vel[j + 2] *= k;
@@ -98,12 +108,15 @@ MX.module('fx', function (THREE, MX) {
         const t = 1 - l / this.maxLife[i];
         S[i] = lerp(this.size0[i], this.size1[i], Math.sqrt(t));
         A[i] = this.alpha0[i] * (t < 0.1 ? t / 0.1 : 1) * (1 - t) * (1 - t);
-        Cc[j] = this.col[j]; Cc[j + 1] = this.col[j + 1]; Cc[j + 2] = this.col[j + 2];
       }
-      this.aPos.needsUpdate = true; this.aSize.needsUpdate = true; this.aAlpha.needsUpdate = true; this.aCol.needsUpdate = true;
+      this.aPos.needsUpdate = true; this.aSize.needsUpdate = true; this.aAlpha.needsUpdate = true;
     }
 
-    clear() { this.life.fill(0); this.aAlpha.array.fill(0); this.aAlpha.needsUpdate = true; }
+    clear() {
+      this.life.fill(0); this.live = 0; this.clean = true;
+      this.aAlpha.array.fill(0); this.aSize.array.fill(0);
+      this.aAlpha.needsUpdate = true; this.aSize.needsUpdate = true;
+    }
     dispose() { this.geo.dispose(); this.mat.dispose(); this.points.parent && this.points.parent.remove(this.points); }
   }
 
@@ -149,6 +162,8 @@ MX.module('fx', function (THREE, MX) {
         const a = clamp(strength, 0, 1) * 0.55;
         const cv = i * 16;
         for (let q = 0; q < 4; q++) { this.c[cv + q * 4] = this.color.r; this.c[cv + q * 4 + 1] = this.color.g; this.c[cv + q * 4 + 2] = this.color.b; this.c[cv + q * 4 + 3] = a; }
+        // upload just this quad, not the whole ring buffer
+        this.aP.addUpdateRange(v, 12); this.aC.addUpdateRange(cv, 16);
         this.aP.needsUpdate = true; this.aC.needsUpdate = true;
       }
       if (!this.last[k]) this.last[k] = new V();
@@ -158,7 +173,11 @@ MX.module('fx', function (THREE, MX) {
 
     lift(k) { this.last[k] = null; }
 
-    clear() { this.p.fill(0); this.c.fill(0); this.aP.needsUpdate = true; this.aC.needsUpdate = true; this.last = [null, null]; }
+    clear() {
+      this.p.fill(0); this.c.fill(0);
+      this.aP.clearUpdateRanges(); this.aC.clearUpdateRanges();
+      this.aP.needsUpdate = true; this.aC.needsUpdate = true; this.last = [null, null];
+    }
     dispose() { this.geo.dispose(); this.mat.dispose(); this.mesh.parent && this.mesh.parent.remove(this.mesh); }
   }
   const _s = new V();
@@ -208,11 +227,11 @@ MX.module('fx', function (THREE, MX) {
             _v.copy(back).multiplyScalar(sp + (k === 1 ? Math.abs(w.slip || 0) * 4 : 0)).add(_r.set((Math.random() - 0.5) * 1.6, 0.5 + Math.random() * 1.4, (Math.random() - 0.5) * 1.6));
             _v.addScaledVector(phys.vel, 0.25);
             _p.copy(w.cp).addScaledVector(w.cn, 0.08);
-            this.dust.emit(_p, _v, { life: 1.2 + Math.random() * 1.4, size0: 0.3, size1: 1.5 + Math.random() * 1.3, grav: 0.12, drag: 1.5, alpha: 0.14 + 0.1 * Math.min(1, slide), color: w.dirt > 0.3 ? this.dustColor : this.grassColor });
+            this.dust.emit(_p, _v, 1.2 + Math.random() * 1.4, 0.3, 1.5 + Math.random() * 1.3, 0.12, 1.5, 0.14 + 0.1 * Math.min(1, slide), w.dirt > 0.3 ? this.dustColor : this.grassColor);
             if (k === 1 && Math.abs(w.slip || 0) > 0.25 && Math.random() < 0.6) {
               _v.copy(back).multiplyScalar(4 + Math.random() * 5).add(_r.set((Math.random() - 0.5) * 2, 1.5 + Math.random() * 2.5, (Math.random() - 0.5) * 2));
               _v.addScaledVector(phys.vel, 0.5);
-              this.clods.emit(_p, _v, { life: 0.9, size0: 0.07, size1: 0.06, grav: -9.8, drag: 0.4, alpha: 0.95, color: this.clodColor });
+              this.clods.emit(_p, _v, 0.9, 0.07, 0.06, -9.8, 0.4, 0.95, this.clodColor);
             }
           }
         }
@@ -226,7 +245,7 @@ MX.module('fx', function (THREE, MX) {
       for (let i = 0; i < n; i++) {
         const a = Math.random() * Math.PI * 2, s = 1 + Math.random() * strength * 0.4;
         _v.set(Math.cos(a) * s, 0.4 + Math.random() * 1.5, Math.sin(a) * s);
-        this.dust.emit(p, _v, { life: 1.6 + Math.random(), size0: 0.5, size1: 3 + Math.random() * 2, grav: 0.1, drag: 1.6, alpha: 0.35, color: color || this.dustColor });
+        this.dust.emit(p, _v, 1.6 + Math.random(), 0.5, 3 + Math.random() * 2, 0.1, 1.6, 0.35, color || this.dustColor);
       }
     }
 

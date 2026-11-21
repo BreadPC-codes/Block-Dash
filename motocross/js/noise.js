@@ -7,8 +7,9 @@
   const MX = root.MX;
   const F2 = 0.5 * (Math.sqrt(3) - 1);
   const G2 = (3 - Math.sqrt(3)) / 6;
-  const GRAD = [[1, 1], [-1, 1], [1, -1], [-1, -1], [1, 0], [-1, 0], [0, 1], [0, -1],
-                [1, 1], [-1, 1], [1, -1], [-1, -1]];
+  // gradient table as two flat arrays (x, y components) for fast lookups
+  const GX = new Float64Array([1, -1, 1, -1, 1, -1, 0, 0, 1, -1, 1, -1]);
+  const GY = new Float64Array([1, 1, -1, -1, 0, 0, 1, -1, 1, 1, -1, -1]);
 
   function Simplex(seed) {
     const rnd = MX.rng(seed || 1);
@@ -33,11 +34,11 @@
     const x2 = x0 - 1 + 2 * G2, y2 = y0 - 1 + 2 * G2;
     const ii = i & 255, jj = j & 255;
     let t0 = 0.5 - x0 * x0 - y0 * y0;
-    if (t0 >= 0) { const g = GRAD[pm[ii + perm[jj]]]; t0 *= t0; n0 = t0 * t0 * (g[0] * x0 + g[1] * y0); }
+    if (t0 >= 0) { const g = pm[ii + perm[jj]]; t0 *= t0; n0 = t0 * t0 * (GX[g] * x0 + GY[g] * y0); }
     let t1 = 0.5 - x1 * x1 - y1 * y1;
-    if (t1 >= 0) { const g = GRAD[pm[ii + i1 + perm[jj + j1]]]; t1 *= t1; n1 = t1 * t1 * (g[0] * x1 + g[1] * y1); }
+    if (t1 >= 0) { const g = pm[ii + i1 + perm[jj + j1]]; t1 *= t1; n1 = t1 * t1 * (GX[g] * x1 + GY[g] * y1); }
     let t2 = 0.5 - x2 * x2 - y2 * y2;
-    if (t2 >= 0) { const g = GRAD[pm[ii + 1 + perm[jj + 1]]]; t2 *= t2; n2 = t2 * t2 * (g[0] * x2 + g[1] * y2); }
+    if (t2 >= 0) { const g = pm[ii + 1 + perm[jj + 1]]; t2 *= t2; n2 = t2 * t2 * (GX[g] * x2 + GY[g] * y2); }
     return 70 * (n0 + n1 + n2);
   };
   // Fractal Brownian motion: octaves of noise, -1..1-ish

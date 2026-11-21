@@ -333,6 +333,7 @@ MX.module('ui', function (THREE, MX) {
       if (tab === 'graphics') {
         h += this.seg('graphics.quality', [['low', 'LOW'], ['medium', 'MEDIUM'], ['high', 'HIGH'], ['ultra', 'ULTRA']], 'Graphics quality', 'Trees, shadow detail, terrain resolution (applies on the next track load)');
         h += this.range('graphics.resScale', 0.5, 1.25, 0.05, 'Resolution scale', 'Lower for more frames per second');
+        h += this.toggle('graphics.dynamicRes', 'Dynamic resolution', 'While riding, lowers the resolution a little when the frame rate drops below 60 and raises it again when there is headroom');
         h += this.toggle('graphics.shadows', 'Shadows');
         h += this.range('graphics.fov', 55, 95, 1, 'Field of view');
         h += this.toggle('graphics.showFps', 'Show FPS counter');

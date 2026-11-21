@@ -82,6 +82,22 @@ MX.module('input', function (THREE, MX) {
   }
   MX.keyLabel = keyLabel;
 
+  const PAD_ACTIONS = ['shiftUp', 'shiftDown', 'camera', 'reset', 'pause'];
+  const NAV_KEYS = ['confirm', 'back', 'tabPrev', 'tabNext', 'start'];
+  const NAV_PREV = NAV_KEYS.map((k) => 'nav_' + k);
+  // keyboard key as a lever: ramp up while held, back down when released
+  function ramp(cur, on, up, down, dt) { return on ? Math.min(1, cur + up * dt) : Math.max(0, cur - down * dt); }
+  // trigger with a dead zone and a slight curve
+  function padTrigger(v, tdz, sens) { v = v < tdz ? 0 : (v - tdz) / (1 - tdz); return clamp(Math.pow(v, 1.15) * sens, 0, 1); }
+  // stick pair with a radial dead zone, written to out[0], out[1]
+  function padStick(x, y, dz, out) {
+    const m = Math.hypot(x, y);
+    if (m < dz) { out[0] = 0; out[1] = 0; return out; }
+    const k = (Math.min(1, m) - dz) / (1 - dz) / m;
+    out[0] = x * k; out[1] = y * k;
+    return out;
+  }
+
   class Input {
     constructor(settings) {
       this.settings = settings;          // reference to the live settings object
@@ -98,8 +114,17 @@ MX.module('input', function (THREE, MX) {
       this.mouse = { dx: 0, dy: 0, wheel: 0, dragging: false };
       this.capture = null;
       this.navRepeat = { dir: null, t: 0 };
-      this.raw = null;   // last raw pad snapshot (for the settings tester)
+      this._rawPad = null;               // pad read this frame (for the settings tester)
+      this._tgt = { throttle: 0, front: 0, rear: 0, clutch: 0, lean: 0, rider: 0, camX: 0, camY: 0 };
+      this._nb = { confirm: false, back: false, tabPrev: false, tabNext: false, up: false, down: false, left: false, right: false, start: false };
+      this._stick = [0, 0];
       this._bind();
+    }
+
+    // raw pad snapshot for the settings tester (built only when asked for)
+    get raw() {
+      const gp = this._rawPad;
+      return gp ? { buttons: gp.buttons.map((b) => b.value), axes: gp.axes.slice(), id: gp.id, mapping: gp.mapping } : null;
     }
 
     get keys() { return this.settings.keyboard.bindings; }
@@ -198,28 +223,28 @@ MX.module('input', function (THREE, MX) {
 
     // ---- per-frame update
     update(dt) {
-      const S = this.settings;
-      const list = navigator.getGamepads ? navigator.getGamepads() : [];
+      const list = navigator.getGamepads ? navigator.getGamepads() : null;
       // detect pads that appeared without events (Chrome) and pick the active one by activity
-      if (list) for (const g of list) {
+      if (list) for (let n = 0; n < list.length; n++) {
+        const g = list[n];
         if (!g || !g.connected) continue;
         if (!this.pads[g.index]) this._padConnected(g);
-        const any = g.buttons.some((b) => b.value > 0.5) || Math.abs(g.axes[0] || 0) > 0.5 || Math.abs(g.axes[1] || 0) > 0.5;
+        let any = Math.abs(g.axes[0] || 0) > 0.5 || Math.abs(g.axes[1] || 0) > 0.5;
+        for (let b = 0; !any && b < g.buttons.length; b++) if (g.buttons[b].value > 0.5) any = true;
         if (any && this.activePad !== g.index) this.activePad = g.index;
       }
-      for (const idx of Object.keys(this.pads)) { if (!list || !list[idx]) this._padDisconnected({ index: +idx }); }
+      for (const idx in this.pads) { if (!list || !list[idx]) this._padDisconnected({ index: +idx }); }
       const gp = this._gp();
       // keyboard ramps
       this._keyboard(dt);
       // gamepad
       const P = this.padState;
+      this._rawPad = gp || null;
       if (gp) {
-        this.raw = { buttons: gp.buttons.map((b) => b.value), axes: gp.axes.slice(), id: gp.id, mapping: gp.mapping };
         if (this.capture && this.capture.device === 'pad') this._padCapture(gp, dt);
         else this._readPad(gp, dt);
       } else {
-        this.raw = null;
-        for (const k of Object.keys(P)) P[k] = 0;
+        for (const k in P) P[k] = 0;
       }
       // combine
       const O = this.out, K = this.kb;
@@ -239,11 +264,10 @@ MX.module('input', function (THREE, MX) {
     _keyboard(dt) {
       const K = this.kb, S = this.settings;
       const sens = S.controller.steerSensitivity || 1;
-      const ramp = (cur, on, up, down) => (on ? Math.min(1, cur + up * dt) : Math.max(0, cur - down * dt));
-      K.throttle = ramp(K.throttle, this._any('throttle'), 5.0, 9);
-      K.front = ramp(K.front, this._any('front'), 4.0, 10);
-      K.rear = ramp(K.rear, this._any('rear'), 6, 10);
-      K.clutch = ramp(K.clutch, this._any('clutch'), 9, 7);
+      K.throttle = ramp(K.throttle, this._any('throttle'), 5.0, 9, dt);
+      K.front = ramp(K.front, this._any('front'), 4.0, 10, dt);
+      K.rear = ramp(K.rear, this._any('rear'), 6, 10, dt);
+      K.clutch = ramp(K.clutch, this._any('clutch'), 9, 7, dt);
       const l = (this._any('leanRight') ? 1 : 0) - (this._any('leanLeft') ? 1 : 0);
       if (l !== 0) {
         const r = (Math.sign(K.lean) !== l && K.lean !== 0 ? 6 : 2.4) * (0.7 + 0.3 * sens);
@@ -265,55 +289,54 @@ MX.module('input', function (THREE, MX) {
     _readPad(gp, dt) {
       const C = this.settings.controller, B = this.padBindings, P = this.padState;
       const dz = C.deadzone, tdz = C.triggerDeadzone;
-      const trig = (v, sens) => { v = v < tdz ? 0 : (v - tdz) / (1 - tdz); return clamp(Math.pow(v, 1.15) * sens, 0, 1); };
       // sticks: radial dead zone where the pair is a real stick
-      const stick = (bx, by) => {
-        let x = this._axis(gp, bx), y = this._axis(gp, by);
-        const m = Math.hypot(x, y);
-        if (m < dz) return [0, 0];
-        const k = (Math.min(1, m) - dz) / (1 - dz) / m;
-        return [x * k, y * k];
-      };
-      const [lx, ly] = stick(B.lean, B.rider);
-      const [cx, cy] = stick(B.camX, B.camY);
-      const steer = (v) => Math.sign(v) * clamp(Math.pow(Math.abs(v), 1.35) * C.steerSensitivity, 0, 1);
+      const st = this._stick;
+      padStick(this._axis(gp, B.lean), this._axis(gp, B.rider), dz, st);
+      const lx = st[0], ly = st[1];
+      padStick(this._axis(gp, B.camX), this._axis(gp, B.camY), dz, st);
+      const cx = st[0], cy = st[1];
       const sm = 1 - Math.exp(-dt * 30);
-      const tgt = {
-        throttle: trig(this._axis(gp, B.throttle), C.throttleSensitivity),
-        front: trig(this._axis(gp, B.front), C.brakeSensitivity),
-        rear: trig(this._axis(gp, B.rear), C.brakeSensitivity),
-        clutch: trig(this._axis(gp, B.clutch), 1),
-        lean: steer(lx), rider: clamp(ly, -1, 1),
-        camX: cx * C.cameraSensitivity, camY: -cy * C.cameraSensitivity,
-      };
-      for (const k of Object.keys(tgt)) P[k] += (tgt[k] - P[k]) * sm;
+      const tgt = this._tgt;
+      tgt.throttle = padTrigger(this._axis(gp, B.throttle), tdz, C.throttleSensitivity);
+      tgt.front = padTrigger(this._axis(gp, B.front), tdz, C.brakeSensitivity);
+      tgt.rear = padTrigger(this._axis(gp, B.rear), tdz, C.brakeSensitivity);
+      tgt.clutch = padTrigger(this._axis(gp, B.clutch), tdz, 1);
+      tgt.lean = Math.sign(lx) * clamp(Math.pow(Math.abs(lx), 1.35) * C.steerSensitivity, 0, 1);
+      tgt.rider = clamp(ly, -1, 1);
+      tgt.camX = cx * C.cameraSensitivity; tgt.camY = -cy * C.cameraSensitivity;
+      for (const k in tgt) P[k] += (tgt[k] - P[k]) * sm;
       // instant release (smoothing must never make the bike keep accelerating)
       if (tgt.throttle === 0) P.throttle = Math.min(P.throttle, 0.02);
-      // edges for button actions
-      const prev = this.prevButtons[gp.index] || {};
-      const now = {};
-      for (const id of ['shiftUp', 'shiftDown', 'camera', 'reset', 'pause']) {
+      // edges for button actions (two state objects per pad, swapped every frame)
+      const pb = this.prevButtons[gp.index] || (this.prevButtons[gp.index] = [{}, {}, 0]);
+      const prev = pb[pb[2]], now = pb[1 - pb[2]];
+      pb[2] = 1 - pb[2];
+      for (let a = 0; a < PAD_ACTIONS.length; a++) {
+        const id = PAD_ACTIONS[a];
         const v = this._axis(gp, B[id]) > 0.55;
         now[id] = v;
-        if (v && !prev[id]) { this.pressed.add(id); }
+        if (v && !prev[id]) this.pressed.add(id);
       }
       // menu navigation from the pad (independent of bindings)
-      const btn = (i) => gp.buttons[i] && gp.buttons[i].value > 0.5;
-      const nb = { confirm: btn(0), back: btn(1), tabPrev: btn(4), tabNext: btn(5), up: btn(12), down: btn(13), left: btn(14), right: btn(15), start: btn(9) };
-      for (const k of ['confirm', 'back', 'tabPrev', 'tabNext', 'start']) {
-        if (nb[k] && !prev['nav_' + k]) this.nav.push({ type: k === 'start' ? 'start' : k, device: 'pad' });
-        now['nav_' + k] = nb[k];
+      const nb = this._nb, bt = gp.buttons;
+      const btn = (i) => !!(bt[i] && bt[i].value > 0.5);
+      nb.confirm = btn(0); nb.back = btn(1); nb.tabPrev = btn(4); nb.tabNext = btn(5);
+      nb.up = btn(12); nb.down = btn(13); nb.left = btn(14); nb.right = btn(15); nb.start = btn(9);
+      for (let a = 0; a < NAV_KEYS.length; a++) {
+        const k = NAV_KEYS[a], key = NAV_PREV[a];
+        if (nb[k] && !prev[key]) this.nav.push({ type: k, device: 'pad' });
+        now[key] = nb[k];
       }
       // directional with repeat (d-pad or left stick)
       const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
-      let dir = nb.up || ay < -0.6 ? 'up' : nb.down || ay > 0.6 ? 'down' : nb.left || ax < -0.6 ? 'left' : nb.right || ax > 0.6 ? 'right' : null;
+      const dir = nb.up || ay < -0.6 ? 'up' : nb.down || ay > 0.6 ? 'down' : nb.left || ax < -0.6 ? 'left' : nb.right || ax > 0.6 ? 'right' : null;
       const R = this.navRepeat;
       if (dir) {
         if (R.dir !== dir) { this.nav.push({ type: dir, device: 'pad' }); R.dir = dir; R.t = 0.38; }
         else { R.t -= dt; if (R.t <= 0) { this.nav.push({ type: dir, device: 'pad', repeat: true }); R.t = 0.11; } }
       } else R.dir = null;
-      this.prevButtons[gp.index] = now;
-      const active = Object.values(nb).some(Boolean) || Math.abs(ax) > 0.4 || Math.abs(ay) > 0.4 || tgt.throttle > 0.05 || tgt.front > 0.05 || Math.abs(cx) > 0.3;
+      let active = Math.abs(ax) > 0.4 || Math.abs(ay) > 0.4 || tgt.throttle > 0.05 || tgt.front > 0.05 || Math.abs(cx) > 0.3;
+      if (!active) for (const k in nb) if (nb[k]) { active = true; break; }
       if (active) this.lastDevice = 'pad';
     }
 

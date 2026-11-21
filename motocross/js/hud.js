@@ -27,6 +27,8 @@ MX.module('hud', function (THREE, MX) {
     return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
   }
 
+  const _mp = [0, 0];
+
   class HUD {
     constructor() {
       this.el = {
@@ -39,12 +41,23 @@ MX.module('hud', function (THREE, MX) {
       const svg = $('tacho');
       this.fill = svg.querySelector('.tacho-fill');
       svg.querySelector('.tacho-bg').setAttribute('d', arc(A0, A1, R));
+      // the rev arc is the whole arc revealed by a dash offset: no path rebuilt per frame
+      this.fill.setAttribute('d', arc(A0, A1, R));
+      this.arcLen = R * (A1 - A0) * Math.PI / 180;
+      this.fill.style.strokeDasharray = this.arcLen + ' ' + this.arcLen;
+      this.fill.style.strokeDashoffset = this.arcLen;
       this.redPath = svg.querySelector('.tacho-red');
       this.ticks = svg.querySelector('.tacho-ticks');
       this.last = {};
       this.airT = 0;
       this.cp = document.createElement('i');
       this.el.cp.appendChild(this.cp);
+      // minimap: the track is drawn once, the bike is a dot moved with a transform
+      const wrap = document.createElement('div');
+      wrap.className = 'hud-mapdot';
+      this.dot = document.createElement('i');
+      wrap.appendChild(this.dot);
+      this.el.map.after(wrap);
     }
 
     setBike(spec) {
@@ -79,7 +92,7 @@ MX.module('hud', function (THREE, MX) {
       const sx = (200 - 2 * pad) / Math.max(b.maxx - b.minx, b.maxz - b.minz);
       const ox = 100 - ((b.minx + b.maxx) / 2) * sx, oz = 100 - ((b.minz + b.maxz) / 2) * sx;
       // map: x right, z down when viewed from above (+Y): mirror x so it matches the camera view
-      this.mapT = (x, z) => [200 - (x * sx + ox), z * sx + oz];
+      this.mapT = (x, z, out) => { out = out || []; out[0] = 200 - (x * sx + ox); out[1] = z * sx + oz; return out; };
       g.lineJoin = 'round'; g.lineCap = 'round';
       const path = () => { g.beginPath(); for (let i = 0; i <= track.n; i += 4) { const k = i % track.n; const [x, y] = this.mapT(track.px[k], track.pz[k]); if (i === 0) g.moveTo(x, y); else g.lineTo(x, y); } g.closePath(); };
       g.strokeStyle = 'rgba(0,0,0,0.6)'; g.lineWidth = 9; path(); g.stroke();
@@ -91,83 +104,97 @@ MX.module('hud', function (THREE, MX) {
       const fp = track.pointAt(track.finishS); const [fx, fy] = this.mapT(fp.x, fp.z);
       g.fillStyle = '#fff'; g.fillRect(fx - 4, fy - 4, 8, 8); g.fillStyle = '#111'; g.fillRect(fx - 4, fy - 4, 4, 4); g.fillRect(fx, fy, 4, 4);
       this.mapBase = cv;
+      const vis = this.el.map.getContext('2d');
+      vis.clearRect(0, 0, 200, 200);
+      vis.drawImage(cv, 0, 0);
+      this.last.mx = this.last.my = null;
     }
 
     show(on) { document.getElementById('hud').style.visibility = on ? 'visible' : 'hidden'; }
 
+    // Only touches the DOM when a shown value changes; bars and markers move
+    // with transforms (no layout), the rev arc with a dash offset.
     update(dt, game) {
-      const p = game.phys, e = this.el, S = game.settings;
-      const set = (k, v, el, fn) => { if (this.last[k] !== v) { this.last[k] = v; fn ? fn(el, v) : (el.textContent = v); } };
+      const p = game.phys, e = this.el, S = game.settings, last = this.last;
       const mph = S.gameplay.units === 'mph';
       const spd = Math.round(Math.max(0, p.forwardSpeed) * (mph ? 2.23694 : 3.6));
-      set('spd', spd, e.speed);
-      set('unit', mph ? 'MPH' : 'KM/H', e.unit);
+      if (last.spd !== spd) { last.spd = spd; e.speed.textContent = spd; }
+      const unit = mph ? 'MPH' : 'KM/H';
+      if (last.unit !== unit) { last.unit = unit; e.unit.textContent = unit; }
       const gear = p.engine.stalled ? 'S' : p.gear === 0 ? 'N' : String(p.gear);
-      set('gear', gear, e.gear, (el, v) => { el.textContent = v; el.classList.toggle('n', v === 'N'); });
-      const rpm = p.rpm;
-      set('rpm', Math.round(rpm / 50) * 50, e.rpm, (el, v) => { el.textContent = v + ' RPM'; });
-      const a = this.ang ? this.ang(rpm) : A0;
-      const aKey = Math.round(a * 2) / 2;
-      set('arc', aKey, this.fill, (el, v) => el.setAttribute('d', v > A0 + 0.5 ? arc(A0, v, R) : ''));
+      if (last.gear !== gear) { last.gear = gear; e.gear.textContent = gear; e.gear.classList.toggle('n', gear === 'N'); }
+      const rpm = p.rpm, rpmQ = Math.round(rpm / 50) * 50;
+      if (last.rpm !== rpmQ) { last.rpm = rpmQ; e.rpm.textContent = rpmQ + ' RPM'; }
+      const frac = this.maxRpm ? clamp(rpm / this.maxRpm, 0, 1) : 0;
+      const off = Math.round((1 - frac) * this.arcLen * 2) / 2;
+      if (last.arc !== off) { last.arc = off; this.fill.style.strokeDashoffset = off; }
       const lim = this.spec.engine.limit;
-      const shiftOn = rpm > lim * 0.9 && p.gear > 0;
-      set('shift', (rpm > lim * 0.985 ? 2 : shiftOn ? 1 : 0), e.shift, (el, v) => { el.classList.toggle('on', v > 0); el.classList.toggle('blink', v === 2); });
+      const shift = rpm > lim * 0.985 ? 2 : rpm > lim * 0.9 && p.gear > 0 ? 1 : 0;
+      if (last.shift !== shift) { last.shift = shift; e.shift.classList.toggle('on', shift > 0); e.shift.classList.toggle('blink', shift === 2); }
       // lap timing
       const L = game.lap;
-      set('time', L.running ? MX.fmtLap(L.time) : (L.started ? MX.fmtLap(L.time) : '0:00.000'), e.time);
-      set('lastl', MX.fmtLap(L.lastLap), e.last);
-      set('best', MX.fmtLap(L.best), e.best);
-      set('lapn', L.lapCount > 0 || L.running ? String(L.lapCount + 1) : '–', e.lapn);
-      const cpFrac = L.running ? L.nextCp / Math.max(1, L.cps.length) : 0;
-      set('cp', Math.round(cpFrac * 100), this.cp, (el, v) => { el.style.width = v + '%'; });
+      if (L.running || L.started) {
+        const ms = Math.floor(L.time * 1000);
+        if (last.timeMs !== ms) { last.timeMs = ms; e.time.textContent = MX.fmtLap(L.time); }
+      } else if (last.timeMs !== -1) { last.timeMs = -1; e.time.textContent = '0:00.000'; }
+      if (last.lastLap !== L.lastLap) { last.lastLap = L.lastLap; e.last.textContent = MX.fmtLap(L.lastLap); }
+      if (last.best !== L.best) { last.best = L.best; e.best.textContent = MX.fmtLap(L.best); }
+      const lapn = L.lapCount > 0 || L.running ? L.lapCount + 1 : 0;
+      if (last.lapn !== lapn) { last.lapn = lapn; e.lapn.textContent = lapn ? String(lapn) : '–'; }
+      const cp = L.running ? Math.round(L.nextCp / Math.max(1, L.cps.length) * 100) / 100 : 0;
+      if (last.cp !== cp) { last.cp = cp; this.cp.style.transform = 'scaleX(' + cp + ')'; }
       // inputs
       const showIn = S.gameplay.showInputs;
-      set('inv', showIn, e.inputs, (el, v) => { el.style.display = v ? 'flex' : 'none'; });
+      if (last.inv !== showIn) { last.inv = showIn; e.inputs.style.display = showIn ? 'flex' : 'none'; }
       if (showIn) {
         const inp = p.input;
-        set('ithr', Math.round(p.engine.thrEff * 100), e.thr, (el, v) => (el.style.height = v + '%'));
-        set('ifr', Math.round((p.frontBrakeEff != null ? p.frontBrakeEff : inp.front) * 100), e.front, (el, v) => (el.style.height = v + '%'));
-        set('ire', Math.round(inp.rear * 100), e.rear, (el, v) => (el.style.height = v + '%'));
-        set('icl', Math.round(inp.clutch * 100), e.clutch, (el, v) => (el.style.height = v + '%'));
-        set('ilean', Math.round(inp.lean * 50), e.lean, (el, v) => (el.style.left = (50 + v) + '%'));
-        set('irider', Math.round(-inp.rider * 45), e.rider, (el, v) => (el.style.top = (50 + v) + '%'));
-        const tags = (S.gameplay.tractionControl ? (p.tcCut > 0.05 ? 'T' : 't') : '') + (S.gameplay.autoClutch ? 'C' : '') + (S.gameplay.autoShift ? 'A' : '');
-        set('tags', tags, e.assist, (el) => {
-          el.innerHTML = (S.gameplay.tractionControl ? `<span class="${p.tcCut > 0.05 ? 'on' : ''}">TC</span>` : '') + (S.gameplay.autoClutch ? '<span>AUTO CLUTCH</span>' : '') + (S.gameplay.autoShift ? '<span>AUTO SHIFT</span>' : '');
-        });
+        const bar = (k, v, el) => { if (last[k] !== v) { last[k] = v; el.style.transform = 'scaleY(' + v + ')'; } };
+        bar('ithr', Math.round(p.engine.thrEff * 100) / 100, e.thr);
+        bar('ifr', Math.round((p.frontBrakeEff != null ? p.frontBrakeEff : inp.front) * 100) / 100, e.front);
+        bar('ire', Math.round(inp.rear * 100) / 100, e.rear);
+        bar('icl', Math.round(inp.clutch * 100) / 100, e.clutch);
+        const ln = Math.round(inp.lean * 50);
+        if (last.ilean !== ln) { last.ilean = ln; e.lean.style.transform = 'translateX(' + (ln * 1.1) + 'px)'; }
+        const rd = Math.round(-inp.rider * 45);
+        if (last.irider !== rd) { last.irider = rd; e.rider.style.transform = 'translateY(' + (rd * 0.7) + 'px)'; }
+        const tc = S.gameplay.tractionControl, ac = S.gameplay.autoClutch, as = S.gameplay.autoShift, tcOn = tc && p.tcCut > 0.05;
+        const tags = (tc ? (tcOn ? 'T' : 't') : '') + (ac ? 'C' : '') + (as ? 'A' : '');
+        if (last.tags !== tags) {
+          last.tags = tags;
+          e.assist.innerHTML = (tc ? `<span class="${tcOn ? 'on' : ''}">TC</span>` : '') + (ac ? '<span>AUTO CLUTCH</span>' : '') + (as ? '<span>AUTO SHIFT</span>' : '');
+        }
       }
       // air time
       if (this.airT > 0) { this.airT -= dt; if (this.airT <= 0) e.air.classList.remove('show'); }
       // crash
-      const crashed = p.crashed;
-      set('crash', crashed, e.crash, (el, v) => el.classList.toggle('show', !!v));
+      const crashed = !!p.crashed;
+      if (last.crash !== crashed) { last.crash = crashed; e.crash.classList.toggle('show', crashed); }
       if (crashed) {
-        set('creason', p.crash.reason.toUpperCase(), e.crashReason);
-        const left = Math.max(0, Math.ceil(game.autoResetIn));
-        const btn = game.input.promptKind() === 'kb' ? MX.keyLabel((S.keyboard.bindings.reset || [])[0]) : game.input.bindingLabel(S.controller.bindings.reset, game.input.promptKind());
-        set('chint', `Press ${btn} to reset · auto in ${left}`, e.crashHint);
+        const reason = p.crash.reason.toUpperCase();
+        if (last.creason !== reason) { last.creason = reason; e.crashReason.textContent = reason; }
+        const left = Math.max(0, Math.ceil(game.autoResetIn)), kind = game.input.promptKind();
+        if (last.cleft !== left || last.ckind !== kind) {
+          last.cleft = left; last.ckind = kind;
+          const btn = kind === 'kb' ? MX.keyLabel((S.keyboard.bindings.reset || [])[0]) : game.input.bindingLabel(S.controller.bindings.reset, kind);
+          e.crashHint.textContent = `Press ${btn} to reset · auto in ${left}`;
+        }
       }
       // fps
       if (S.graphics.showFps) {
         this.fpsAcc = (this.fpsAcc || 0) + dt; this.fpsN = (this.fpsN || 0) + 1;
-        if (this.fpsAcc > 0.5) { e.fps.textContent = Math.round(this.fpsN / this.fpsAcc) + ' FPS · ' + game.physSteps + ' steps'; this.fpsAcc = 0; this.fpsN = 0; }
+        if (this.fpsAcc > 0.5) {
+          const res = S.graphics.dynamicRes ? ' · ' + Math.round(game.dyn.scale * 100) + '% res' : '';
+          e.fps.textContent = Math.round(this.fpsN / this.fpsAcc) + ' FPS · ' + game.physSteps + ' steps' + res;
+          this.fpsAcc = 0; this.fpsN = 0;
+        }
       } else if (e.fps.textContent) e.fps.textContent = '';
-      // minimap
-      this._drawMap(game);
-    }
-
-    _drawMap(game) {
-      const cv = this.el.map;
-      if (!this.mapBase || !cv) return;
-      this.mapTick = (this.mapTick || 0) + 1;
-      if (this.mapTick % 3) return;
-      const g = cv.getContext('2d');
-      g.clearRect(0, 0, 200, 200);
-      g.drawImage(this.mapBase, 0, 0);
-      const p = game.phys.crashed ? game.phys.crash.rider.pos : game.phys.pos;
-      const [x, y] = this.mapT(p.x, p.z);
-      g.fillStyle = '#ff7a00'; g.strokeStyle = '#000'; g.lineWidth = 2;
-      g.beginPath(); g.arc(x, y, 6, 0, Math.PI * 2); g.fill(); g.stroke();
+      // minimap dot
+      if (this.mapT) {
+        const P = p.crashed ? p.crash.rider.pos : p.pos;
+        this.mapT(P.x, P.z, _mp);
+        const mx = Math.round(_mp[0] * 0.85 * 2) / 2, my = Math.round(_mp[1] * 0.85 * 2) / 2;
+        if (last.mx !== mx || last.my !== my) { last.mx = mx; last.my = my; this.dot.style.transform = 'translate(' + mx + 'px,' + my + 'px)'; }
+      }
     }
 
     air(t, h) {
