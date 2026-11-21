@@ -903,6 +903,7 @@ class Game {
 
   onTimerEvent(e) {
     const w = this.world;
+    if (this.mode !== 'trial' && !this.settings.graphics.freeRideTimer) return;
     const id = w.def.id;
     if (e.type === 'lap') {
       const rec = this.records[id];
@@ -955,6 +956,7 @@ class Game {
       split,
       splitCls,
       camLabel: CAMERA_LABELS[w.rig.mode].toUpperCase(),
+      showTimer: this.mode === 'trial' || this.settings.graphics.freeRideTimer,
       airTime: ph.airborne ? ph.airTime : 0,
       crashed: ph.crashed,
       crashReason: ph.crashReason,

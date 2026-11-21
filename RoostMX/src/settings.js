@@ -61,6 +61,7 @@ export const DEFAULT_SETTINGS = {
     showFps: false,
     units: 'kmh',
     minimap: true,
+    freeRideTimer: true,
   },
   audio: {
     master: 0.8,

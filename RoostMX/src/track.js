@@ -894,7 +894,7 @@ export function generateTerrain(track, cell = 0.5) {
         const lz = (wx - pt.x) * pt.vx + (wz - pt.z) * pt.vz;
         const ex = Math.abs(lx) - pt.hw, ez = Math.abs(lz) - pt.hd;
         const out = Math.max(ex, ez);
-        if (out < 6) {
+        if (out < 6 && nearTrack > 12) {
           const m = 1 - smoothstep(0, 6, out);
           h = h + (pt.h - h) * m;
           gravelW = Math.max(gravelW, 1 - smoothstep(-1.5, 0.8, out + noise.noise2(wx * 0.3, wz * 0.3) * 0.8));
@@ -952,9 +952,44 @@ function resolvePit(track, pt) {
   const i = track.idx(s);
   const tx = track.tx[i], tz = track.tz[i];
   const nx = tz, nz = -tx;
-  const side = pt.side ?? -1; // -1 = right side
-  const off = side * (pt.offset ?? 30);
-  const x = track.x[i] + nx * off, z = track.z[i] + nz * off;
-  const h = track.ground(x, z) * 0.3 + track.E[i] * 0.7;
-  return { x, z, ux: tx, uz: tz, vx: nx, vz: nz, hw: (pt.length ?? 60) / 2, hd: (pt.depth ?? 26) / 2, h, side };
+  const hw = (pt.length ?? 60) / 2;
+  let hd = (pt.depth ?? 26) / 2;
+  const make = (side, offset, hdv) => {
+    const off = side * offset;
+    const x = track.x[i] + nx * off, z = track.z[i] + nz * off;
+    return { x, z, ux: tx, uz: tz, vx: nx, vz: nz, hw, hd: hdv, side };
+  };
+  // smallest distance from the pit rectangle to any part of the track centerline
+  const clearance = (p) => {
+    let best = Infinity;
+    for (let k = 0; k < track.n; k += 4) {
+      const dx = track.x[k] - p.x, dz = track.z[k] - p.z;
+      const lx = Math.abs(dx * p.ux + dz * p.uz) - p.hw;
+      const lz = Math.abs(dx * p.vx + dz * p.vz) - p.hd;
+      const d = Math.hypot(Math.max(lx, 0), Math.max(lz, 0));
+      if (d < best) best = d;
+    }
+    return best;
+  };
+  const need = (track.def.halfWidth ?? 4.6) + 9;
+  const prefer = pt.side ?? -1;
+  let chosen = null;
+  // search both sides for the deepest pit area that keeps clear of every track section
+  // prefer a pit close to the start straight (even if a bit smaller), then look further out
+  for (const maxOffset of [50, 90]) {
+    for (const scale of [1, 0.85, 0.7, 0.55, 0.42]) {
+      const hdv = hd * scale;
+      for (let offset = (track.def.halfWidth ?? 4.6) + 9 + hdv; offset <= maxOffset && !chosen; offset += 2) {
+        for (const side of [prefer, -prefer]) {
+          const p = make(side, offset, hdv);
+          if (clearance(p) >= need) { chosen = p; break; }
+        }
+      }
+      if (chosen) break;
+    }
+    if (chosen) break;
+  }
+  if (!chosen) chosen = make(prefer, pt.offset ?? 30, hd * 0.4);
+  chosen.h = track.ground(chosen.x, chosen.z) * 0.3 + track.E[i] * 0.7;
+  return chosen;
 }

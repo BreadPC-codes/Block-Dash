@@ -69,7 +69,7 @@ export const TRACKS = [
       { seg: 13, t: 0.55, h: 9, r: 70, side: 40 },
       { seg: 9, t: 0.4, h: -3.5, r: 60, side: -30 },
     ],
-    pits: [{ seg: 0, at: 70, side: 1, offset: 34, length: 90, depth: 30 }],
+    pits: [{ seg: 0, at: 70, side: -1, offset: 34, length: 90, depth: 30 }],
   },
   {
     id: 'pinehollow',
@@ -106,7 +106,7 @@ export const TRACKS = [
       ['CLOSE', 13],
     ],
     hills: [{ seg: 10, t: 0.5, h: 4, r: 45, side: -25 }],
-    pits: [{ seg: 0, at: 45, side: 1, offset: 26, length: 60, depth: 22 }],
+    pits: [{ seg: 0, at: 45, side: -1, offset: 26, length: 60, depth: 22 }],
   },
   {
     id: 'dunecoast',
@@ -142,7 +142,7 @@ export const TRACKS = [
       ['CLOSE', 16],
     ],
     hills: [{ seg: 6, t: 0.5, h: 6, r: 60, side: 40 }],
-    pits: [{ seg: 0, at: 60, side: 1, offset: 34, length: 80, depth: 28 }],
+    pits: [{ seg: 0, at: 60, side: -1, offset: 34, length: 80, depth: 28 }],
   },
 ];
 

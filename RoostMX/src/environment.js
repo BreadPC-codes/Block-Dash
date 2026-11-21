@@ -443,7 +443,13 @@ export class Environment {
             transformed.z += sway * 0.6 * position.y;`
           );
       };
-      gmat.customProgramCacheKey = () => 'grass-sway';
+      const prevCompile = gmat.onBeforeCompile;
+      gmat.onBeforeCompile = (sh) => {
+        prevCompile(sh);
+        // both faces of a tuft use the same up-facing normal (no back-face flip)
+        sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n\tnormal = normalize( vNormal );');
+      };
+      gmat.customProgramCacheKey = () => 'grass-sway-2';
       const grass = new ChunkedInstances(gg, gmat, 48);
       const gCount = Math.round(q.grass * (def.size / 640) ** 2);
       placed = 0; tries = 0;

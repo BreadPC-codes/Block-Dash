@@ -51,6 +51,7 @@ export const SETTINGS_SCHEMA = {
     { type: 'toggle', path: 'graphics.fullscreen', label: 'Fullscreen' },
     { type: 'seg', path: 'graphics.units', label: 'Speed units', options: [['kmh', 'KM/H'], ['mph', 'MPH']] },
     { type: 'toggle', path: 'graphics.minimap', label: 'Minimap' },
+    { type: 'toggle', path: 'graphics.freeRideTimer', label: 'Lap timer in Free Ride' },
     { type: 'toggle', path: 'graphics.showFps', label: 'Show FPS' },
   ],
   audio: [
@@ -676,6 +677,12 @@ export class UI {
     }
     $('hud-split-row').style.visibility = split ? 'visible' : 'hidden';
     this._set('hud-cam', h.camLabel);
+    const showTimer = h.showTimer !== false;
+    if (this.hudCache.showTimer !== showTimer) {
+      this.hudCache.showTimer = showTimer;
+      for (const id of ['hud-lap', 'hud-time']) $(id).style.display = showTimer ? '' : 'none';
+      document.querySelector('.hud-rows').style.display = showTimer ? '' : 'none';
+    }
     // air time
     const air = $('hud-air');
     const showAir = h.airTime > 0.45 && !h.crashed;

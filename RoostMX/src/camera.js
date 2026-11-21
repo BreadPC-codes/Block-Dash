@@ -29,10 +29,17 @@ export class CameraRig {
     this.sensitivity = 1;
     this.distanceScale = 1;
     this.snapNext = true;
+    this.blend = 1;
+    this.blendFrom = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), fov: 60 };
   }
 
   setMode(mode) {
     if (mode === this.mode) return;
+    // remember the current view and blend into the new mode
+    this.blendFrom.pos.copy(this.camera.position);
+    this.blendFrom.quat.copy(this.camera.quaternion);
+    this.blendFrom.fov = this.camera.fov;
+    this.blend = 0;
     if (mode === 'free') {
       this.free.pos.copy(this.camera.position);
       _e.setFromQuaternion(this.camera.quaternion, 'YXZ');
@@ -64,6 +71,16 @@ export class CameraRig {
 
   /** ctx: { origin, quat, vel, speed, airborne, crashed, focus, eye, lookBack, dt } */
   update(dt, ctx, input) {
+    this._update(dt, ctx, input);
+    if (this.blend < 1) {
+      this.blend = Math.min(1, this.blend + dt / 0.45);
+      const t = this.blend * this.blend * (3 - 2 * this.blend);
+      this.camera.position.lerpVectors(this.blendFrom.pos, this.camera.position, t);
+      this.camera.quaternion.slerpQuaternions(this.blendFrom.quat, this.camera.quaternion, t);
+    }
+  }
+
+  _update(dt, ctx, input) {
     const cam = this.camera;
     const terrain = this.terrain;
     this.orbitIdle += dt;
@@ -166,11 +183,11 @@ export class CameraRig {
   /** Slow cinematic orbit for the menu background. */
   updateMenu(dt, center) {
     this.menuT += dt;
-    const a = this.menuT * 0.06;
-    const r = 9.5;
+    const a = 2.2 + this.menuT * 0.05;
+    const r = 11.5;
     const x = center.x + Math.sin(a) * r, z = center.z + Math.cos(a) * r;
     const gh = this.terrain.height(x, z);
-    this.camera.position.set(x, Math.max(gh + 1.2, center.y + 1.6), z);
+    this.camera.position.set(x, Math.max(gh + 1.6, center.y + 2.4), z);
     _v.copy(center);
     _v.y += 0.6;
     this.camera.lookAt(_v);
