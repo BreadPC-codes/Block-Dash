@@ -1,0 +1,15 @@
+{
+  "name": "roost-mx",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Roost MX - a 3D motocross simulator built with Three.js and Electron",
+  "main": "electron-main.js",
+  "author": "Roost MX",
+  "license": "MIT",
+  "dependencies": {
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}
