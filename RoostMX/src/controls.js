@@ -1,6 +1,21 @@
-// Input aggregation: keyboard (rebindable, with analog-style smoothing) + gamepad + mouse.
-import { GamepadManager, PAD } from './controller.js';
+// Input aggregation: keyboard and controller (both fully rebindable, see settings.js) plus
+// mouse. Keyboard keys get analog-style smoothing; controller sticks/triggers are analog.
+// Bike and rider are separate: steer = bike, rider lean X/Y = the rider's body.
+import { GamepadManager } from './controller.js';
 import { clamp, approach } from './util.js';
+
+const _parsed = new Map();
+/** Parse a controller binding code once: { k: 'b'|'a'|'t', i, s }. */
+function parseCode(code) {
+  let p = _parsed.get(code);
+  if (p) return p;
+  let m = /^b(\d+)$/.exec(code);
+  if (m) p = { k: 'b', i: +m[1], s: 1 };
+  else if ((m = /^a(\d+)(t?)([+-])$/.exec(code))) p = { k: m[2] ? 't' : 'a', i: +m[1], s: m[3] === '+' ? 1 : -1 };
+  else p = { k: '', i: 0, s: 1 };
+  _parsed.set(code, p);
+  return p;
+}
 
 export class Input {
   constructor(settings) {
@@ -9,10 +24,11 @@ export class Input {
     this.pressedKeys = new Set();
     this.pad = new GamepadManager();
     this.state = {
-      throttle: 0, brakeF: 0, brakeR: 0, steer: 0, lean: 0, lookBack: false,
+      throttle: 0, brakeF: 0, brakeR: 0, steer: 0, lean: 0, side: 0, lookBack: false,
       shiftUp: false, shiftDown: false, reset: false, resetHold: 0, camera: false, pause: false,
     };
-    this.kb = { throttle: 0, brakeF: 0, brakeR: 0, steer: 0, lean: 0 };
+    this.kb = { throttle: 0, brakeF: 0, brakeR: 0, steer: 0, lean: 0, side: 0 };
+    this._orbit = { dx: 0, dy: 0 };
     this.mouse = { dx: 0, dy: 0, wheel: 0, dragging: false, lastX: 0, lastY: 0 };
     this.lastDevice = 'keyboard';
     this.captureCallback = null; // used by key rebinding UI
@@ -21,6 +37,11 @@ export class Input {
 
   attach(target, canvas) {
     target.addEventListener('keydown', (e) => {
+      if (this.pad.capture && e.code === 'Escape') {
+        e.preventDefault();
+        this.pad.cancelCapture();
+        return;
+      }
       if (this.captureCallback) {
         e.preventDefault();
         const cb = this.captureCallback;
@@ -74,12 +95,14 @@ export class Input {
   }
 
   down(action) {
-    for (const k of this.bound(action)) if (k && this.keys.has(k)) return true;
+    const b = this.bound(action);
+    for (let i = 0; i < b.length; i++) if (b[i] && this.keys.has(b[i])) return true;
     return false;
   }
 
   pressed(action) {
-    for (const k of this.bound(action)) if (k && this.pressedKeys.has(k)) return true;
+    const b = this.bound(action);
+    for (let i = 0; i < b.length; i++) if (b[i] && this.pressedKeys.has(b[i])) return true;
     return false;
   }
 
@@ -87,11 +110,42 @@ export class Input {
     return this.pressedKeys.has(code);
   }
 
+  // --- controller bindings -------------------------------------------------------
+  /** Value 0..1 of one controller binding code (this frame, or the previous one). */
+  padCode(code, prev = false) {
+    if (!code) return 0;
+    const p = parseCode(code);
+    const pad = this.pad;
+    if (p.k === 'b') return (prev ? pad.prevButtons[p.i] : pad.buttons[p.i]) || 0;
+    const v = (prev ? pad.prevAxes[p.i] : pad.axes[p.i]) || 0;
+    if (p.k === 't') return clamp(p.s > 0 ? (v + 1) / 2 : (1 - v) / 2, 0, 1);
+    const dz = this.settings.controls.padDeadzone;
+    const x = v * p.s;
+    return x <= dz ? 0 : Math.min(1, (x - dz) / (1 - dz));
+  }
+
+  /** Analog value 0..1 of a riding action from the controller. */
+  padAction(action, prev = false) {
+    const b = this.settings.controls.pad[action];
+    if (!b) return 0;
+    let v = 0;
+    for (let i = 0; i < b.length; i++) if (b[i]) v = Math.max(v, this.padCode(b[i], prev));
+    return v;
+  }
+
+  padDown(action) {
+    return this.padAction(action) > 0.5;
+  }
+
+  padPressed(action) {
+    return this.padAction(action) > 0.5 && this.padAction(action, true) <= 0.5;
+  }
+
   /** Call once per frame. Produces smoothed riding inputs. */
   update(dt) {
     const s = this.state;
     const pad = this.pad;
-    const hasPad = pad.poll();
+    const hasPad = pad.poll() && !pad.capture;
     const kb = this.kb;
     // --- keyboard analog emulation
     const thr = this.down('throttle') ? 1 : 0;
@@ -105,43 +159,44 @@ export class Input {
     kb.steer = approach(kb.steer, st, dt * rate);
     const ln = (this.down('leanForward') ? 1 : 0) - (this.down('leanBack') ? 1 : 0);
     kb.lean = approach(kb.lean, ln, dt * 4.5);
-    let throttle = kb.throttle, brakeF = kb.brakeF, brakeR = kb.brakeR, steer = kb.steer, lean = kb.lean;
+    const sd = (this.down('riderRight') ? 1 : 0) - (this.down('riderLeft') ? 1 : 0);
+    kb.side = approach(kb.side, sd, dt * 4.5);
+    let throttle = kb.throttle, brakeF = kb.brakeF, brakeR = kb.brakeR, steer = kb.steer, lean = kb.lean, side = kb.side;
     let lookBack = this.down('lookBack');
     let shiftUp = this.pressed('shiftUp'), shiftDown = this.pressed('shiftDown');
     let reset = this.pressed('reset');
     let camera = this.pressed('camera');
     let pause = this.keyPressed('Escape');
     let resetHeld = this.down('reset');
-    // --- gamepad
+    // --- controller (every action goes through the user's bindings)
     if (hasPad) {
       const c = this.settings.controls;
-      const dz = c.padDeadzone;
-      const sx = pad.axis(0, dz);
       const curve = (v) => Math.sign(v) * Math.pow(Math.abs(v), 1.35);
-      const padSteer = clamp(curve(sx) * c.padSteerSens, -1, 1);
-      const padLean = clamp(-pad.axis(1, dz) * (c.invertLean ? -1 : 1), -1, 1);
-      const rt = pad.value(PAD.RT), lt = pad.value(PAD.LT);
-      const xRear = pad.value(PAD.X);
-      const any = Math.abs(padSteer) > 0 || Math.abs(padLean) > 0 || rt > 0.02 || lt > 0.02 || pad.buttons.some((b) => b > 0.5);
-      if (any) this.lastDevice = 'gamepad';
+      const padSteer = clamp(curve(this.padAction('steerRight') - this.padAction('steerLeft')) * c.padSteerSens, -1, 1);
+      const padSide = clamp(this.padAction('riderRight') - this.padAction('riderLeft'), -1, 1);
+      const padLean = clamp((this.padAction('leanForward') - this.padAction('leanBack')) * (c.invertLean ? -1 : 1), -1, 1);
+      const pThr = this.padAction('throttle'), pBf = this.padAction('brakeFront'), pBr = this.padAction('brakeRear');
+      if (pad.active(Math.max(0.3, c.padDeadzone))) this.lastDevice = 'gamepad';
       if (Math.abs(padSteer) > Math.abs(steer)) steer = padSteer;
       if (Math.abs(padLean) > Math.abs(lean)) lean = padLean;
-      throttle = Math.max(throttle, rt);
-      brakeF = Math.max(brakeF, lt);
-      brakeR = Math.max(brakeR, lt * 0.55, xRear);
-      lookBack = lookBack || pad.down(PAD.B);
-      shiftUp = shiftUp || pad.pressed(PAD.RB);
-      shiftDown = shiftDown || pad.pressed(PAD.LB);
-      camera = camera || pad.pressed(PAD.Y);
-      pause = pause || pad.pressed(PAD.START);
-      reset = reset || pad.pressed(PAD.A) || pad.pressed(PAD.VIEW);
-      resetHeld = resetHeld || pad.down(PAD.A);
+      if (Math.abs(padSide) > Math.abs(side)) side = padSide;
+      throttle = Math.max(throttle, pThr);
+      brakeF = Math.max(brakeF, pBf);
+      brakeR = Math.max(brakeR, pBr, c.linkedBrakes ? pBf * 0.55 : 0);
+      lookBack = lookBack || this.padDown('lookBack');
+      shiftUp = shiftUp || this.padPressed('shiftUp');
+      shiftDown = shiftDown || this.padPressed('shiftDown');
+      camera = camera || this.padPressed('camera');
+      pause = pause || this.padPressed('pause');
+      reset = reset || this.padPressed('reset');
+      resetHeld = resetHeld || this.padDown('reset');
     }
     s.throttle = clamp(throttle, 0, 1);
     s.brakeF = clamp(brakeF, 0, 1);
     s.brakeR = clamp(brakeR, 0, 1);
     s.steer = clamp(steer, -1, 1);
     s.lean = clamp(lean, -1, 1);
+    s.side = clamp(side, -1, 1);
     s.lookBack = lookBack;
     s.shiftUp = shiftUp;
     s.shiftDown = shiftDown;
@@ -152,17 +207,31 @@ export class Input {
     return s;
   }
 
-  /** Camera orbit from mouse drag and right stick (radians this frame). */
-  orbit(dt) {
+  /**
+   * Camera orbit (radians this frame) from mouse drag plus either the camera bindings
+   * (riding) or the right stick (menus / garage, where the d-pad navigates).
+   */
+  orbit(dt, menu = false) {
     const m = this.mouse;
-    let dx = m.dx * 0.005, dy = m.dy * 0.005;
+    const o = this._orbit;
+    o.dx = m.dx * 0.005;
+    o.dy = m.dy * 0.005;
     m.dx = 0;
     m.dy = 0;
-    if (this.pad.connected) {
-      dx += this.pad.axis(2, 0.15) * dt * 2.6;
-      dy += this.pad.axis(3, 0.15) * dt * 2.0;
+    const kx = (this.down('camRight') ? 1 : 0) - (this.down('camLeft') ? 1 : 0);
+    const ky = (this.down('camDown') ? 1 : 0) - (this.down('camUp') ? 1 : 0);
+    o.dx += kx * dt * 2.2;
+    o.dy += ky * dt * 1.6;
+    if (this.pad.connected && !this.pad.capture) {
+      if (menu) {
+        o.dx += this.pad.axis(2, 0.15) * dt * 2.6;
+        o.dy += this.pad.axis(3, 0.15) * dt * 2.0;
+      } else {
+        o.dx += (this.padAction('camRight') - this.padAction('camLeft')) * dt * 2.6;
+        o.dy += (this.padAction('camDown') - this.padAction('camUp')) * dt * 2.0;
+      }
     }
-    return { dx, dy };
+    return o;
   }
 
   wheel() {
@@ -187,6 +256,6 @@ export class Input {
 
   clearRiding() {
     this.keys.clear();
-    this.kb.throttle = this.kb.brakeF = this.kb.brakeR = this.kb.steer = this.kb.lean = 0;
+    this.kb.throttle = this.kb.brakeF = this.kb.brakeR = this.kb.steer = this.kb.lean = this.kb.side = 0;
   }
 }

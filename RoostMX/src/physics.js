@@ -7,6 +7,11 @@
 // circle) produces drive, braking and cornering forces. The rear wheel is driven through
 // an auto clutch and 5-speed gearbox by an engine with a torque curve and rev limiter.
 //
+// Rider lean left/right moves the rider (and so the combined CoM) across the bike: the
+// bike then balances around the combined CoM, i.e. it leans less when the rider hangs off
+// into a turn and more when the rider counter-leans. Body lean also steers a little
+// ("body steering") and rolls the bike in the air.
+//
 // Riding a two-wheeler needs balance, so a rider model leans the bike toward a target
 // lean angle (from steering input, speed and available grip) and the front wheel steers
 // to the angle that keeps that lean in balance. If the tires lose grip the balance breaks
@@ -17,6 +22,10 @@ import { SURFACES, SURF } from './heightfield.js';
 import { clamp, lerp, smoothstep } from './util.js';
 import { GEO, AXIS_FRONT, AXIS_REAR } from './bike-geometry.js';
 
+/** Lateral reach of the rider's centre of mass when leaning fully left/right (m). */
+const RIDER_SIDE_REACH = 0.28;
+/** How much a full body lean steers on its own, relative to full steering input. */
+const BODY_STEER = 0.3;
 export const PHYSICS_DT = 1 / 240;
 const G = 9.81;
 const RPM_PER_RADS = 60 / (2 * Math.PI);
@@ -376,6 +385,9 @@ export class BikePhysics {
     this.inertia = new Vector3(52, 46, 26); // pitch (X), yaw (Y), roll (Z)
     this.stance = 1;
     this.riderLean = 0;
+    this.riderSide = 0; // rider body across the bike, -1 (left) .. 1 (right)
+    this.riderSideUser = 0; // the part of it that comes from the player's input
+    this.comLean = 0; // extra lean of the combined CoM over the bike's own lean (rad)
     // rider legs: offset of the rider along the bike's up axis (m) and its rate
     this.riderE = 0;
     this.riderEv = 0;
@@ -401,6 +413,7 @@ export class BikePhysics {
     this.brakeR = 0;
     this.steerIn = 0;
     this.leanIn = 0;
+    this.sideIn = 0;
     this.wheelieAngle = 0;
     this.events.length = 0;
     this.engine.reset();
@@ -455,9 +468,10 @@ export class BikePhysics {
   riderBikeSpace(out) {
     const a = GEO.riderSeated, b = GEO.riderStanding;
     const t = this.stance;
+    // bike space +X is the bike's left: leaning right moves the rider toward -X
     return out.set(
-      lerp(a[0], b[0], t),
-      lerp(a[1], b[1], t) - Math.abs(this.riderLean) * 0.05,
+      lerp(a[0], b[0], t) - this.riderSide * RIDER_SIDE_REACH,
+      lerp(a[1], b[1], t) - Math.abs(this.riderLean) * 0.05 - Math.abs(this.riderSide) * 0.05,
       lerp(a[2], b[2], t) + this.riderLean * 0.16
     );
   }
@@ -500,12 +514,14 @@ export class BikePhysics {
     this.brakeR = crashed ? 0 : input.brakeR;
     this.steerIn = crashed ? 0 : clamp(input.steer * tune.steerSens, -1, 1);
     this.leanIn = crashed ? 0 : input.lean;
+    this.sideIn = crashed ? 0 : clamp(input.side || 0, -1, 1);
 
     const vel = this.vel;
     this.forwardSpeed = vel.dot(this.fwd);
     this.speed = vel.length();
     const speed = Math.abs(this.forwardSpeed);
 
+    const assist = tune.assist;
     // ---- rider stance / weight shift (moves the CoM)
     if (!crashed) {
       const leanNow = Math.asin(clamp(-this.right.y, -1, 1));
@@ -516,6 +532,12 @@ export class BikePhysics {
       const autoLean = auto * (0.7 * input.throttle * (this.engine.gear <= 3 ? 1 : 0.6) - 0.5 * input.brakeF - 0.2 * input.brakeR);
       const leanGoal = clamp(this.leanIn + (this.airborne ? 0 : autoLean), -1, 1);
       this.riderLean += clamp(leanGoal - this.riderLean, -dt * 4, dt * 4);
+      // body across the bike: the player's input, plus (with assists) a little natural lean
+      // into the turn when the player is not moving the rider
+      this.riderSideUser += clamp(this.sideIn - this.riderSideUser, -dt * 3.6, dt * 3.6);
+      const autoSide = assist > 0 && !this.airborne ? 0.3 * this.steerIn * (1 - Math.abs(this.sideIn)) : 0;
+      const sideGoal = clamp(this.sideIn + autoSide, -1, 1);
+      this.riderSide += clamp(sideGoal - this.riderSide, -dt * 3.6, dt * 3.6);
       this._updateCom(false);
     }
 
@@ -538,7 +560,6 @@ export class BikePhysics {
     if (cnt === 0) { nAvgY = 1; muAvg = 1; cnt = 1; }
     nAvgX /= cnt; nAvgY /= cnt; nAvgZ /= cnt; muAvg /= cnt;
 
-    const assist = tune.assist;
     if (!crashed) {
       // horizontal right vector
       let rhx = right.x, rhz = right.z;
@@ -568,10 +589,15 @@ export class BikePhysics {
       const tanMax = clamp((muEst + tb) / Math.max(0.2, 1 - muEst * tb), 0.15, 2.0);
       const leanSpeed = lerp(0.12, 0.98, smoothstep(0.6, 11.5, speed));
       const leanLimit = Math.min(leanSpeed, Math.atan(tanMax));
-      this.leanTarget = this.steerIn * leanLimit;
+      // the turn is set by the lean of the COMBINED centre of mass: steering asks for it,
+      // the rider's body adds a little ("body steering"); the bike itself leans by that
+      // minus the rider's offset (hang off -> bike more upright, counter-lean -> more lean)
+      this.comLean = Math.atan2(-this.com.x, Math.max(0.3, this.com.y));
+      const comTarget = clamp(this.steerIn + BODY_STEER * this.riderSideUser, -1, 1) * leanLimit;
+      this.leanTarget = comTarget - this.comLean;
 
       // steering angle derived from the lean that has to be balanced
-      const tanPhi = Math.tan(clamp(phi, -1.25, 1.25));
+      const tanPhi = Math.tan(clamp(phi + this.comLean, -1.25, 1.25));
       const v2 = Math.max(speed * speed, 1);
       const deltaLean = Math.atan((GEO.wheelbase * G * tanPhi) / v2);
       const deltaDirect = this.steerIn * 0.6;
@@ -717,7 +743,7 @@ export class BikePhysics {
         // rider keeps the yaw rate consistent with the lean (throttle/brake/body control)
         const yawRate = this.angVel.dot(up);
         if (speed > 2.5 && assist > 0) {
-          const target = -(G * Math.tan(clamp(phi, -1.1, 1.1))) / speed;
+          const target = -(G * Math.tan(clamp(phi + this.comLean, -1.1, 1.1))) / speed;
           const k = this.inertia.y * (assist === 2 ? 7 : 5);
           const capY = assist === 2 ? 520 : 400;
           T.addScaledVector(up, clamp(k * (target - yawRate), -capY, capY));
@@ -725,13 +751,14 @@ export class BikePhysics {
           T.addScaledVector(up, -yawRate * 4);
         }
       } else {
-        // air control: pitch by body English, whip by steering input
+        // air control: pitch by body English (rider forward/back), whip by steering input,
+        // roll by throwing the rider's body left/right
         T.addScaledVector(right, -this.leanIn * 230);
         const whip = this.steerIn;
         const Yx = 0, Yy = 1, Yz = 0;
         T.y += -whip * 170;
-        T.addScaledVector(fwd, whip * 85);
-        const stab = (1 - Math.abs(whip)) * (assist === 2 ? 1.25 : assist === 1 ? 0.85 : 0.5);
+        T.addScaledVector(fwd, whip * 85 + this.sideIn * 110);
+        const stab = (1 - Math.abs(whip)) * (1 - 0.85 * Math.abs(this.sideIn)) * (assist === 2 ? 1.25 : assist === 1 ? 0.85 : 0.5);
         if (stab > 0.01) {
           // straighten the bike with the direction of travel and level it
           let fx = fwd.x, fz = fwd.z;

@@ -1,6 +1,6 @@
 // Roost MX — game bootstrap, state machine and main loop.
 import * as THREE from 'three';
-import { loadSettings, saveSettings, loadRecords, saveRecords, hasSavedSettings } from './settings.js';
+import { loadSettings, saveSettings, loadRecords, saveRecords, hasSavedSettings, padLabel, keyLabel } from './settings.js';
 import { TRACKS, getTrackDef } from './tracks.js';
 import { Track, generateTerrain } from './track.js';
 import { TerrainView, makeTerrainMaterial, buildBackdrop } from './terrain-render.js';
@@ -714,17 +714,20 @@ class Game {
       if (ui._modalOpen) { const b = document.querySelector('#modal-btns .btn'); if (b) b.click(); }
       else ui.back();
     }
+    // clear a binding slot with Delete / Backspace
+    if ((k.keyPressed('Delete') || k.keyPressed('Backspace')) && !typing && ui.focusEl && ui.focusEl._clear) ui.focusEl._clear();
     if (pad.connected) {
       const d = pad.nav(dt);
       if (d) ui.navigate(d);
       if (pad.pressed(PAD.A)) ui.activate();
+      if (pad.pressed(PAD.X) && ui.focusEl && ui.focusEl._clear) ui.focusEl._clear();
       if (pad.pressed(PAD.B)) {
         if (ui._modalOpen) { const b = document.querySelector('#modal-btns .btn'); if (b) b.click(); }
         else ui.back();
       }
-      if (pad.pressed(PAD.START) && this.state === 'paused') this.resume();
+      if ((pad.pressed(PAD.START) || this.input.padPressed('pause')) && this.state === 'paused') this.resume();
       if (this.state === 'garage') {
-        const o = this.input.orbit(dt);
+        const o = this.input.orbit(dt, true);
         if (o.dx || o.dy) {
           this.garage.controls.autoRotate = false;
           const sph = new THREE.Spherical().setFromVector3(this.garage.camera.position.clone().sub(this.garage.controls.target));
@@ -1086,7 +1089,9 @@ class Game {
       split = formatDelta(tm.lastSplitDelta);
       splitCls = tm.lastSplitDelta > 0 ? 'pos' : 'neg';
     }
-    const crashHint = this.input.lastDevice === 'gamepad' ? 'Press Ⓐ to reset' : 'Press R to reset';
+    const ctl = this.settings.controls;
+    const padReset = ctl.pad.reset.find((c) => c), keyReset = ctl.keys.reset.find((c) => c);
+    const crashHint = this.input.lastDevice === 'gamepad' && padReset ? `Press ${padLabel(padReset, this.input.pad.standard)} to reset` : keyReset ? `Press ${keyLabel(keyReset)} to reset` : 'Resetting';
     const auto = Math.max(0, 4.5 - this.crashAuto);
     this.ui.updateHud({
       speed: ph.forwardSpeed,

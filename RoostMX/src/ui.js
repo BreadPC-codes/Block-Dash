@@ -1,5 +1,5 @@
 // HTML user interface: menus, settings, track select, HUD, minimap, notifications.
-import { ACTION_LABELS, DEFAULT_KEYS, keyLabel, saveSettings } from './settings.js';
+import { ACTIONS, ACTION_LABELS, DEFAULT_KEYS, DEFAULT_PAD, keyLabel, padLabel, saveSettings } from './settings.js';
 import { BIKE_COLORS } from './bike.js';
 import { formatTime, formatDelta, clamp } from './util.js';
 import { TRACKS } from './tracks.js';
@@ -10,7 +10,11 @@ const pct = (v) => Math.round(v * 100) + '%';
 const num = (v) => v.toFixed(2);
 
 const TIPS = [
-  'Lean forward (↑ / left stick up) on the takeoff to keep the front end down.',
+  'Lean the rider forward (↑ / right stick up) on the takeoff to keep the front end down.',
+  'Bike and rider lean separately: hang off into a turn (← → / right stick) to keep the bike upright, or counter-lean to lay it down under you.',
+  'Throw the rider\'s body left or right in the air (← → / right stick) to tilt the bike for a scrub.',
+  'Every key and controller button can be remapped in Settings > Controls.',
+  'Dynamic resolution (Settings > Graphics) keeps the game at 60 FPS on slower computers.',
   'Throttle in the air lifts the nose; tapping the rear brake drops it.',
   'Steer in the air to whip the bike — straighten it before you land!',
   'The rear brake (S) helps you slide the bike around tight corners.',
@@ -40,10 +44,11 @@ export const SETTINGS_SCHEMA = {
     { type: 'text', path: 'bike.number', label: 'Race number', maxLength: 3 },
   ],
   controls: [
-    { section: 'Controller' },
+    { section: 'Controller options' },
     { type: 'range', path: 'controls.padDeadzone', label: 'Stick deadzone', min: 0.02, max: 0.35, step: 0.01, fmt: num },
     { type: 'range', path: 'controls.padSteerSens', label: 'Steering sensitivity', min: 0.5, max: 1.5, step: 0.05, fmt: pct },
-    { type: 'toggle', path: 'controls.invertLean', label: 'Invert lean axis' },
+    { type: 'toggle', path: 'controls.invertLean', label: 'Invert rider forward / back' },
+    { type: 'toggle', path: 'controls.linkedBrakes', label: 'Front brake also uses some rear brake' },
   ],
   graphics: [
     { section: 'Display' },
@@ -330,24 +335,19 @@ export class UI {
       grid.appendChild(n);
     }
     if (tab === 'controls') {
-      const pad = document.createElement('div');
-      pad.style.gridColumn = '1 / -1';
-      pad.innerHTML = `<div class="set-section">Gamepad layout (Xbox style)</div><div class="padmap">
-        <span>Left stick</span><span>Steer (X) · Lean forward / back (Y)</span>
-        <span>RT / LT</span><span>Throttle / Brake (front + some rear)</span>
-        <span>X</span><span>Rear brake</span>
-        <span>RB / LB</span><span>Shift up / down</span>
-        <span>A</span><span>Reset bike · Confirm in menus</span>
-        <span>B</span><span>Look back · Back in menus</span>
-        <span>Y</span><span>Change camera</span>
-        <span>Right stick</span><span>Camera orbit</span>
-        <span>Start</span><span>Pause</span>
-      </div><p class="note">Free camera: drag with the mouse to look, scroll to move, I/J/K/L to fly, U/O down/up, Shift for speed.</p>`;
-      grid.appendChild(pad);
+      const n = document.createElement('div');
+      n.className = 'note';
+      n.style.gridColumn = '1 / -1';
+      n.style.marginTop = '10px';
+      n.innerHTML = 'Bike and rider are controlled separately: <b>steering</b> turns and leans the bike, <b>rider lean</b> moves the rider\'s body — left/right to hang off or counter-lean, forward/back for weight transfer, wheelies and pitch in the air. Rider lean left/right also tilts the bike in the air.<br>Menus always use the d-pad / left stick to move, A to select, B to go back. Free camera: drag with the mouse, scroll to move, I/J/K/L to fly, U/O down/up, Shift for speed.';
+      grid.appendChild(n);
     }
     const f = this._focusables();
     const firstRow = f.find((e) => !e.classList.contains('tab')) || f[0];
-    if (firstRow) this.setFocus(document.querySelector('#settings-tabs .tab.active') || firstRow, true);
+    const keep = this._refocus && document.querySelector(`[data-bind="${this._refocus}"]`);
+    this._refocus = null;
+    if (keep) this.setFocus(keep, true);
+    else if (firstRow) this.setFocus(document.querySelector('#settings-tabs .tab.active') || firstRow, true);
   }
 
   _settingRow(item) {
@@ -474,34 +474,61 @@ export class UI {
 
   _buildKeys(body) {
     const wrap = document.createElement('div');
+    const pad = this.game.input.pad;
     const head = document.createElement('div');
     head.className = 'set-section';
-    head.textContent = 'Keyboard (click a key to rebind, Esc = pause, not rebindable)';
+    head.textContent = 'Button mapping';
     wrap.appendChild(head);
+    const info = document.createElement('div');
+    info.className = 'note';
+    info.style.marginBottom = '8px';
+    info.innerHTML = (pad.connected ? `Controller: <b>${(pad.id || 'Gamepad').replace(/\(.*?\)/g, '').trim().slice(0, 48)}</b>. ` : 'No controller detected — connect one and press any button on it. ')
+      + 'Click a slot (or press A on it), then press the key / button or move the stick. Right-click, Delete or X clears a slot. Esc cancels.';
+    wrap.appendChild(info);
     const table = document.createElement('table');
     table.className = 'keytable';
-    table.innerHTML = '<tr><th>Action</th><th>Primary</th><th>Secondary</th></tr>';
+    table.innerHTML = '<tr><th>Action</th><th>Key</th><th>Alt key</th><th>Controller</th><th>Alt</th></tr>';
     const keys = this.settings.controls.keys;
-    for (const action of Object.keys(DEFAULT_KEYS)) {
+    const pb = this.settings.controls.pad;
+    const std = pad.standard !== false;
+    for (const action of ACTIONS) {
       const tr = document.createElement('tr');
       const td0 = document.createElement('td');
       td0.textContent = ACTION_LABELS[action];
       tr.appendChild(td0);
-      for (let slot = 0; slot < 2; slot++) {
-        const td = document.createElement('td');
-        const b = document.createElement('button');
-        b.className = 'keybtn';
-        b.setAttribute('data-nav', '');
-        b.textContent = keyLabel(keys[action][slot]);
-        b.addEventListener('click', () => this._listenKey(b, action, slot));
-        b.addEventListener('contextmenu', (e) => {
-          e.preventDefault();
-          keys[action][slot] = '';
-          b.textContent = keyLabel('');
-          saveSettings(this.settings);
-        });
-        td.appendChild(b);
-        tr.appendChild(td);
+      for (const dev of ['key', 'pad']) {
+        for (let slot = 0; slot < 2; slot++) {
+          const td = document.createElement('td');
+          if (dev === 'key' && action === 'pause') {
+            if (slot === 0) {
+              const fixed = document.createElement('span');
+              fixed.className = 'keyfixed';
+              fixed.textContent = 'Esc';
+              td.appendChild(fixed);
+            }
+            tr.appendChild(td);
+            continue;
+          }
+          const b = document.createElement('button');
+          b.className = 'keybtn' + (dev === 'pad' ? ' padbtn' : '');
+          b.setAttribute('data-nav', '');
+          b.setAttribute('data-bind', `${dev}:${action}:${slot}`);
+          const table_ = dev === 'key' ? keys : pb;
+          const label = () => (dev === 'key' ? keyLabel(table_[action][slot]) : padLabel(table_[action][slot], std));
+          b.textContent = label();
+          b.addEventListener('click', () => (dev === 'key' ? this._listenKey(b, action, slot) : this._listenPad(b, action, slot)));
+          b._clear = () => {
+            table_[action][slot] = '';
+            b.textContent = label();
+            saveSettings(this.settings);
+          };
+          b.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            b._clear();
+          });
+          td.appendChild(b);
+          tr.appendChild(td);
+        }
       }
       table.appendChild(tr);
     }
@@ -509,22 +536,26 @@ export class UI {
     const btns = document.createElement('div');
     btns.className = 'row-btns';
     btns.style.justifyContent = 'flex-start';
-    const reset = document.createElement('button');
-    reset.className = 'btn small';
-    reset.setAttribute('data-nav', '');
-    reset.innerHTML = '<span>Reset keys to defaults</span>';
-    reset.addEventListener('click', () => {
+    const mk = (text, fn) => {
+      const r = document.createElement('button');
+      r.className = 'btn small';
+      r.setAttribute('data-nav', '');
+      r.innerHTML = `<span>${text}</span>`;
+      r.addEventListener('click', fn);
+      btns.appendChild(r);
+    };
+    mk('Reset keyboard', () => {
       this.settings.controls.keys = JSON.parse(JSON.stringify(DEFAULT_KEYS));
       saveSettings(this.settings);
       this.showSettingsTab('controls');
       this.toast('Keyboard controls reset', 'good');
     });
-    btns.appendChild(reset);
-    const note = document.createElement('div');
-    note.className = 'note';
-    note.style.alignSelf = 'center';
-    note.textContent = 'Right-click a key to clear it.';
-    btns.appendChild(note);
+    mk('Reset controller', () => {
+      this.settings.controls.pad = JSON.parse(JSON.stringify(DEFAULT_PAD));
+      saveSettings(this.settings);
+      this.showSettingsTab('controls');
+      this.toast('Controller buttons reset', 'good');
+    });
     wrap.appendChild(btns);
     body.appendChild(wrap);
   }
@@ -546,8 +577,36 @@ export class UI {
       for (const a of Object.keys(keys)) for (let s = 0; s < 2; s++) if (keys[a][s] === code) keys[a][s] = '';
       keys[action][slot] = code;
       saveSettings(this.settings);
+      this._refocus = `key:${action}:${slot}`;
       this.showSettingsTab('controls');
     };
+  }
+
+  _listenPad(btn, action, slot) {
+    if (this.listening) return;
+    const pad = this.game.input.pad;
+    if (!pad.connected) {
+      this.toast('Connect a controller and press any button on it first', 'bad');
+      return;
+    }
+    this.listening = btn;
+    btn.classList.add('listening');
+    btn.textContent = 'Press…';
+    const P = this.settings.controls.pad;
+    pad.captureNext((code) => {
+      btn.classList.remove('listening');
+      this.listening = null;
+      if (!code) {
+        btn.textContent = padLabel(P[action][slot], pad.standard !== false);
+        return;
+      }
+      for (const a of Object.keys(P)) for (let s = 0; s < 2; s++) if (P[a][s] === code) P[a][s] = '';
+      P[action][slot] = code;
+      saveSettings(this.settings);
+      this.game.audio.uiSelect();
+      this._refocus = `pad:${action}:${slot}`;
+      this.showSettingsTab('controls');
+    });
   }
 
   // ---------------------------------------------------------------------------------

@@ -46,7 +46,7 @@ const ok = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fai
   await wait(200);
   ok(await G(() => window.__roost.settings.controls.keys.throttle[0]) === 'KeyT', 'throttle rebound to T');
   await page.screenshot({ path: path.join(out, 'f2-settings-controls.png') });
-  await page.click('button:has-text("Reset keys to defaults")');
+  await page.click('button:has-text("Reset keyboard")');
   ok(await G(() => window.__roost.settings.controls.keys.throttle[0]) === 'KeyW', 'keys reset to defaults');
   await page.keyboard.press('Escape');
   await wait(300);

@@ -174,6 +174,8 @@ select option { background: #18181b; }
 .keybtn { min-width: 96px; padding: 6px 10px; background: rgba(255,255,255,.05); border: 1px solid var(--line2); cursor: pointer; font-family: var(--head); font-weight: 700; font-size: 16px; outline: none; }
 .keybtn:hover, .keybtn.focus, .keybtn:focus-visible { border-color: var(--orange); }
 .keybtn.listening { background: var(--orange); color: #111; animation: blink .7s infinite; }
+.keybtn.padbtn { min-width: 112px; font-size: 15px; }
+.keyfixed { display: inline-block; min-width: 96px; padding: 6px 10px; color: var(--muted); font-family: var(--head); font-weight: 700; font-size: 16px; }
 @keyframes blink { 50% { opacity: .6; } }
 .padmap { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; font-size: 14px; }
 .padmap span:nth-child(odd) { font-family: var(--head); font-weight: 700; color: var(--orange2); }

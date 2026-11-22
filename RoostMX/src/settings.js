@@ -1,11 +1,23 @@
 // Persistent settings and lap records (localStorage).
 
+// Riding actions, in the order they are listed in Settings > Controls.
+// Bike and rider are controlled separately (MX Bikes style): steering leans/turns the
+// bike, the rider-lean actions move the rider's body left/right and forward/back.
+export const ACTIONS = [
+  'throttle', 'brakeFront', 'brakeRear', 'steerLeft', 'steerRight',
+  'riderLeft', 'riderRight', 'leanForward', 'leanBack',
+  'shiftUp', 'shiftDown', 'reset', 'camera', 'lookBack',
+  'camLeft', 'camRight', 'camUp', 'camDown', 'pause',
+];
+
 export const DEFAULT_KEYS = {
   throttle: ['KeyW', ''],
+  brakeFront: ['Space', ''],
   brakeRear: ['KeyS', ''],
   steerLeft: ['KeyA', ''],
   steerRight: ['KeyD', ''],
-  brakeFront: ['Space', ''],
+  riderLeft: ['ArrowLeft', ''],
+  riderRight: ['ArrowRight', ''],
   leanForward: ['ArrowUp', ''],
   leanBack: ['ArrowDown', ''],
   shiftUp: ['KeyE', ''],
@@ -13,21 +25,60 @@ export const DEFAULT_KEYS = {
   reset: ['KeyR', ''],
   camera: ['KeyC', ''],
   lookBack: ['KeyB', ''],
+  camLeft: ['', ''],
+  camRight: ['', ''],
+  camUp: ['', ''],
+  camDown: ['', ''],
+};
+
+/**
+ * Controller bindings. Codes: 'b7' = button 7, 'a0-' / 'a0+' = axis 0 pushed negative /
+ * positive, 'a5t+' = trigger-style axis resting at -1 (full travel = 0..1).
+ * Defaults follow the standard (Xbox) layout: left stick steers the bike, right stick
+ * moves the rider, triggers throttle / front brake, d-pad looks around.
+ */
+export const DEFAULT_PAD = {
+  throttle: ['b7', ''],
+  brakeFront: ['b6', ''],
+  brakeRear: ['b2', ''],
+  steerLeft: ['a0-', ''],
+  steerRight: ['a0+', ''],
+  riderLeft: ['a2-', ''],
+  riderRight: ['a2+', ''],
+  leanForward: ['a3-', ''],
+  leanBack: ['a3+', ''],
+  shiftUp: ['b5', ''],
+  shiftDown: ['b4', ''],
+  reset: ['b0', 'b8'],
+  camera: ['b3', ''],
+  lookBack: ['b1', ''],
+  camLeft: ['b14', ''],
+  camRight: ['b15', ''],
+  camUp: ['b12', ''],
+  camDown: ['b13', ''],
+  pause: ['b9', ''],
 };
 
 export const ACTION_LABELS = {
   throttle: 'Throttle',
   brakeRear: 'Rear brake',
-  steerLeft: 'Steer left',
-  steerRight: 'Steer right',
   brakeFront: 'Front brake',
-  leanForward: 'Lean forward',
-  leanBack: 'Lean back',
+  steerLeft: 'Steer / lean bike left',
+  steerRight: 'Steer / lean bike right',
+  riderLeft: 'Rider lean left',
+  riderRight: 'Rider lean right',
+  leanForward: 'Rider lean forward',
+  leanBack: 'Rider lean back',
   shiftUp: 'Shift up',
   shiftDown: 'Shift down',
   reset: 'Reset bike',
   camera: 'Change camera',
   lookBack: 'Look back',
+  camLeft: 'Camera left',
+  camRight: 'Camera right',
+  camUp: 'Camera up',
+  camDown: 'Camera down',
+  pause: 'Pause',
 };
 
 export const DEFAULT_SETTINGS = {
@@ -46,9 +97,12 @@ export const DEFAULT_SETTINGS = {
   },
   controls: {
     keys: JSON.parse(JSON.stringify(DEFAULT_KEYS)),
+    pad: JSON.parse(JSON.stringify(DEFAULT_PAD)),
+    padVersion: 2,
     padSteerSens: 1.0,
     padDeadzone: 0.12,
     invertLean: false,
+    linkedBrakes: true,
   },
   camera: {
     sensitivity: 1.0,
@@ -124,10 +178,21 @@ export function loadSettings() {
     }
   }
   // make sure every action has two slots
-  for (const k of Object.keys(DEFAULT_KEYS)) {
-    if (!Array.isArray(s.controls.keys[k])) s.controls.keys[k] = DEFAULT_KEYS[k].slice();
-    while (s.controls.keys[k].length < 2) s.controls.keys[k].push('');
+  const fix = (table, defaults) => {
+    for (const k of Object.keys(defaults)) {
+      if (!Array.isArray(table[k])) table[k] = defaults[k].slice();
+      while (table[k].length < 2) table[k].push('');
+      table[k] = table[k].slice(0, 2).map((v) => (typeof v === 'string' ? v : ''));
+    }
+  };
+  if (!s.controls.keys || typeof s.controls.keys !== 'object') s.controls.keys = {};
+  fix(s.controls.keys, DEFAULT_KEYS);
+  // older versions had a fixed controller layout: start from the new defaults
+  if (!s.controls.pad || typeof s.controls.pad !== 'object' || (s.controls.padVersion || 1) < 2) {
+    s.controls.pad = JSON.parse(JSON.stringify(DEFAULT_PAD));
+    s.controls.padVersion = 2;
   }
+  fix(s.controls.pad, DEFAULT_PAD);
   return s;
 }
 
@@ -157,5 +222,25 @@ export function keyLabel(code) {
   if (code.startsWith('Key')) return code.slice(3);
   if (code.startsWith('Digit')) return code.slice(5);
   if (code.startsWith('Numpad')) return 'Num ' + code.slice(6);
+  return code;
+}
+
+const PAD_BUTTONS = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'View', 'Menu', 'L-Stick', 'R-Stick', 'D-pad ↑', 'D-pad ↓', 'D-pad ←', 'D-pad →', 'Home'];
+const STICK_DIR = { '0-': 'L-Stick ←', '0+': 'L-Stick →', '1-': 'L-Stick ↑', '1+': 'L-Stick ↓', '2-': 'R-Stick ←', '2+': 'R-Stick →', '3-': 'R-Stick ↑', '3+': 'R-Stick ↓' };
+
+/** Human readable name of a controller binding code. */
+export function padLabel(code, standard = true) {
+  if (!code) return '—';
+  let m = /^b(\d+)$/.exec(code);
+  if (m) {
+    const i = +m[1];
+    return standard && PAD_BUTTONS[i] ? PAD_BUTTONS[i] : 'Button ' + i;
+  }
+  m = /^a(\d+)(t?)([+-])$/.exec(code);
+  if (m) {
+    if (m[2]) return 'Axis ' + m[1] + (m[3] === '+' ? ' ▲' : ' ▼');
+    const k = m[1] + m[3];
+    return standard && STICK_DIR[k] ? STICK_DIR[k] : 'Axis ' + m[1] + ' ' + m[3];
+  }
   return code;
 }

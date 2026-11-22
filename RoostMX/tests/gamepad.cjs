@@ -57,6 +57,24 @@ const ok = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fai
   const s3 = await page.evaluate(() => window.__roost.input.state.brakeF);
   ok(s3 > 0.9, 'LT applies the brake');
   await page.evaluate(() => window.__setBtn(6, 0));
+  // right stick moves the rider separately from the bike (MX Bikes style)
+  // the hard brake above may have tucked the front: start the rider-lean check from a fresh bike
+  await page.evaluate(() => window.__roost.resetBike());
+  await page.waitForTimeout(300);
+  await page.evaluate(() => { window.__setBtn(7, 0.6); window.__pad.axes[2] = 0.9; });
+  await page.waitForTimeout(900);
+  const r1 = await page.evaluate(() => ({ side: window.__roost.input.state.side, rs: window.__roost.world.physics.riderSide, steer: window.__roost.input.state.steer, comLean: window.__roost.world.physics.comLean, crashed: window.__roost.world.physics.crashed, why: window.__roost.world.physics.crashReason, st: window.__roost.state, v: window.__roost.world.physics.speed }));
+  ok(!r1.crashed && r1.side > 0.8 && r1.rs > 0.6 && Math.abs(r1.steer) < 0.05 && r1.comLean > 0.05, `right stick X leans the rider, not the steering (input ${r1.side.toFixed(2)}, rider ${r1.rs.toFixed(2)}, steer ${r1.steer.toFixed(2)}, CoM shift ${(r1.comLean * 57.3).toFixed(1)}°)`);
+  await page.evaluate(() => { window.__pad.axes[2] = 0; window.__pad.axes[3] = -0.9; });
+  await page.waitForTimeout(500);
+  const r2 = await page.evaluate(() => window.__roost.input.state.lean);
+  ok(r2 > 0.8, `right stick up leans the rider forward (${r2.toFixed(2)})`);
+  await page.evaluate(() => { window.__pad.axes[3] = 0; window.__setBtn(7, 0); window.__setBtn(15, 1); });
+  const yaw0 = await page.evaluate(() => window.__roost.world.rig.yawOff);
+  await page.waitForTimeout(500);
+  const yaw1 = await page.evaluate(() => window.__roost.world.rig.yawOff);
+  await page.evaluate(() => window.__setBtn(15, 0));
+  ok(Math.abs(yaw1 - yaw0) > 0.3, `d-pad right orbits the camera (${yaw0.toFixed(2)} -> ${yaw1.toFixed(2)})`);
   const cam0 = await page.evaluate(() => window.__roost.world.rig.mode);
   await press(3);
   ok(await page.evaluate(() => window.__roost.world.rig.mode) !== cam0, 'Y changes camera');
@@ -66,6 +84,48 @@ const ok = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fai
   await press(9);
   await page.waitForTimeout(300);
   ok(await page.evaluate(() => window.__roost.state) === 'riding', 'Start resumes');
+  // remap throttle to the A button in Settings > Controls with the controller itself
+  await press(9);
+  await page.waitForTimeout(300);
+  await page.evaluate(() => window.__roost.ui.go('settings'));
+  await page.waitForTimeout(200);
+  await page.evaluate(() => window.__roost.ui.showSettingsTab('controls'));
+  await page.waitForTimeout(200);
+  await page.evaluate(() => window.__roost.ui.setFocus(document.querySelector('[data-bind="pad:throttle:0"]'), true));
+  await press(0); // A on the slot starts listening (that press must not be captured)
+  await page.waitForTimeout(200);
+  const listening = await page.evaluate(() => !!window.__roost.input.pad.capture && /Press/.test(document.querySelector('[data-bind="pad:throttle:0"]').textContent));
+  ok(listening, 'A on a controller slot starts listening');
+  await press(0); // the next press is the new binding
+  await page.waitForTimeout(300);
+  const bind = await page.evaluate(() => ({ thr: window.__roost.settings.controls.pad.throttle[0], reset: window.__roost.settings.controls.pad.reset[0], label: document.querySelector('[data-bind="pad:throttle:0"]').textContent, saved: JSON.parse(localStorage.getItem('roostmx.settings.v1')).controls.pad.throttle[0] }));
+  ok(bind.thr === 'b0' && bind.label === 'A' && bind.saved === 'b0', `throttle remapped to A (${bind.thr}, shown as "${bind.label}", saved)`);
+  ok(bind.reset !== 'b0', 'A removed from its previous action (reset) to avoid conflicts');
+  // map rider lean right to a stick by moving it
+  await page.evaluate(() => window.__roost.ui.setFocus(document.querySelector('[data-bind="pad:riderRight:1"]'), true));
+  await press(0);
+  await page.evaluate(() => { window.__pad.axes[1] = 0.95; });
+  await page.waitForTimeout(250);
+  await page.evaluate(() => { window.__pad.axes[1] = 0; });
+  await page.waitForTimeout(250);
+  const bind2 = await page.evaluate(() => window.__roost.settings.controls.pad.riderRight[1]);
+  ok(bind2 === 'a1+', `moving a stick binds that axis direction (${bind2})`);
+  // the new throttle button works when riding
+  await page.evaluate(() => { const g = window.__roost; g.ui.go('pause', { push: false }); g.resume(); });
+  await page.waitForTimeout(300);
+  await page.evaluate(() => window.__setBtn(0, 1));
+  await page.waitForTimeout(800);
+  const thrA = await page.evaluate(() => ({ thr: window.__roost.input.state.throttle, st: window.__roost.state }));
+  await page.evaluate(() => window.__setBtn(0, 0));
+  ok(thrA.thr > 0.9 && thrA.st === 'riding', `A now opens the throttle while riding (${thrA.thr.toFixed(2)})`);
+  // reset controller bindings to defaults
+  await press(9);
+  await page.waitForTimeout(300);
+  await page.evaluate(() => { const g = window.__roost; g.ui.go('settings'); g.ui.showSettingsTab('controls'); });
+  await page.evaluate(() => Array.from(document.querySelectorAll('#settings-body .btn')).find((b) => /Reset controller/.test(b.textContent)).click());
+  await page.waitForTimeout(200);
+  ok(await page.evaluate(() => window.__roost.settings.controls.pad.throttle[0] === 'b7' && window.__roost.settings.controls.pad.reset[0] === 'b0'), 'Reset controller restores the defaults');
+  await page.evaluate(() => { const g = window.__roost; g.ui.go('pause', { push: false }); });
   // disconnect -> auto pause + toast
   await page.evaluate(() => { window.__pad.connected = false; window.dispatchEvent(Object.assign(new Event('gamepaddisconnected'), { gamepad: window.__pad })); });
   await page.waitForTimeout(300);

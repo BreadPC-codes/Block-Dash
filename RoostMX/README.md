@@ -73,44 +73,45 @@ fullscreen if that setting is on. **F11** or **Alt+Enter** toggles fullscreen at
 
 ## Controls
 
-### Keyboard (rebindable in Controls)
+Bike and rider are controlled **separately**, like in MX Bikes: steering turns and
+leans the bike; *rider lean* moves the rider's body — left/right to hang off into a
+turn or counter-lean the bike under you, forward/back for weight transfer, wheelies
+and pitch in the air. Throwing the body left/right in the air tilts the bike (scrubs).
 
-| Action | Key |
-|---|---|
-| Throttle | W |
-| Rear brake | S |
-| Steer left / right | A / D |
-| Front brake | Space |
-| Lean forward / back | ↑ / ↓ |
-| Shift up / down | E / Q |
-| Reset bike | R |
-| Change camera | C |
-| Look back | B (hold) |
-| Pause | Esc |
-| Fullscreen | F11 or Alt+Enter |
+Every action can be remapped for the keyboard **and** the controller in
+**Settings → Controls** (two slots each). Click a slot — or select it with the
+controller and press A — then press the key / button or move the stick or trigger.
+Right-click, Delete or X clears a slot; Esc cancels; *Reset keyboard* / *Reset
+controller* restore the defaults below.
 
-Menus: arrow keys, Enter and Esc, or the mouse.
+| Action | Keyboard | Controller (Xbox layout) |
+|---|---|---|
+| Throttle | W | RT (analog) |
+| Front brake | Space | LT (analog) |
+| Rear brake | S | X |
+| Steer / lean bike left, right | A / D | Left stick ← → |
+| Rider lean left, right | ← / → | Right stick ← → |
+| Rider lean forward, back | ↑ / ↓ | Right stick ↑ ↓ |
+| Shift up / down | E / Q | RB / LB |
+| Reset bike | R | A or View |
+| Change camera | C | Y |
+| Look back | B (hold) | B (hold) |
+| Camera left / right / up / down | (unbound) | D-pad |
+| Pause | Esc | Menu (Start) |
+| Fullscreen | F11 or Alt+Enter | — |
+
+Controller options: stick deadzone, steering sensitivity, invert rider forward/back,
+and *linked brakes* (the front brake also applies some rear brake, on by default).
+Generic (non-Xbox) controllers work too: their buttons and axes show up as
+"Button n" / "Axis n" when you map them, and triggers that rest at -1 are detected
+as full-travel triggers. Controllers are detected automatically, with an on-screen
+message on connect and disconnect (the game pauses if the controller disconnects
+while riding).
+
+Menus: arrow keys, Enter and Esc, the mouse, or d-pad / left stick + A / B on a
+controller (these menu controls are fixed).
 Free camera: drag to look, scroll to move, I/J/K/L to fly, U/O down/up, Shift = faster.
 In the other cameras, dragging the mouse orbits the view and the wheel changes distance.
-
-### Gamepad (Xbox-style and generic controllers)
-
-| Action | Button |
-|---|---|
-| Steer / lean | Left stick (X / Y) |
-| Throttle | RT (analog) |
-| Brake (front + some rear) | LT (analog) |
-| Rear brake | X |
-| Shift up / down | RB / LB |
-| Reset bike / confirm | A |
-| Look back / back | B |
-| Change camera | Y |
-| Camera orbit | Right stick |
-| Pause | Start |
-
-Controllers are detected automatically, with an on-screen message on connect and
-disconnect (the game pauses if the controller disconnects while riding). Steering
-sensitivity and stick deadzone are adjustable.
 
 ## Game modes and tracks
 
@@ -144,15 +145,19 @@ Dirt, grass, gravel and sand each have their own grip and rolling resistance.
   tire relaxation, surface-dependent grip. Wheelspin, rear slides, locked-wheel skids.
 - Engine with a torque curve, auto clutch, rev limiter, engine braking and a 5-speed
   gearbox (automatic or manual).
-- Lean-to-steer bike model: the rider leans toward a target based on input, speed and
+- Lean-to-steer bike model: the bike leans toward a target based on input, speed and
   available grip (including berm banking); the front wheel steers to balance the lean.
   Front and rear brakes with weight transfer, stoppies, wheelies, countersteering.
-- Air control: body English (lean), throttle/brake gyroscopic pitch, whips that must be
-  straightened before landing.
+- Separate rider body: the rider's weight moves fore/aft and across the bike (up to
+  28 cm), shifting the combined centre of mass. The bike balances around that combined
+  centre, so hanging off into a turn keeps the bike more upright and turns tighter,
+  counter-leaning lays the bike down under the rider, and body lean alone steers gently.
+- Air control: body English (rider forward/back pitches, left/right rolls the bike),
+  throttle/brake gyroscopic pitch, whips that must be straightened before landing.
 - Crashes come from the physics: handlebars/head/fenders touching the ground, landing
   leaned or sideways, nose-diving, casing a jump, front-end tucks from overloading the
   front tire (e.g. braking hard while leaned), and hitting obstacles. The rider
-  separates and tumbles as a ragdoll; reset with R/A or automatically.
+  separates and tumbles as a ragdoll; reset with R / A (or your binding) or automatically.
 - **Rider assists** (Full / Low / Off): wheelie and stoppie control, traction control,
   brake modulation when leaned, grip-aware lean and landing assist. Off = raw sim.
 
@@ -175,12 +180,29 @@ crashes, gear shifts, countdown, checkpoint and menu sounds. Master/engine/effec
 **Settings** (saved automatically) — steering sensitivity, engine power, suspension
 stiffness and damping, front/rear brake strength, rider assists, gearbox, camera
 sensitivity and distance, controller sensitivity and deadzone, bike color and race
-number, key bindings, graphics quality, fullscreen, speed units, minimap, FPS, volumes.
+number, keyboard and controller bindings, graphics quality, render scale, dynamic
+resolution, anti-aliasing, fullscreen, speed units, minimap, FPS, volumes.
 
 **Graphics presets** — Low: no shadows, 75% render scale, no grass, sparse trees,
-coarser terrain, no antialiasing. Medium: shadows, full render scale, some grass.
+coarser terrain, no anti-aliasing. Medium: shadows, full render scale, some grass.
 High: 2K soft shadows, up to 1.5× render scale on high-DPI screens, dense grass and
-forests, full-detail terrain near the track. (Antialiasing changes apply after a restart.)
+forests, full-detail terrain near the track.
+**Dynamic resolution** (on by default) lowers the render resolution only while the
+frame rate is below 60 FPS (or the screen's refresh rate) and raises it again when
+there is headroom; **Render scale** sets its maximum. **Anti-aliasing** can be Auto
+(per preset), On or Off and applies after a restart. *Show FPS* displays the frame
+rate, current resolution, draw calls and triangles.
+
+**Performance** — the renderer is built to keep draw calls and per-pixel work low:
+the bike and the rider are one skinned mesh each (one draw call), trackside props are
+merged into a few batches, trees/bushes/rocks/tyre walls/fences/crowd are packed every
+frame into one instanced draw per level of detail with view and distance culling,
+terrain chunks switch between three levels of detail with the camera distance, the
+splat shader skips absent layers and distant detail, grass fades out with distance,
+the sky is rendered once into a cube map, and rough surfaces get their ambient light
+from spherical harmonics instead of environment-map lookups. Compared with the first
+release this is ~4× fewer draw calls and ~3.5× fewer triangles per frame, and 2–3×
+less rendering time at the same preset (measured with `tests/perf.cjs`).
 
 ## Garage and custom bikes
 
@@ -273,7 +295,8 @@ RoostMX/
 npm test
 ```
 
-Physics checks (rest, acceleration, braking, cornering, jumps, crash cases).
+Physics checks (rest, acceleration, braking, cornering, jumps, crash cases, rider lean:
+body steering, hanging off vs counter-leaning, tilting the bike in the air).
 
 ```bash
 node tests/timing-test.mjs
@@ -287,17 +310,21 @@ npm run test:autopilot
 
 A simple autopilot rides every track headless and reports crashes and lap times.
 
-Browser tests (`tests/smoke.cjs`, `tests/flows.cjs`, `tests/gamepad.cjs`) and the
-Electron smoke test (`tests/electron-smoke.cjs`) use [Playwright](https://playwright.dev);
-start `npm run serve` first. `node tests/make-fixtures.mjs` regenerates the importer
+Browser tests (`tests/smoke.cjs`, `tests/flows.cjs`, `tests/gamepad.cjs` — virtual
+controller, rider lean, button remapping — and `tests/perf.cjs <low|medium|high>`, a
+frame-time / draw-call benchmark) and the Electron smoke test
+(`tests/electron-smoke.cjs`) use [Playwright](https://playwright.dev); start
+`npm run serve` first. `node tests/make-fixtures.mjs` regenerates the importer
 test files in `tests/fixtures/`.
 
 ## Troubleshooting
 
 - **Black screen / "Could not start"** — the game needs WebGL 2. Update your graphics
   driver. On laptops, make sure the app uses the dedicated GPU.
-- **Low frame rate** — use Graphics → Low or Medium, or a smaller window. On first
-  launch the game picks a preset from your GPU (integrated graphics start on Medium).
+- **Low frame rate** — keep *Dynamic resolution* on, lower *Render scale*, turn
+  *Anti-aliasing* off, or use Graphics → Low / Medium. On first launch the game picks
+  a preset from your GPU (integrated graphics start on Medium). *Show FPS* tells you
+  the current frame rate and resolution.
 - **No sound** — click or press a key once (browsers only start audio after input) and
   check the Audio volumes.
 - **Controller not detected** — press any button on it; Windows browsers only expose a

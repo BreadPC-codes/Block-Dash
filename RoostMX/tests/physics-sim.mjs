@@ -20,7 +20,7 @@ function run(bike, seconds, inputFn, log) {
     }
   }
 }
-const I = (o = {}) => ({ throttle: 0, brakeF: 0, brakeR: 0, steer: 0, lean: 0, ...o });
+const I = (o = {}) => ({ throttle: 0, brakeF: 0, brakeR: 0, steer: 0, lean: 0, side: 0, ...o });
 
 console.log('1) settle on flat ground');
 {
@@ -136,6 +136,65 @@ console.log('8) lowside from over-leaning on grass at speed (assist off)');
   run(b, 4, (t, bk) => I({ throttle: bk.forwardSpeed < 17 ? 1 : 0.4 }));
   run(b, 3, () => I({ steer: 1, throttle: 1 }));
   console.log('   crashed:', b.crashed, b.crashReason);
+}
+
+console.log('9) rider lean right while riding straight (no steering)');
+{
+  const b = new BikePhysics(flat);
+  b.reset(new Vector3(0, 0, 0), 0);
+  run(b, 3, (t, bk) => I({ throttle: bk.forwardSpeed < 11 ? 1 : 0.4 }));
+  const x0 = b.pos.x;
+  let comLeanMax = 0;
+  run(b, 3, (t, bk) => { comLeanMax = Math.max(comLeanMax, bk.leanAngle + bk.comLean); return I({ throttle: bk.forwardSpeed < 11 ? 0.8 : 0.4, side: 1 }); }, 0.5);
+  check(!b.crashed, 'no crash' + (b.crashed ? ' (' + b.crashReason + ')' : ''));
+  check(b.riderSide > 0.9, `rider body moved right (riderSide ${b.riderSide.toFixed(2)})`);
+  check(b.comLean > 0.1, `combined CoM shifted right of the bike (${deg(b.comLean)} deg)`);
+  check(b.leanAngle < b.leanAngle + b.comLean - 0.1, `bike leans less than the rider+bike CoM (bike ${deg(b.leanAngle)}, CoM ${deg(b.leanAngle + b.comLean)})`);
+  check(b.pos.x < x0 - 1.5, `body lean alone turns the bike gently right (x ${x0.toFixed(1)} -> ${b.pos.x.toFixed(1)})`);
+}
+
+console.log('10) hanging off vs counter-leaning in the same turn');
+{
+  const turn = (side) => {
+    const b = new BikePhysics(flat);
+    b.reset(new Vector3(0, 0, 0), 0);
+    run(b, 3, (t, bk) => I({ throttle: bk.forwardSpeed < 11 ? 1 : 0.4 }));
+    let lean = 0, n = 0, minR = 1e9;
+    run(b, 4, (t, bk) => {
+      if (t > 2) {
+        lean += bk.leanAngle; n++;
+        const yr = Math.abs(bk.angVel.y);
+        if (yr > 0.05) minR = Math.min(minR, bk.speed / yr);
+      }
+      return I({ steer: 1, side, throttle: bk.forwardSpeed < 11 ? 0.7 : 0.4 });
+    });
+    return { b, lean: lean / n, minR };
+  };
+  const inside = turn(1), outside = turn(-1);
+  check(!inside.b.crashed && !outside.b.crashed, 'no crash either way');
+  console.log(`   bike lean: hanging off ${deg(inside.lean)} deg, counter-leaning ${deg(outside.lean)} deg; radius ${inside.minR.toFixed(1)} m vs ${outside.minR.toFixed(1)} m`);
+  check(outside.lean - inside.lean > 0.06, 'counter-leaning leans the bike further under the rider');
+  check(inside.minR < outside.minR, 'leaning into the turn turns tighter');
+}
+
+console.log('11) rider lean in the air rolls the bike');
+{
+  const prof = (z) => { const u = z - 40; if (u <= 0) return 0; if (u < 6) return u * 0.5; if (u < 7) return 3 - (u - 6) * 3; return 0; };
+  const ramp = new FunctionTerrain((x, z) => Math.max(0, prof(z)));
+  const fly = (side) => {
+    const b = new BikePhysics(ramp);
+    b.reset(new Vector3(0, 0, -30), 0);
+    let maxRoll = 0, airT = 0;
+    run(b, 6, (t, bk) => {
+      if (bk.airborne) { airT += dt; maxRoll = Math.max(maxRoll, bk.leanAngle * Math.sign(side || 1)); }
+      const s = bk.airborne && airT < 0.35 ? side : 0;
+      return I({ throttle: bk.pos.z < 40 ? (bk.forwardSpeed < 16 ? 1 : 0.4) : 0.3, side: s });
+    });
+    return maxRoll;
+  };
+  const r0 = fly(0), rR = fly(1), rL = fly(-1);
+  console.log(`   max roll in the air: none ${deg(r0)}, right ${deg(rR)}, left ${deg(rL)} deg`);
+  check(rR > 0.12 && rL > 0.12 && r0 < 0.06, 'leaning the rider tilts the bike that way in the air');
 }
 
 console.log(failures ? `\n${failures} FAILURES` : '\nALL OK');
