@@ -140,7 +140,10 @@ export function inspectFiles(files) {
   for (const f of outFiles) if (!f.fromArchive && classify(f.name) === 'proprietary') proprietary.push(f.name);
   report.proprietary = proprietary;
   if (!report.model) {
-    if (proprietary.length) {
+    const isTrack = report.archives.some((a) => a.entries.some((en) => /\.(trh|hmf)$/i.test(en.path)));
+    if (isTrack) {
+      report.warnings.push('This is an MX Bikes track package, not a bike: import it from Track Select > Import a track.');
+    } else if (proprietary.length) {
       report.warnings.push(
         `No supported 3D model was found. The package contains PiBoSo engine files (${[...new Set(proprietary.map((p) => '.' + ext(p)))].join(', ')}) which use an undocumented proprietary format that this game cannot read.`
       );

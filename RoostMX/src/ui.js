@@ -4,8 +4,10 @@ import { BIKE_COLORS } from './bike.js';
 import { formatTime, formatDelta, clamp } from './util.js';
 import { TRACKS } from './tracks.js';
 import { Track } from './track.js';
+import { IMPORT_PREFIX, SCALE_MIN, SCALE_MAX, scaledStats, drawImportedPreview } from './imported-track.js';
 
 const $ = (id) => document.getElementById(id);
+const escapeHtml = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const pct = (v) => Math.round(v * 100) + '%';
 const num = (v) => v.toFixed(2);
 
@@ -19,6 +21,7 @@ const TIPS = [
   'Steer in the air (A / D, left stick) to whip the bike: a tap is a tweak, holding it throws it sideways. Let go early enough to straighten it before you land!',
   'Start a whip on the last metres of the jump face and the bike leaves the lip already turning.',
   'Press F3 to see the whip physics: angles, rotation speeds, torques and your inputs.',
+  'Got MX Bikes tracks? Import a .pkz on the track list and scale it up or down - 100 % is the real size.',
   'The rear brake (S) helps you slide the bike around tight corners.',
   'Berms let you lean deeper and carry more speed through turns.',
   'Sand has less grip and much more drag: keep the throttle on.',
@@ -263,19 +266,19 @@ export class UI {
   // ---------------------------------------------------------------------------------
   refreshMenuCard() {
     const g = this.game;
-    const def = TRACKS.find((t) => t.id === this.settings.game.track) || TRACKS[0];
-    $('card-track').textContent = def.name;
+    const id = this.settings.game.track;
+    $('card-track').textContent = g.trackName(id);
     $('card-mode').textContent = this.settings.game.mode === 'trial' ? 'Time Trial' : 'Free Ride';
     $('card-bike').textContent = g.activeBikeName || 'Roost 450 (procedural)';
-    const rec = g.records[def.id];
+    const rec = g.records[id];
     $('card-best').textContent = rec ? formatTime(rec.best) : '--:--.---';
     $('build-info').textContent = (window.roostNative ? 'Desktop' : 'Browser') + ' · v1.0';
   }
 
   _refreshPlay() {
-    const def = TRACKS.find((t) => t.id === this.settings.game.track) || TRACKS[0];
-    $('play-track').textContent = def.name;
-    const rec = this.game.records[def.id];
+    const id = this.settings.game.track;
+    $('play-track').textContent = this.game.trackName(id);
+    const rec = this.game.records[id];
     $('play-best').textContent = rec ? formatTime(rec.best) : '--:--.---';
     document.querySelectorAll('[data-mode]').forEach((el) => el.classList.toggle('selected', el.dataset.mode === this.settings.game.mode));
   }
@@ -318,6 +321,166 @@ export class UI {
       });
       grid.appendChild(b);
     }
+    // imported MX Bikes tracks
+    for (const t of this.game.importedTracks) {
+      const id = IMPORT_PREFIX + t.id;
+      const b = document.createElement('button');
+      b.className = 'track-card imported' + (id === this.settings.game.track ? ' selected' : '');
+      b.setAttribute('data-nav', '');
+      b.dataset.track = id;
+      if (t.thumb) {
+        const img = document.createElement('img');
+        img.src = t.thumb;
+        img.alt = '';
+        img.width = 360;
+        img.height = 220;
+        b.appendChild(img);
+      } else {
+        const cv = document.createElement('canvas');
+        cv.width = 360;
+        cv.height = 220;
+        b.appendChild(cv);
+      }
+      const rec = this.game.records[id];
+      const sc = t.scale ?? 1;
+      const lap = t.hasLine ? `Lap <b>${((t.lap * sc) / 1000).toFixed(2)} km</b>` : 'Free ride <b>no timing</b>';
+      const info = document.createElement('div');
+      info.className = 'track-info';
+      info.innerHTML = `<div class="track-kind">MX Bikes import · ${Math.round(sc * 100)} %</div><div class="track-name"></div><div class="track-desc"></div>
+        <div class="track-stats"><span>Map <b>${Math.round(t.sizeX * sc)} × ${Math.round(t.sizeZ * sc)} m</b></span><span>${lap}</span><span>Best <b>${rec ? formatTime(rec.best) : '—'}</b></span></div>`;
+      info.querySelector('.track-name').textContent = t.name;
+      info.querySelector('.track-desc').textContent = (t.author ? 'By ' + t.author + ' · ' : '') + t.source;
+      b.appendChild(info);
+      b.addEventListener('click', () => {
+        this.game.audio.uiSelect();
+        this.trackActions(t);
+      });
+      grid.appendChild(b);
+    }
+    // import button
+    const imp = document.createElement('button');
+    imp.className = 'track-card import-card';
+    imp.id = 'track-import';
+    imp.setAttribute('data-nav', '');
+    imp.innerHTML = `<div class="import-plus">+</div><div class="track-info"><div class="track-kind">MX Bikes</div><div class="track-name">Import a track</div>
+      <div class="track-desc">Choose an MX Bikes track package (.pkz) - or drop it here. The terrain, the track line and the start / finish come in; scale it to taste.</div></div>`;
+    imp.addEventListener('click', () => {
+      this.game.audio.uiSelect();
+      this.pickTrackFiles();
+    });
+    grid.appendChild(imp);
+  }
+
+  pickTrackFiles() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.accept = '.pkz,.zip';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+    input.addEventListener('change', () => {
+      const files = Array.from(input.files || []);
+      input.remove();
+      if (files.length) this.game.importTrackFiles(files);
+    });
+    input.click();
+  }
+
+  /** What to do with an imported track: ride, rescale or delete. */
+  async trackActions(t) {
+    const id = IMPORT_PREFIX + t.id;
+    const sc = t.scale ?? 1;
+    const choice = await this.modal(t.name, `<p class="note">Imported from <b>${escapeHtml(t.source)}</b>${t.author ? ' · by ' + escapeHtml(t.author) : ''}. Scale <b>${Math.round(sc * 100)} %</b> · map ${Math.round(t.sizeX * sc)} × ${Math.round(t.sizeZ * sc)} m${t.hasLine ? ` · lap ${((t.lap * sc) / 1000).toFixed(2)} km` : ' · no timing line (Free Ride)'}.</p>`, [
+      { label: 'Select', primary: true, value: 'select' },
+      { label: 'Scale & ground', value: 'edit' },
+      { label: 'Delete', value: 'delete' },
+      { label: 'Cancel', value: '' },
+    ]);
+    if (choice === 'select') this.game.selectTrack(id);
+    else if (choice === 'edit') this.game.editImportedTrack(id);
+    else if (choice === 'delete') this.game.deleteImportedTrack(id);
+  }
+
+  /**
+   * Import / rescale dialog for an MX Bikes track: preview, uniform scale (keeps the
+   * proportions), ground type. Resolves { scale, surface } or null.
+   */
+  trackImportDialog(rec, { scale = 1, surface = 'dirt', edit = false } = {}) {
+    const box = document.createElement('div');
+    box.className = 'import-dialog';
+    const cv = document.createElement('canvas');
+    cv.width = 640;
+    cv.height = 360;
+    cv.className = 'import-preview';
+    box.appendChild(cv);
+    const facts = document.createElement('div');
+    facts.className = 'import-facts';
+    box.appendChild(facts);
+    const row = document.createElement('div');
+    row.className = 'import-scale';
+    row.innerHTML = `<label class="import-label" for="import-scale">Scale</label><input id="import-scale" type="range" min="${SCALE_MIN * 100}" max="${SCALE_MAX * 100}" step="5" data-nav><span class="import-scale-val"></span>
+      <button class="btn ghost small" data-nav type="button" data-real>Real size</button>`;
+    box.appendChild(row);
+    const ground = document.createElement('div');
+    ground.className = 'import-ground';
+    ground.innerHTML = '<span class="import-label">Ground</span><div class="seg"><button type="button" data-nav data-surf="dirt">Dirt &amp; grass</button><button type="button" data-nav data-surf="sand">Sand</button></div>';
+    box.appendChild(ground);
+    const notes = document.createElement('ul');
+    notes.className = 'import-notes';
+    for (const n of rec.notes || []) {
+      const li = document.createElement('li');
+      li.textContent = n;
+      notes.appendChild(li);
+    }
+    const li = document.createElement('li');
+    li.textContent = 'Scenery models (.edf), the original terrain textures and the track\'s own objects are not imported: Roost MX dresses the track with its own trees, fences and start gate.';
+    notes.appendChild(li);
+    box.appendChild(notes);
+    const slider = row.querySelector('input');
+    const val = row.querySelector('.import-scale-val');
+    let cur = { scale, surface };
+    slider.value = String(Math.round(scale * 100));
+    let pending = 0;
+    const update = () => {
+      cur.scale = clamp(+slider.value / 100, SCALE_MIN, SCALE_MAX);
+      const st = scaledStats(rec, cur.scale);
+      val.textContent = Math.round(cur.scale * 100) + ' %' + (Math.abs(cur.scale - 1) < 1e-6 ? ' (real size)' : '');
+      const g = rec.grid;
+      facts.innerHTML = `<div><span>Track</span><b></b></div>
+        <div><span>Map</span><b>${Math.round(st.sizeX)} × ${Math.round(st.sizeZ)} m</b></div>
+        <div><span>${rec.line ? (rec.line.closed ? 'Lap' : 'Length') : 'Timing'}</span><b>${rec.line ? (st.lap / 1000).toFixed(2) + ' km' : 'none - Free Ride'}</b></div>
+        <div><span>Lowest to highest</span><b>${st.relief.toFixed(1)} m</b></div>
+        <div><span>Terrain</span><b>${rec.info.sourceW} × ${rec.info.sourceH} samples, ${((g.sizeX / (g.w - 1)) * cur.scale).toFixed(2)} m apart</b></div>
+        <div><span>Start / finish</span><b>${rec.timing && rec.timing.finish != null ? 'from the race data' : rec.line ? 'estimated' : '-'}</b></div>`;
+      facts.querySelector('b').textContent = rec.name;
+      if (!pending) {
+        pending = requestAnimationFrame(() => {
+          pending = 0;
+          drawImportedPreview(cv, rec, cur.scale);
+        });
+      }
+    };
+    const setSurf = (v) => {
+      cur.surface = v;
+      ground.querySelectorAll('[data-surf]').forEach((b) => b.classList.toggle('on', b.dataset.surf === v));
+    };
+    slider.addEventListener('input', update);
+    // controller: left / right on the focused slider
+    slider._adjust = (d) => {
+      slider.value = String(clamp(+slider.value + d * 5, SCALE_MIN * 100, SCALE_MAX * 100));
+      update();
+    };
+    row.querySelector('[data-real]').addEventListener('click', () => {
+      slider.value = '100';
+      update();
+    });
+    ground.querySelectorAll('[data-surf]').forEach((b) => b.addEventListener('click', () => setSurf(b.dataset.surf)));
+    setSurf(surface);
+    update();
+    return this.modal(edit ? 'Scale & ground' : 'Import track', box, [
+      { label: edit ? 'Save' : 'Import', primary: true, value: 'ok' },
+      { label: 'Cancel', value: '' },
+    ]).then((v) => (v === 'ok' ? { scale: cur.scale, surface: cur.surface } : null));
   }
 
   // ---------------------------------------------------------------------------------

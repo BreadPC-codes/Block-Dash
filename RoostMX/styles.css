@@ -134,6 +134,21 @@ button { font-family: inherit; color: inherit; }
 .track-card:hover, .track-card.focus, .track-card:focus-visible { border-color: var(--orange); transform: translateY(-3px); }
 .track-card.selected { border-color: var(--orange); box-shadow: 0 0 0 1px var(--orange); }
 .track-card canvas { width: 100%; height: auto; display: block; background: #141416; }
+.track-card img { width: 100%; height: auto; aspect-ratio: 360 / 220; display: block; background: #141416; object-fit: cover; }
+.import-card { display: flex; flex-direction: column; border-style: dashed; border-color: var(--line2); }
+.import-card .import-plus { aspect-ratio: 360 / 220; display: flex; align-items: center; justify-content: center; font-family: var(--head); font-weight: 900; font-size: 84px; color: var(--orange); background: repeating-linear-gradient(135deg, rgba(255,255,255,.03) 0 12px, transparent 12px 24px); }
+.modal-box:has(.import-dialog) { width: min(760px, 94vw); }
+.import-dialog { display: flex; flex-direction: column; gap: 12px; }
+.import-preview { width: auto; max-width: 100%; height: auto; max-height: 34vh; display: block; margin: 0 auto; background: #141416; border: 1px solid var(--line); }
+.import-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 6px 18px; font-size: 13px; }
+.import-facts div { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); padding: 3px 0; }
+.import-facts span { color: var(--muted); }
+.import-facts b { text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.import-scale, .import-ground { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.import-label { font-family: var(--head); font-weight: 700; font-style: italic; text-transform: uppercase; font-size: 18px; min-width: 70px; }
+.import-scale input[type=range] { flex: 1; min-width: 160px; }
+.import-scale-val { min-width: 130px; font-family: var(--head); font-weight: 700; font-size: 20px; color: var(--orange2); }
+.import-notes { margin: 0; padding-left: 18px; font-size: 12px; color: var(--muted); line-height: 1.5; }
 .track-info { padding: 12px 14px 14px; }
 .track-kind { font-family: var(--head); font-weight: 700; font-style: italic; text-transform: uppercase; letter-spacing: 2px; font-size: 13px; color: var(--orange); }
 .track-name { font-family: var(--head); font-weight: 900; font-style: italic; text-transform: uppercase; font-size: 26px; margin: 2px 0 6px; }

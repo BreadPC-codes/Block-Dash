@@ -181,6 +181,41 @@ elevation changes, plus trackside tape, banners, tire walls, hay bales, bleacher
 spectators, a timing tower, pits, fences, trees and distant mountains or dunes.
 Dirt, grass, gravel and sand each have their own grip and rolling resistance.
 
+### Importing MX Bikes tracks (.pkz)
+
+On **Track Select** choose **Import a track** (or drop `.pkz` files onto the list). Roost MX
+reads from an MX Bikes track package:
+
+- **the terrain** — the `.trh` collision heightfield, the same ground the game itself rides
+  on (up to 8193 samples a side; very large ones are kept at 2049 a side), so every jump,
+  berm, rut and hill has its real shape and height;
+- **the track line** stored in the `.trh` — used for the riding line, the minimap, lap
+  timing with checkpoints and safe respawns (jumps are found from the terrain, so a crash
+  never puts you back in a jump's gap);
+- **the race data** (`.rdf`) — finish line and starting position;
+- **the name and author** from the `.ini`.
+
+Distribution packs that nest a `*_server.pkz`, and work-in-progress folders with the
+heightmap sources (`.hmf` + 16-bit `.raw`), work too. Packages may hold several tracks;
+each one gets its own import dialog.
+
+**Scale.** The import dialog has a scale slider from 25 % to 300 %. Scaling is uniform —
+width, length and height together — so the track keeps its proportions. **100 % is the
+real size** from the file: MX Bikes and Roost MX both work in metres, so at 100 % the
+track is in proportion to the bike. The dialog shows the map size, lap length and height
+range at the chosen scale, plus a preview with a 50 m scale bar; jumps need roughly √scale
+times the speed. Change it any time: click the track's card → *Scale & ground* (best laps
+are reset, they were set at the old size). *Ground* chooses dirt & grass or sand.
+
+**What does not come in:** the scenery models (`.edf`), the terrain graphics (`.map`) and
+the track's textures and objects. Roost MX paints dirt along the track line and on steep
+faces, grass (or sand) elsewhere, and dresses the track with its own trees, fences, gate,
+banners and spectators. A track without a centre line can still be ridden in Free Ride
+(spawning on the flattest ground near the middle). Protected (encrypted) packages are not
+plain ZIP archives; they are refused, never decrypted. Imported tracks are stored on this
+computer (IndexedDB, about 8 MB each); the `.pkz` itself is never modified. Please respect
+track authors' licences: import tracks you have downloaded for your own riding.
+
 ## Features
 
 **Physics** (`src/physics.js`, 240 Hz fixed step, frame-rate independent)
@@ -310,6 +345,8 @@ computer (IndexedDB).
   **`.pnt`**. These are proprietary, undocumented PiBoSo formats. **Roost MX cannot read
   them** and says so in the report; it never pretends such a package loaded.
 - If the file is not a ZIP container (for example encrypted), the report says that too.
+- Track packages are imported from the track list instead (see *Importing MX Bikes tracks*);
+  the garage recognises them and says so.
 
 To ride a bike from such a mod you need the model in an open format: get the source
 model from its author (most are made in Blender or 3ds Max) or use your own model, then
@@ -330,6 +367,9 @@ RoostMX/
   src/
     main.js                     game states, main loop, ride logic, effects
     physics.js                  bike physics, engine, crashes, ragdoll
+    zip-reader.js               random-access ZIP / PKZ reader (stored, deflate, ZIP64)
+    mxb-track.js                MX Bikes track packages: .trh, .rdf, .ini, .hmf + .raw
+    imported-track.js           imported tracks -> heightfield + track at a chosen scale
     whip.js                     whips / air control (all tuning values in WHIP)
     bike-geometry.js            shared bike dimensions (physics and visuals)
     bike.js                     procedural bike model and its animation
@@ -391,6 +431,17 @@ node tests/jump-tuner.mjs jumpline
 Rides every jump of a track with the real physics at takeoff speeds from 10 to 28 m/s
 and reports the safe speed window and the sweet spot (mid-ramp landing) of each.
 
+```bash
+node tests/track-import.mjs
+```
+
+MX Bikes track import: `.trh` heights and centre line, race data, orientation check,
+scaling (proportions), the riding line on dirt, lap timing and a physics ride on the
+imported track at 100 % and 200 %, nested server packs, heightmap sources and the error
+messages. The synthetic test packages come from `node tests/make-mxb-fixtures.mjs`
+(no MX Bikes content is included); `tests/track-import.cjs` runs the same import through
+the game's UI in a browser.
+
 Browser tests (`tests/smoke.cjs`, `tests/flows.cjs`, `tests/gamepad.cjs` — virtual
 controller, rider lean, button remapping — `tests/whip.cjs` — keyboard and controller
 whips on the Big Air Line, the F3 overlay, rider counterbalance — and
@@ -417,6 +468,8 @@ test files in `tests/fixtures/`.
 ## Known limitations
 
 - PiBoSo `.edf` meshes and `.pnt` paints inside `.pkz` files are not supported (see above).
+- Imported MX Bikes tracks bring their terrain, track line and race data, not their
+  scenery, terrain textures or objects (see *Importing MX Bikes tracks*).
 - Imported models are fitted to the built-in physics geometry (1.48 m wheelbase); the
   physics does not change with the model's dimensions or mass.
 - Rear shock and linkage parts of imported models move with the swingarm rather than
@@ -425,6 +478,9 @@ test files in `tests/fixtures/`.
 - The NSIS installer has to be built on Windows (or with Wine).
 
 ## Licences
+
+The MX Bikes `.trh` terrain layout is implemented from the description in the
+MIT-licensed [mxb-app](https://github.com/Frostn1/mxb-app) project (no code copied).
 
 Code: MIT. Three.js: MIT. Electron: MIT. Barlow and Barlow Condensed fonts: SIL Open
 Font License 1.1 (`assets/fonts/OFL-LICENSE.txt`). All sponsor names on trackside

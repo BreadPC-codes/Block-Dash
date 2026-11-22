@@ -324,20 +324,32 @@ function circularSmooth(arr, windowSamples, open = false) {
 // Track
 // ---------------------------------------------------------------------------
 export class Track {
+  /**
+   * def.layout: straights / arcs (the built-in tracks), or def.points: an explicit centre
+   * line [x0, z0, x1, z1, ...] already placed on the map (imported tracks; with def.ground
+   * giving the terrain height and def.timing { gate, finish } in metres along the line).
+   */
   constructor(def) {
     this.def = def;
     this.open = !!def.open;
     this.noise = new SimplexNoise(def.seed ?? 1);
     this.noise2 = new SimplexNoise((def.seed ?? 1) + 77);
-    const { prims, end } = layoutToPrims(def);
-    this.prims = prims;
-    this.closureError = Math.hypot(end.x, end.z);
-    this._sample(prims);
-    this._center();
+    if (def.points) {
+      this.prims = [];
+      this.closureError = 0;
+      this._samplePoints(def.points);
+    } else {
+      const { prims, end } = layoutToPrims(def);
+      this.prims = prims;
+      this.closureError = Math.hypot(end.x, end.z);
+      this._sample(prims);
+      this._center();
+    }
     this._resolveHills();
-    this.ground = makeGroundFunction(def, this.noise, this.hills);
+    this.ground = def.ground || makeGroundFunction(def, this.noise, this.hills);
     this._buildElevation();
     this._buildFeatures();
+    if (def.points) this._terrainFeatures();
     this._buildBerms();
     this._buildWidth();
     this._buildIndex();
@@ -384,6 +396,66 @@ export class Track {
       this.kappa[i] = k;
       this.seg[i] = p.seg;
     }
+  }
+
+  /** Uniform resampling of an explicit centre line (imported tracks); no re-centring. */
+  _samplePoints(pts) {
+    const m = pts.length >> 1;
+    const cum = new Float64Array(m + 1);
+    for (let k = 1; k <= m; k++) {
+      const a = (k - 1) % m, b = k % m;
+      if (this.open && k === m) { cum[k] = cum[k - 1]; break; }
+      cum[k] = cum[k - 1] + Math.hypot(pts[b * 2] - pts[a * 2], pts[b * 2 + 1] - pts[a * 2 + 1]);
+    }
+    const total = this.open ? cum[m - 1] : cum[m];
+    const n = this.open ? Math.floor(total / DS) + 1 : Math.floor(total / DS);
+    this.n = n;
+    this.length = this.open ? (n - 1) * DS : n * DS;
+    this.x = new Float32Array(n);
+    this.z = new Float32Array(n);
+    this.tx = new Float32Array(n);
+    this.tz = new Float32Array(n);
+    this.kappa = new Float32Array(n);
+    this.seg = new Int16Array(n);
+    let k = 0;
+    for (let i = 0; i < n; i++) {
+      const s = i * DS;
+      while (k < m - 1 && cum[k + 1] <= s) k++;
+      const a = k % m, b = (k + 1) % m;
+      const segLen = cum[k + 1] - cum[k];
+      const t = segLen > 1e-6 ? Math.min(1, (s - cum[k]) / segLen) : 0;
+      this.x[i] = pts[a * 2] + (pts[b * 2] - pts[a * 2]) * t;
+      this.z[i] = pts[a * 2 + 1] + (pts[b * 2 + 1] - pts[a * 2 + 1]) * t;
+    }
+    // tangents over +-1 m, curvature from the change of heading (+ = left turn, as for arcs)
+    const span = Math.round(1 / DS);
+    const th = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const a = this.step(i, -span), b = this.step(i, span);
+      let dx = this.x[b] - this.x[a], dz = this.z[b] - this.z[a];
+      const l = Math.hypot(dx, dz) || 1;
+      dx /= l; dz /= l;
+      this.tx[i] = dx;
+      this.tz[i] = dz;
+      th[i] = Math.atan2(dz, dx);
+    }
+    const kspan = Math.round(2 / DS);
+    const raw = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const a = this.step(i, -kspan), b = this.step(i, kspan);
+      let d = th[b] - th[a];
+      while (d > Math.PI) d -= 2 * Math.PI;
+      while (d < -Math.PI) d += 2 * Math.PI;
+      const ds = Math.max(DS, (b - a + (b < a ? n : 0)) * DS);
+      raw[i] = -d / ds;
+    }
+    this.kappa = circularSmooth(raw, 4 / DS, this.open);
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (let i = 0; i < n; i++) {
+      minX = Math.min(minX, this.x[i]); maxX = Math.max(maxX, this.x[i]);
+      minZ = Math.min(minZ, this.z[i]); maxZ = Math.max(maxZ, this.z[i]);
+    }
+    this.bounds = { minX, maxX, minZ, maxZ };
   }
 
   _center() {
@@ -465,7 +537,7 @@ export class Track {
     E = circularSmooth(E, 44 / DS, this.open);
     // Flatten segments flagged flat (start straight etc.)
     const flatSegs = new Set();
-    this.def.layout.forEach((it, k) => {
+    (this.def.layout || []).forEach((it, k) => {
       const opts = it[0] === 'S' ? it[2] : it[3];
       if (opts && opts.flat) flatSegs.add(k);
     });
@@ -485,7 +557,7 @@ export class Track {
     const n = this.n;
     this.F = new Float32Array(n);
     this.features = [];
-    this.def.layout.forEach((it, k) => {
+    (this.def.layout || []).forEach((it, k) => {
       if (it[0] !== 'S' || !it[2] || !it[2].features) return;
       const s0 = this.segStart(k), s1 = this.segEnd(k);
       for (const spec of it[2].features) {
@@ -503,6 +575,26 @@ export class Track {
         }
       }
     });
+  }
+
+  /**
+   * Imported tracks have no feature list: mark jumps, steps and steep sections from the
+   * terrain along the line itself (F > 0), so respawns land on calm ground before them.
+   */
+  _terrainFeatures() {
+    const n = this.n;
+    const raw = new Float32Array(n);
+    for (let i = 0; i < n; i++) raw[i] = this.ground(this.x[i], this.z[i]);
+    let base = circularSmooth(raw, 30 / DS, this.open);
+    base = circularSmooth(base, 30 / DS, this.open);
+    const k = Math.round(1 / DS);
+    for (let i = 0; i < n; i++) {
+      const a = this.step(i, -k), b = this.step(i, k);
+      const run = (b - a + (b < a ? n : 0)) * DS || 1;
+      const slope = Math.abs(raw[b] - raw[a]) / run;
+      const v = Math.max(Math.abs(raw[i] - base[i]) - 0.25, slope - 0.22, 0);
+      if (v > this.F[i]) this.F[i] = v;
+    }
   }
 
   _buildBerms() {
@@ -535,9 +627,10 @@ export class Track {
     const n = this.n;
     const W = new Float32Array(n);
     const base = this.def.halfWidth ?? 4.6;
+    const layout = this.def.layout;
     for (let i = 0; i < n; i++) {
-      const it = this.def.layout[this.seg[i]];
-      const opts = (it[0] === 'S' ? it[2] : it[3]) || {};
+      const it = layout && layout[this.seg[i]];
+      const opts = (it && (it[0] === 'S' ? it[2] : it[3])) || {};
       W[i] = opts.w ?? base;
     }
     this.W = circularSmooth(W, 16 / DS, this.open);
@@ -563,8 +656,7 @@ export class Track {
   }
 
   _buildTiming() {
-    const first = this.def.layout[0];
-    const opts = first[2] || {};
+    const opts = this.def.timing || (this.def.layout && this.def.layout[0][2]) || {};
     this.gateS = opts.gate ?? 20;
     const count = this.def.checkpoints ?? 8;
     this.checkpoints = [];

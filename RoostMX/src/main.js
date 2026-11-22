@@ -17,7 +17,9 @@ import { AudioSystem } from './audio.js';
 import { UI } from './ui.js';
 import { Garage } from './garage.js';
 import { ImportedBikeVisual, loadModel } from './bike-importer.js';
-import { getBike } from './storage.js';
+import { getBike, getTrackRecord, listTrackSummaries, saveTrackRecord, deleteTrackRecord, updateTrackRecord } from './storage.js';
+import { buildImportedWorld, isImportedId, IMPORT_PREFIX, summary as importSummary, drawImportedPreview } from './imported-track.js';
+import { readTrackPackage, TrackImportError } from './mxb-track.js';
 import { SURF, SURFACES } from './heightfield.js';
 import { GEO } from './bike-geometry.js';
 import { formatTime, formatDelta, clamp, lerp } from './util.js';
@@ -51,6 +53,7 @@ class Game {
     this.ui = new UI(this);
     this.garage = new Garage(this);
     this.importCache = new Map();
+    this.importedTracks = []; // summaries of imported MX Bikes tracks (see imported-track.js)
     this.activeBikeName = 'Roost 450 (procedural)';
     this.bikeDirty = false;
     this.mode = this.settings.game.mode;
@@ -95,6 +98,15 @@ class Game {
       this.ui.toast('Controller disconnected', 'bad');
       this.ui.setPadStatus('');
       if (this.state === 'riding' || this.state === 'countdown') this.pause();
+    });
+    // drop MX Bikes track packages on the track list to import them
+    window.addEventListener('dragover', (e) => {
+      if (this.ui.screen === 'tracks') e.preventDefault();
+    });
+    window.addEventListener('drop', (e) => {
+      if (this.ui.screen !== 'tracks' || !e.dataTransfer || !e.dataTransfer.files.length) return;
+      e.preventDefault();
+      this.importTrackFiles(e.dataTransfer.files);
     });
     window.addEventListener('keydown', (e) => {
       if (e.code === 'F11' || (e.code === 'Enter' && e.altKey)) {
@@ -147,6 +159,7 @@ class Game {
         this.settings.game.activeBike = 'procedural';
       }
     }
+    await this.refreshImportedTracks();
     await this.loadTrack(this.settings.game.track);
     this.state = 'menu';
     this.ui.go('main', { push: false });
@@ -174,7 +187,21 @@ class Game {
 
   // ---------------------------------------------------------------------------------
   async loadTrack(id) {
-    const def = getTrackDef(id);
+    let imported = null;
+    if (isImportedId(id)) {
+      try {
+        imported = await getTrackRecord(id.slice(IMPORT_PREFIX.length));
+      } catch (e) {
+        imported = null;
+      }
+      if (!imported) {
+        this.ui.toast('That imported track is no longer stored. Loading ' + TRACKS[0].name + ' instead.', 'bad', 4500);
+        id = TRACKS[0].id;
+        this.settings.game.track = id;
+        saveSettings(this.settings);
+      }
+    }
+    let def = imported ? { name: imported.name } : getTrackDef(id);
     const prevState = this.state;
     this.state = 'loading';
     this.ui.go('loading', { push: false });
@@ -186,13 +213,22 @@ class Game {
     const T = (this.loadTimes = {});
     let tm = performance.now();
     const lap = (k) => { const n = performance.now(); T[k] = Math.round(n - tm); tm = n; };
-    const track = new Track(def);
-    lap('track');
-    this.ui.setLoading(0.12, 'Shaping terrain…');
-    await nextFrame();
-    tm = performance.now();
-    const hf = generateTerrain(track);
-    lap('heightfield');
+    let track, hf;
+    if (imported) {
+      this.ui.setLoading(0.12, 'Building the imported terrain…');
+      await nextFrame();
+      tm = performance.now();
+      ({ def, track, hf } = buildImportedWorld(imported, imported.scale ?? 1));
+      lap('heightfield');
+    } else {
+      track = new Track(def);
+      lap('track');
+      this.ui.setLoading(0.12, 'Shaping terrain…');
+      await nextFrame();
+      tm = performance.now();
+      hf = generateTerrain(track);
+      lap('heightfield');
+    }
     this.ui.setLoading(0.42, 'Painting dirt and grass…');
     await nextFrame();
     tm = performance.now();
@@ -420,6 +456,115 @@ class Game {
   }
 
   // ---------------------------------------------------------------------------------
+  // Imported MX Bikes tracks (.pkz)
+  async refreshImportedTracks() {
+    try {
+      this.importedTracks = (await listTrackSummaries()).sort((a, b) => (b.created || 0) - (a.created || 0));
+    } catch (e) {
+      this.importedTracks = [];
+    }
+    return this.importedTracks;
+  }
+
+  /** Name of a track id (built-in or imported). */
+  trackName(id) {
+    if (isImportedId(id)) {
+      const t = this.importedTracks.find((x) => IMPORT_PREFIX + x.id === id);
+      return t ? t.name : 'Imported track';
+    }
+    return getTrackDef(id).name;
+  }
+
+  _thumb(rec, scale) {
+    const cv = document.createElement('canvas');
+    cv.width = 360;
+    cv.height = 220;
+    drawImportedPreview(cv, rec, scale);
+    try {
+      return cv.toDataURL('image/jpeg', 0.86);
+    } catch (e) {
+      return '';
+    }
+  }
+
+  /** File picker / drag & drop: read MX Bikes track packages and import them. */
+  async importTrackFiles(files) {
+    const list = Array.from(files || []).filter((f) => /\.(pkz|zip)$/i.test(f.name));
+    if (!list.length) {
+      this.ui.toast('Choose an MX Bikes track package (.pkz or .zip).', 'bad');
+      return;
+    }
+    const back = this.ui.screen;
+    let lastId = null;
+    for (const file of list) {
+      let tracks;
+      this.ui.go('loading', { push: false });
+      this.ui.setLoading(0.02, 'Reading ' + file.name + '…');
+      await nextFrame();
+      try {
+        tracks = await readTrackPackage(file, { onProgress: (p, text) => this.ui.setLoading(0.05 + p * 0.9, text) });
+      } catch (e) {
+        this.ui.show(back);
+        const msg = e instanceof TrackImportError ? e.message : 'Could not read ' + file.name + ': ' + e.message;
+        await this.ui.modal('Track import failed', '<p class="note">' + escapeHtml(msg) + '</p>');
+        continue;
+      }
+      this.ui.show(back);
+      for (const rec of tracks) {
+        const choice = await this.ui.trackImportDialog(rec, { scale: 1, surface: /sand|dune|beach/i.test(rec.name + rec.folder) ? 'sand' : 'dirt' });
+        if (!choice) continue;
+        rec.scale = choice.scale;
+        rec.surface = choice.surface;
+        rec.created = Date.now();
+        try {
+          await saveTrackRecord(rec, { ...importSummary(rec), thumb: this._thumb(rec, rec.scale) });
+          lastId = IMPORT_PREFIX + rec.id;
+          this.ui.toast('Imported ' + rec.name, 'good');
+        } catch (e) {
+          await this.ui.modal('Could not save the track', '<p class="note">' + escapeHtml(e.message || String(e)) + '</p>');
+        }
+      }
+    }
+    await this.refreshImportedTracks();
+    if (lastId) await this.selectTrack(lastId, { stay: true });
+    else if (this.ui.screen === 'tracks') this.ui.buildTrackCards();
+  }
+
+  /** Change the scale / ground of an imported track. */
+  async editImportedTrack(id) {
+    const key = id.slice(IMPORT_PREFIX.length);
+    const rec = await getTrackRecord(key);
+    if (!rec) return;
+    const choice = await this.ui.trackImportDialog(rec, { scale: rec.scale ?? 1, surface: rec.surface || 'dirt', edit: true });
+    if (!choice) return;
+    rec.scale = choice.scale;
+    rec.surface = choice.surface;
+    await saveTrackRecord(rec, { ...importSummary(rec), thumb: this._thumb(rec, rec.scale) });
+    await this.refreshImportedTracks();
+    // best times were set at the old size
+    if (this.records[id]) {
+      delete this.records[id];
+      saveRecords(this.records);
+    }
+    if (this.world && this.world.def.id === id) await this.loadTrack(id);
+    this.ui.go('tracks', { push: false });
+  }
+
+  async deleteImportedTrack(id) {
+    const name = this.trackName(id);
+    const ok = await this.ui.modal('Delete track', '<p class="note">Remove <b>' + escapeHtml(name) + '</b> from Roost MX? The .pkz file itself is not touched.</p>', [{ label: 'Delete', primary: true, value: true }, { label: 'Cancel', value: false }]);
+    if (!ok) return;
+    await deleteTrackRecord(id.slice(IMPORT_PREFIX.length));
+    await this.refreshImportedTracks();
+    if (this.records[id]) {
+      delete this.records[id];
+      saveRecords(this.records);
+    }
+    if (this.settings.game.track === id) await this.selectTrack(TRACKS[0].id, { stay: true });
+    else this.ui.buildTrackCards();
+  }
+
+  // ---------------------------------------------------------------------------------
   // Spawning / resets
   spawnAtStart() {
     const w = this.world;
@@ -475,6 +620,10 @@ class Game {
     this.mode = this.settings.game.mode;
     if (this.bikeDirty) await this.buildBikeVisual();
     if (this.world.def.id !== this.settings.game.track) await this.loadTrack(this.settings.game.track);
+    if (this.world.def.noTiming && this.mode === 'trial') {
+      this.mode = 'free';
+      this.ui.toast('This track has no timing line, so it is ridden in Free Ride.', '', 4000);
+    }
     this.spawnAtStart();
     this.ui.hideMenus();
     this.ui.showHud(true);
@@ -529,12 +678,19 @@ class Game {
     this.ui.go('main', { push: false });
   }
 
-  async selectTrack(id) {
+  async selectTrack(id, { stay = false } = {}) {
     this.settings.game.track = id;
     saveSettings(this.settings);
     const fromPause = this.state === 'paused';
     if (!this.world || this.world.def.id !== id) {
       await this.loadTrack(id);
+    }
+    if (stay) {
+      // (after importing / deleting) back on the track list with the new selection
+      this.state = fromPause ? 'paused' : 'menu';
+      this.ui.history = fromPause ? ['pause'] : ['main'];
+      this.ui.go('tracks', { push: false });
+      return;
     }
     this.ui.history = [];
     if (fromPause) {
@@ -875,7 +1031,7 @@ class Game {
     w.particles.update(dt, w.hf);
     w.marks.update(dt);
     // lap timing
-    if (!frozen) {
+    if (!frozen && !w.def.noTiming) {
       const rec = this.records[w.def.id];
       const evs = w.timer.update(ph.pos.x, ph.pos.z, this.time, rec && rec.splits);
       for (const e of evs) this.onTimerEvent(e);
@@ -1144,7 +1300,7 @@ class Game {
       split,
       splitCls,
       camLabel: CAMERA_LABELS[w.rig.mode].toUpperCase(),
-      showTimer: this.mode === 'trial' || this.settings.graphics.freeRideTimer,
+      showTimer: !w.def.noTiming && (this.mode === 'trial' || this.settings.graphics.freeRideTimer),
       airTime: ph.airborne ? ph.airTime : 0,
       crashed: ph.crashed,
       crashReason: ph.crashReason,
@@ -1181,6 +1337,7 @@ class Game {
 }
 
 const _gl = new THREE.Vector3(), _gr = new THREE.Vector3();
+const escapeHtml = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 // ---------------------------------------------------------------------------------
 function start() {
