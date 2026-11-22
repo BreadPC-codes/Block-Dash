@@ -2,7 +2,8 @@
 // Uses the synthetic packages from tests/make-mxb-fixtures.mjs (built in memory here).
 import { Vector3 } from 'three';
 import { readTrackPackage, parseTrh, alignGrid, sampleProfile, parseRdf, parseBlocks, downsampleGrid, gridHeight, TrackImportError } from '../src/mxb-track.js';
-import { buildImportedWorld, scaledStats, importedDef } from '../src/imported-track.js';
+import { buildImportedWorld, scaledStats, importedDef, smoothHeights } from '../src/imported-track.js';
+import { Heightfield } from '../src/heightfield.js';
 import { BikePhysics, PHYSICS_DT } from '../src/physics.js';
 import { SURF } from '../src/heightfield.js';
 import { LapTimer } from '../src/timing.js';
@@ -65,10 +66,36 @@ for (let k = 0; k < line.pts.length / 2; k += 25) {
   const gx = -(wx - 128), gz = wz - 128;
   hErr = Math.max(hErr, Math.abs(w1.hf.height(gx, gz) - gridHeight(rec.grid, wx / 0.5, wz / 0.5)));
 }
-ok(onDirt / Math.ceil(w1.track.n / 8) > 0.95, `the riding line is painted dirt (${((onDirt / Math.ceil(w1.track.n / 8)) * 100).toFixed(0)} %)`);
+ok(onDirt / Math.ceil(w1.track.n / 8) > 0.95, `the riding line is on the chosen ground (${((onDirt / Math.ceil(w1.track.n / 8)) * 100).toFixed(0)} %)`);
+// shown as it is: one ground all over, no track painted on it
+const uniform = (w, st, slot) => {
+  for (let c = 0; c < w.hf.nx * w.hf.nz; c += 37) if (w.hf.surf[c] !== st || w.hf.splat[c * 4 + slot] !== 255 || w.hf.wear[c] !== 0) return false;
+  return true;
+};
+ok(uniform(w1, SURF.DIRT, 0), 'no generated track: the whole map is one ground type (dirt), no painted line or wear');
+const wg = buildImportedWorld({ ...rec, surface: 'grass' }, 1), wsand = buildImportedWorld({ ...rec, surface: 'sand' }, 1);
+ok(uniform(wg, SURF.GRASS, 1) && uniform(wsand, SURF.SAND, 2) && wsand.def.surface === 'sand', 'Grass and Sand grounds cover the whole map too');
 ok(hErr < 0.05, `game terrain matches the file under the line (max ${(hErr * 100).toFixed(1)} cm)`);
 ok(near(w1.track.finishS, 15, 0.01) && near(w1.track.gateS, 5, 0.01) && w1.track.checkpoints.length === 8, `timing: finish ${w1.track.finishS} m, gate ${w1.track.gateS} m, 8 checkpoints`);
 ok(w1.hf.trackDist && w1.hf.pits && w1.hf.trackDist.length === w1.hf.nx * w1.hf.nz, 'distance-to-track map for the scenery');
+
+console.log('3b) small bumps smoothed out, jumps kept');
+{
+  const hf = new Heightfield([60, 60], 0.5);
+  const jump = (x) => (x > 0 && x < 10 ? 2 * Math.sin((Math.PI * x) / 10) : 0); // a 2 m, 10 m long mound
+  for (let iz = 0; iz < hf.nz; iz++) {
+    for (let ix = 0; ix < hf.nx; ix++) {
+      const x = -30 + ix * 0.5, z = -30 + iz * 0.5;
+      hf.h[iz * hf.nx + ix] = jump(x) + 0.05 * Math.sin(2 * Math.PI * z) + 0.04 * Math.sin(2 * Math.PI * x / 1.2); // + ripples
+    }
+  }
+  const rip = () => { let m = 0; for (let iz = 20; iz < 100; iz++) { const v = hf.h[iz * hf.nx + 20]; m = Math.max(m, Math.abs(v)); } return m; };
+  const r0 = rip(), top0 = hf.height(5, 0);
+  smoothHeights(hf);
+  const r1 = rip(), top1 = hf.height(5, 0);
+  ok(r1 < r0 * 0.2, `ripples (1-1.2 m long) cut from ${(r0 * 100).toFixed(1)} cm to ${(r1 * 100).toFixed(1)} cm`);
+  ok(top1 > 1.9, `a jump keeps its height (${top0.toFixed(2)} -> ${top1.toFixed(2)} m)`);
+}
 
 console.log('4) scaling keeps proportions');
 const w2 = buildImportedWorld(rec, 2), wh = buildImportedWorld(rec, 0.5);
@@ -97,8 +124,9 @@ function ride(world, seconds, vmax = 15) {
     let err = Math.atan2(tp.x - b.pos.x, tp.z - b.pos.z) - Math.atan2(b.fwd.x, b.fwd.z);
     while (err > Math.PI) err -= 2 * Math.PI;
     while (err < -Math.PI) err += 2 * Math.PI;
-    const k = Math.abs(track.interp(track.kappa, pr.s + 10));
-    const vt = Math.min(vmax, Math.sqrt(9.81 * 0.9 / Math.max(k, 1e-3)));
+    // corner speed from the tightest curvature coming up (the simple rider turns in late)
+    const k = Math.max(Math.abs(track.interp(track.kappa, pr.s + 10)), Math.abs(track.interp(track.kappa, pr.s + 28)));
+    const vt = Math.min(vmax, Math.sqrt(9.81 * 0.6 / Math.max(k, 1e-3)));
     const ev = vt - b.forwardSpeed;
     const steer = b.airborne ? 0 : Math.max(-1, Math.min(1, -err * 1.8 + b.angVel.y * 0.25 - pr.d * 0.08));
     b.step(PHYSICS_DT, { throttle: b.airborne ? 0.3 : ev > 0 ? Math.min(1, 0.3 + ev * 0.5) : 0.05, brakeF: ev < -1 ? 0.3 : 0, brakeR: ev < -1 ? 0.2 : 0, steer, lean: 0 });

@@ -948,21 +948,11 @@ export function generateTerrain(track, cell = 0.5) {
         }
       }
     }
-    // surface micro bumps on the riding surface
-    let micro = 0;
-    if (ad < w + 1.5) {
-      const on = 1 - smoothstep(w, w + 1.5, ad);
-      micro = (noise2.noise2(wx * 0.4, wz * 0.4) * 0.022 + noise2.noise2(wx * 1.1 + 9, wz * 1.1) * 0.005) * on;
-      // braking bumps before tight corners
-      const kAhead = Math.abs(track.interp(track.kappa, s + 9));
-      if (kAhead > 1 / 22 && F < 0.05) {
-        const env = smoothstep(1 / 22, 1 / 12, kAhead) * on;
-        micro += env * 0.028 * -Math.cos((2 * Math.PI * s) / 3.2);
-      }
-    }
+    // the riding surface itself is smooth: no ripples or braking bumps (only the track's
+    // jumps, berms, rollers and whoops shape it)
     const wb = ad <= w + 0.8 ? 1 : 1 - smoothstep(w + 0.8, w + shoulder, ad);
     out.E = E;
-    out.M = featH + bermH + micro;
+    out.M = featH + bermH;
     out.wb = wb;
     out.w = w;
     out.ad = ad;

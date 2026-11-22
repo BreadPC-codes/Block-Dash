@@ -425,7 +425,7 @@ export class UI {
     box.appendChild(row);
     const ground = document.createElement('div');
     ground.className = 'import-ground';
-    ground.innerHTML = '<span class="import-label">Ground</span><div class="seg"><button type="button" data-nav data-surf="dirt">Dirt &amp; grass</button><button type="button" data-nav data-surf="sand">Sand</button></div>';
+    ground.innerHTML = '<span class="import-label">Ground</span><div class="seg"><button type="button" data-nav data-surf="dirt">Dirt</button><button type="button" data-nav data-surf="grass">Grass</button><button type="button" data-nav data-surf="sand">Sand</button></div>';
     box.appendChild(ground);
     const notes = document.createElement('ul');
     notes.className = 'import-notes';
@@ -435,7 +435,7 @@ export class UI {
       notes.appendChild(li);
     }
     const li = document.createElement('li');
-    li.textContent = 'Scenery models (.edf), the original terrain textures and the track\'s own objects are not imported: Roost MX dresses the track with its own trees, fences and start gate.';
+    li.textContent = 'The terrain comes in as it is, all in the ground type you pick: Roost MX adds no track, gate or props to it. Scenery models (.edf), the original terrain textures and objects are not imported.';
     notes.appendChild(li);
     box.appendChild(notes);
     const slider = row.querySelector('input');
@@ -501,7 +501,7 @@ export class UI {
       n.className = 'note';
       n.style.gridColumn = '1 / -1';
       n.style.marginTop = '12px';
-      n.innerHTML = '<b>Low</b>: no shadows, 75% render scale, no grass, sparse trees, no anti-aliasing. <b>Medium</b>: 1K shadows, full render scale, some grass. <b>High</b>: 2K soft shadows, up to 1.5× render scale on high-DPI screens, dense grass and forests, full detail terrain near the track.<br><b>Dynamic resolution</b> lowers the render resolution only while the frame rate is below 60 FPS (or your screen\'s refresh rate) and raises it again when there is headroom. <b>Render scale</b> sets the maximum. Anti-aliasing changes apply after a restart. Press F11 (or Alt+Enter) to toggle fullscreen at any time.';
+      n.innerHTML = '<b>Low</b>: no shadows, 75% render scale, fewer props, no anti-aliasing. <b>Medium</b>: 1K shadows, full render scale. <b>High</b>: 2K soft shadows, up to 1.5× render scale on high-DPI screens, full detail terrain near the track.<br><b>Dynamic resolution</b> lowers the render resolution only while the frame rate is below 60 FPS (or your screen\'s refresh rate) and raises it again when there is headroom. <b>Render scale</b> sets the maximum. Anti-aliasing changes apply after a restart. Press F11 (or Alt+Enter) to toggle fullscreen at any time.';
       grid.appendChild(n);
     }
     if (tab === 'controls') {

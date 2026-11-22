@@ -44,6 +44,9 @@ const ok = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fai
   const w = await page.evaluate(() => { const g = window.__roost, w = g.world; return { id: w.def.id, sel: g.settings.game.track, size: w.hf.sizeX, len: w.track.length, scale: w.def.scale, cards: document.querySelectorAll('.track-card.imported').length }; });
   ok(w.id === w.sel && w.size === 384 && Math.abs(w.len - 582.7) < 2 && w.scale === 1.5, `imported and selected: ${w.id}, ${w.size} m map, ${w.len.toFixed(1)} m lap at ${w.scale * 100} %`);
   ok(w.cards === 1, 'imported track card in the list');
+  const dressing = await page.evaluate(() => { const e = window.__roost.world.env; let meshes = 0; e.group.traverse((o) => { if (o.isMesh) meshes++; }); return { gate: !!e.gate, scatters: e.scatters.length, meshes, fog: !!window.__roost.scene.fog }; });
+  ok(!dressing.gate && dressing.scatters === 0 && dressing.meshes === 0, `shown as it is: no generated gate, fences or props (${JSON.stringify(dressing)})`);
+  ok(!dressing.fog, 'no distance haze');
   await page.screenshot({ path: dir + 'import-tracks.png' });
 
   // 2) ride it

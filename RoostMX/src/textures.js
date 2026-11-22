@@ -188,31 +188,6 @@ export function makeParticleTexture() {
   return toTexture(c, { repeat: false, srgb: false, aniso: 1 });
 }
 
-/** Grass tuft billboard (alpha tested). */
-export function makeGrassTexture() {
-  const w = 128, h = 128;
-  const c = canvas(w, h);
-  const ctx = c.getContext('2d');
-  const rng = makeRng(77);
-  for (let i = 0; i < 46; i++) {
-    const x0 = 8 + rng() * (w - 16);
-    const len = h * (0.45 + rng() * 0.5);
-    const lean = (rng() - 0.5) * 30;
-    const g = ctx.createLinearGradient(0, h, 0, h - len);
-    const shade = 0.7 + rng() * 0.5;
-    g.addColorStop(0, `rgb(${40 * shade},${62 * shade},${22 * shade})`);
-    g.addColorStop(1, `rgb(${120 * shade},${158 * shade},${70 * shade})`);
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.moveTo(x0 - 2.2, h);
-    ctx.quadraticCurveTo(x0 + lean * 0.3, h - len * 0.6, x0 + lean, h - len);
-    ctx.quadraticCurveTo(x0 + lean * 0.3 + 1.5, h - len * 0.6, x0 + 2.2, h);
-    ctx.fill();
-  }
-  const t = toTexture(c, { repeat: false, aniso: 4 });
-  return t;
-}
-
 /** Leafy texture for deciduous tree canopies / bushes (tileable). */
 export function makeLeafTexture(size = 256) {
   const n = tileNoise(size, 8, 5, 91, 0.6);
@@ -298,16 +273,6 @@ export function makeCheckerTexture() {
   }
   const t = toTexture(c, { repeat: true });
   return t;
-}
-
-export function makeTapeTexture() {
-  const c = canvas(64, 8);
-  const ctx = c.getContext('2d');
-  for (let i = 0; i < 8; i++) {
-    ctx.fillStyle = i % 2 ? '#f2f2f2' : '#e0261c';
-    ctx.fillRect(i * 8, 0, 8, 8);
-  }
-  return toTexture(c, { aniso: 2 });
 }
 
 /**

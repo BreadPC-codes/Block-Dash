@@ -2,13 +2,15 @@
 // Heightfield + Track at a chosen scale. Scaling is uniform - width, length and height
 // together - so the track keeps its proportions; 100 % is the real size from the file,
 // which matches the bike (MX Bikes and Roost MX both work in metres).
+// The map is shown as it is: one ground type all over, no generated track, gate or props.
+// The file's track line is still used, unseen, for lap timing, the minimap and respawns.
 //
 // MX Bikes uses a left-handed frame (X right, Y up, Z forward); Roost MX / three.js is
 // right-handed, so X is mirrored on the way in (otherwise every left turn would become a
 // right turn). The map is centred on the middle of the terrain.
 import { Heightfield, SURF } from './heightfield.js';
 import { Track, DS } from './track.js';
-import { SimplexNoise, clamp, smoothstep } from './util.js';
+import { clamp } from './util.js';
 import { gridHeight } from './mxb-track.js';
 
 export const IMPORT_PREFIX = 'import:';
@@ -47,8 +49,8 @@ export function importedDef(rec, scale) {
     description: (rec.author ? 'By ' + rec.author + ' · ' : '') + 'Imported from ' + rec.source,
     size: [g.sizeX * scale, g.sizeZ * scale],
     surface: rec.surface === 'sand' ? 'sand' : 'dirt',
-    groundStyle: rec.surface === 'sand' ? 'dunes' : 'valley',
-    vegetation: rec.surface === 'sand' ? 'coastal' : 'mixed',
+    // the land around the map matches its ground
+    groundStyle: rec.surface === 'sand' ? 'dunes' : rec.surface === 'grass' ? 'valley' : 'dirt',
     halfWidth: clamp(5.5 * scale, 3, 9),
     seed: parseInt(rec.id.replace(/\D/g, '').slice(0, 6) || '7', 10) || 7,
     checkpoints: 8,
@@ -116,7 +118,7 @@ export function buildImportedWorld(rec, scale = 1) {
     const row = iz * nx;
     for (let ix = 0; ix < nx; ix++) H[row + ix] = gridHeight(g, giOf[ix], gj) * scale;
   }
-  hf.computeRange();
+  smoothHeights(hf);
   // centre line
   let pts;
   if (rec.line) {
@@ -137,7 +139,7 @@ export function buildImportedWorld(rec, scale = 1) {
   def.ground = (x, z) => hf.height(x, z);
   def.timing = timingFor(rec, scale, def.open);
   const track = new Track(def);
-  paintSurfaces(hf, track, { sand: def.surface === 'sand' });
+  groundSurface(hf, track, rec.surface || 'dirt', !!rec.line);
   return { def, track, hf };
 }
 
@@ -154,86 +156,75 @@ function timingFor(rec, scale, open) {
 }
 
 /**
- * Dirt along the riding line, grass (or sand) elsewhere, dirt on steep faces; distance to
- * the line per cell (used to keep trees and props off the track).
+ * One ground type over the whole map (no track painted on it) and, per cell, the distance
+ * to the track line - only used to give the terrain near the line its full detail.
  */
-export function paintSurfaces(hf, track, { sand = false } = {}) {
+export function groundSurface(hf, track, surface = 'dirt', hasLine = true) {
   const nx = hf.nx, nz = hf.nz, cell = hf.cell, halfX = hf.halfX, halfZ = hf.halfZ;
   const count = nx * nz;
-  const R = 30, R2 = R * R;
-  const near = new Int32Array(count).fill(-1);
-  const nd = new Float32Array(count).fill(1e9);
-  const stride = Math.max(1, Math.round(1.5 / DS));
-  for (let i = 0; i < track.n; i += stride) {
-    const cx = track.x[i], cz = track.z[i];
-    const ix0 = Math.max(0, Math.floor((cx - R + halfX) / cell)), ix1 = Math.min(nx - 1, Math.ceil((cx + R + halfX) / cell));
-    const iz0 = Math.max(0, Math.floor((cz - R + halfZ) / cell)), iz1 = Math.min(nz - 1, Math.ceil((cz + R + halfZ) / cell));
-    for (let iz = iz0; iz <= iz1; iz++) {
-      const dz = iz * cell - halfZ - cz, dz2 = dz * dz;
-      if (dz2 > R2) continue;
-      let c = iz * nx + ix0;
-      for (let ix = ix0; ix <= ix1; ix++, c++) {
-        const dx = ix * cell - halfX - cx;
-        const d2 = dx * dx + dz2;
-        if (d2 < nd[c]) { nd[c] = d2; near[c] = i; }
+  const st = surface === 'sand' ? SURF.SAND : surface === 'grass' ? SURF.GRASS : SURF.DIRT;
+  const slot = st === SURF.SAND ? 2 : st === SURF.GRASS ? 1 : 0;
+  hf.splat.fill(0);
+  for (let c = 0; c < count; c++) hf.splat[c * 4 + slot] = 255;
+  hf.surf.fill(st);
+  hf.wear.fill(0);
+  const trackDist = new Float32Array(count).fill(hasLine ? 1e4 : 50);
+  if (hasLine) {
+    const R = 100, R2 = R * R;
+    const stride = Math.max(1, Math.round(2 / DS));
+    const cstep = Math.max(1, Math.round(2 / cell)); // coarse: detail selection only
+    for (let i = 0; i < track.n; i += stride) {
+      const cx = track.x[i], cz = track.z[i];
+      const ix0 = Math.max(0, Math.floor((cx - R + halfX) / cell)), ix1 = Math.min(nx - 1, Math.ceil((cx + R + halfX) / cell));
+      const iz0 = Math.max(0, Math.floor((cz - R + halfZ) / cell)), iz1 = Math.min(nz - 1, Math.ceil((cz + R + halfZ) / cell));
+      for (let iz = iz0 - (iz0 % cstep); iz <= iz1; iz += cstep) {
+        const dz = iz * cell - halfZ - cz, dz2 = dz * dz;
+        if (dz2 > R2) continue;
+        for (let ix = ix0 - (ix0 % cstep); ix <= ix1; ix += cstep) {
+          const dx = ix * cell - halfX - cx;
+          const d = Math.sqrt(dx * dx + dz2);
+          const c = iz * nx + ix;
+          if (d < trackDist[c]) trackDist[c] = d;
+        }
       }
     }
-  }
-  const noise = new SimplexNoise((track.def.seed ?? 1) + 5);
-  const splat = hf.splat, wear = hf.wear, surf = hf.surf, H = hf.h;
-  const trackDist = new Float32Array(count);
-  for (let iz = 0; iz < nz; iz++) {
-    const wz = iz * cell - halfZ;
-    for (let ix = 0; ix < nx; ix++) {
-      const c = iz * nx + ix;
-      const wx = ix * cell - halfX;
-      let dirtW = 0, wearW = 0, d = 1e4;
-      if (near[c] >= 0) {
-        const i = near[c];
-        // perpendicular distance to the line through the nearest sample
-        const ddx = wx - track.x[i], ddz = wz - track.z[i];
-        d = Math.abs(ddx * track.tz[i] - ddz * track.tx[i]);
-        d = Math.min(Math.sqrt(nd[c]), Math.max(d, 0));
-        const w = track.W[i];
-        const en = noise.noise2(wx * 0.13, wz * 0.13) * 0.9 + noise.noise2(wx * 0.5, wz * 0.5) * 0.35;
-        dirtW = 1 - smoothstep(w + 0.6 + en, w + 2.6 + en, d);
-        wearW = (1 - smoothstep(0.15 * w, 0.95 * w, d)) * (0.6 + 0.4 * noise.noise2(wx * 0.08, wz * 0.35));
+    // spread the coarse samples to their neighbours
+    if (cstep > 1) {
+      for (let iz = 0; iz < nz; iz++) {
+        const bz = iz - (iz % cstep);
+        for (let ix = 0; ix < nx; ix++) {
+          const bx = ix - (ix % cstep);
+          trackDist[iz * nx + ix] = trackDist[bz * nx + bx];
+        }
       }
-      trackDist[c] = d;
-      // steep ground (jump faces, berms built off the line) shows dirt
-      const ixa = Math.max(0, ix - 1), ixb = Math.min(nx - 1, ix + 1), iza = Math.max(0, iz - 1), izb = Math.min(nz - 1, iz + 1);
-      const sx = (H[iz * nx + ixb] - H[iz * nx + ixa]) / ((ixb - ixa) * cell || 1);
-      const sz = (H[izb * nx + ix] - H[iza * nx + ix]) / ((izb - iza) * cell || 1);
-      const slope = Math.sqrt(sx * sx + sz * sz);
-      dirtW = Math.max(dirtW, smoothstep(0.42, 0.7, slope) * (1 - smoothstep(25, 60, d)));
-      let wD, wG, wS;
-      if (sand) {
-        const grassPatch = smoothstep(0.35, 0.6, noise.fbm(wx / 30, wz / 30, 2)) * smoothstep(14, 30, d);
-        wS = 1 - grassPatch;
-        wG = grassPatch;
-        wD = 0;
-        wearW = Math.max(wearW, dirtW * 0.35);
-      } else {
-        const patch = smoothstep(0.55, 0.8, noise.fbm(wx / 9, wz / 9, 2)) * (1 - smoothstep(6, 18, d));
-        wD = Math.max(dirtW, patch * 0.7);
-        wG = 1 - wD;
-        wS = 0;
-      }
-      const o = c * 4;
-      const sum = wD + wG + wS || 1;
-      splat[o] = Math.round((wD / sum) * 255);
-      splat[o + 1] = Math.round((wG / sum) * 255);
-      splat[o + 2] = Math.round((wS / sum) * 255);
-      splat[o + 3] = 0;
-      wear[c] = Math.round(clamp(wearW, 0, 1) * 255);
-      let st = SURF.GRASS, bw = wG;
-      if (wD > bw) { st = SURF.DIRT; bw = wD; }
-      if (wS > bw) st = SURF.SAND;
-      surf[c] = st;
     }
   }
   hf.trackDist = trackDist;
   hf.pits = [];
+}
+
+/**
+ * Smooth out small bumps and ripples (a binomial filter over +-2 cells, about 0.5 m at the
+ * usual cell size): ruts and chatter under 1.5 m go, jumps, berms and hills stay.
+ */
+export function smoothHeights(hf) {
+  const nx = hf.nx, nz = hf.nz, H = hf.h;
+  const tmp = new Float32Array(H.length);
+  const k0 = 6 / 16, k1 = 4 / 16, k2 = 1 / 16;
+  for (let iz = 0; iz < nz; iz++) {
+    const r = iz * nx;
+    for (let ix = 0; ix < nx; ix++) {
+      const a = H[r + Math.max(0, ix - 2)], b = H[r + Math.max(0, ix - 1)], c = H[r + ix];
+      const d = H[r + Math.min(nx - 1, ix + 1)], e = H[r + Math.min(nx - 1, ix + 2)];
+      tmp[r + ix] = c * k0 + (b + d) * k1 + (a + e) * k2;
+    }
+  }
+  for (let iz = 0; iz < nz; iz++) {
+    const r0 = Math.max(0, iz - 2) * nx, r1 = Math.max(0, iz - 1) * nx, r = iz * nx;
+    const r3 = Math.min(nz - 1, iz + 1) * nx, r4 = Math.min(nz - 1, iz + 2) * nx;
+    for (let ix = 0; ix < nx; ix++) H[r + ix] = tmp[r + ix] * k0 + (tmp[r1 + ix] + tmp[r3 + ix]) * k1 + (tmp[r0 + ix] + tmp[r4 + ix]) * k2;
+  }
+  hf.computeRange();
 }
 
 /**

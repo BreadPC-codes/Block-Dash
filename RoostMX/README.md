@@ -194,9 +194,10 @@ finish you are taken back to the start. Every jump on it is checked with the rea
 physics (`node tests/jump-tuner.mjs`) for a safe speed window and a mid-ramp landing.
 
 Tracks include a start straight with a working starting gate, bermed corners, doubles,
-a triple, tabletops, a step-up, a rhythm section, whoops, rollers, braking bumps and
-elevation changes, plus trackside tape, banners, tire walls, hay bales, bleachers with
-spectators, a timing tower, pits, fences, trees and distant mountains or dunes.
+a triple, tabletops, a step-up, a rhythm section, whoops, rollers and elevation changes,
+plus banners, tire walls, hay bales, rocks, bleachers with spectators, a timing tower,
+pits and distant mountains or dunes. The riding surface itself is smooth (no ripples or
+braking bumps), and there are no fences, trees, bushes, grass tufts or distance haze.
 Dirt, grass, gravel and sand each have their own grip and rolling resistance.
 
 ### Importing MX Bikes tracks (.pkz)
@@ -223,12 +224,16 @@ real size** from the file: MX Bikes and Roost MX both work in metres, so at 100 
 track is in proportion to the bike. The dialog shows the map size, lap length and height
 range at the chosen scale, plus a preview with a 50 m scale bar; jumps need roughly √scale
 times the speed. Change it any time: click the track's card → *Scale & ground* (best laps
-are reset, they were set at the old size). *Ground* chooses dirt & grass or sand.
+are reset, they were set at the old size). *Ground* chooses what the whole map is made
+of: dirt, grass or sand (grip and look; the land around the map matches it).
 
-**What does not come in:** the scenery models (`.edf`), the terrain graphics (`.map`) and
-the track's textures and objects. Roost MX paints dirt along the track line and on steep
-faces, grass (or sand) elsewhere, and dresses the track with its own trees, fences, gate,
-banners and spectators. A track without a centre line can still be ridden in Free Ride
+**Shown as it is:** the terrain comes in exactly as the file has it, all in the ground you
+picked - Roost MX adds no track, start gate, finish arch, banners, grandstands, fences or
+other props to it (the file's track line is still used, unseen, for timing, the minimap and
+respawns). Small bumps and ripples under about 1.5 m are smoothed out; jumps, berms and
+hills keep their shape. **What does not come in:** the scenery models (`.edf`), the terrain
+graphics (`.map`) and the track's textures and objects. A track without a centre line can
+still be ridden in Free Ride
 (spawning on the flattest ground near the middle). Protected (encrypted) packages are not
 plain ZIP archives; they are refused, never decrypted. Imported tracks are stored on this
 computer (IndexedDB, about 8 MB each); the `.pkz` itself is never modified. Please respect
@@ -282,7 +287,8 @@ track authors' licences: import tracks you have downloaded for your own riding.
 linkage shock, exhaust, plastics and number plates; rider with helmet, goggles, jersey,
 gloves, pants and boots posed by two-bone IK each frame (standing/sitting, leaning,
 weight shifting, foot dab in corners, absorbing landings). Dirt roost, dust, landing
-bursts and tire marks. Sky with clouds, sun shadows, fog, image-based lighting.
+bursts and tire marks. Sky with clouds, sun shadows, image-based lighting; no distance
+haze, so far hills stay crisp.
 
 **Cameras** — Chase, Close chase, Helmet (first person), Free camera; look back;
 smooth transitions; terrain collision avoidance.
@@ -300,10 +306,9 @@ sensitivity and distance, controller sensitivity and deadzone, bike color and ra
 number, keyboard and controller bindings, graphics quality, render scale, dynamic
 resolution, anti-aliasing, fullscreen, speed units, minimap, FPS, volumes.
 
-**Graphics presets** — Low: no shadows, 75% render scale, no grass, sparse trees,
-coarser terrain, no anti-aliasing. Medium: shadows, full render scale, some grass.
-High: 2K soft shadows, up to 1.5× render scale on high-DPI screens, dense grass and
-forests, full-detail terrain near the track.
+**Graphics presets** — Low: no shadows, 75% render scale, fewer props, coarser
+terrain, no anti-aliasing. Medium: shadows, full render scale. High: 2K soft shadows,
+up to 1.5× render scale on high-DPI screens, full-detail terrain near the track.
 **Dynamic resolution** (on by default) lowers the render resolution only while the
 frame rate is below 60 FPS (or the screen's refresh rate) and raises it again when
 there is headroom; **Render scale** sets its maximum. **Anti-aliasing** can be Auto
@@ -312,14 +317,14 @@ rate, current resolution, draw calls and triangles.
 
 **Performance** — the renderer is built to keep draw calls and per-pixel work low:
 the bike and the rider are one skinned mesh each (one draw call), trackside props are
-merged into a few batches, trees/bushes/rocks/tyre walls/fences/crowd are packed every
-frame into one instanced draw per level of detail with view and distance culling,
-terrain chunks switch between three levels of detail with the camera distance, the
-splat shader skips absent layers and distant detail, grass fades out with distance,
-the sky is rendered once into a cube map, and rough surfaces get their ambient light
-from spherical harmonics instead of environment-map lookups. Compared with the first
-release this is ~4× fewer draw calls and ~3.5× fewer triangles per frame, and 2–3×
-less rendering time at the same preset (measured with `tests/perf.cjs`).
+merged into a few batches, rocks/tyre walls/hay bales/crowd are packed every frame
+into one instanced draw per level of detail with view and distance culling, terrain
+chunks switch between three levels of detail with the camera distance, the splat
+shader skips absent layers and distant detail, the sky is rendered once into a cube
+map, and rough surfaces get their ambient light from spherical harmonics instead of
+environment-map lookups. Compared with the first release this is ~4× fewer draw calls
+and ~3.5× fewer triangles per frame, and 2–3× less rendering time at the same preset
+(measured with `tests/perf.cjs`).
 
 ## Garage and custom bikes
 

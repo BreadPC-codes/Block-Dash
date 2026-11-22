@@ -111,6 +111,15 @@ for (const def of TRACKS) {
     const ev = vt - speed;
     if (ev > 0) throttle = clamp(0.3 + ev * (tr.open ? 0.9 : 0.5), 0, 1);
     else { brakeF = clamp(-ev * (tr.open ? 0.45 : 0.25), 0, 0.8); brakeR = clamp(-ev * (tr.open ? 0.35 : 0.2), 0, 0.6); throttle = 0.05; }
+    // a jump with a speed hint: that is a takeoff speed checked by tests/jump-tuner.mjs, which
+    // holds it all the way to the lip - so hold it up the face the same way, never brake there
+    // (the defaults above for jumps without one already allow for the speed lost on the face)
+    const fNow = tr.featureAt(pr.s);
+    if (fNow && fNow.spec.speed != null && fNow.lips.length && pr.s < fNow.lips[0] && !b.airborne) {
+      throttle = clamp(0.65 + ev * 0.9, 0, 1);
+      brakeF = 0;
+      brakeR = 0;
+    }
     if (b.airborne) { throttle = 0.3; brakeF = 0; brakeR = 0; sinceAir = 0; } else sinceAir += dt;
     if (!b.front.contact) brakeF = 0;
     // like a rider: no braking on a landing ramp or right after touching down

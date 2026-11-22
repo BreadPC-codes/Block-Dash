@@ -143,14 +143,15 @@ export function makeTerrainMaterial(tex, { sandy = false, quality = 'high' } = {
           vec3 wN = normalize((vec4(normal, 0.0) * viewMatrix).xyz);
           vec3 T = normalize(vec3(1.0, 0.0, 0.0) - wN * wN.x);
           vec3 B = normalize(cross(T, wN));
-          vec3 pN = normalize(wN + (T * nt.x + B * nt.y) * ns * 0.55);
+          // only a hint of surface detail: the ground is meant to look smooth
+          vec3 pN = normalize(wN + (T * nt.x + B * nt.y) * ns * 0.12);
           normal = normalize((viewMatrix * vec4(pN, 0.0)).xyz);
         }
         #endif`
       );
     patchRough(shader);
   };
-  mat.customProgramCacheKey = () => 'roost-terrain-v3' + (sandy ? 's' : 'd') + Q + roughKey();
+  mat.customProgramCacheKey = () => 'roost-terrain-v4' + (sandy ? 's' : 'd') + Q + roughKey();
   return mat;
 }
 
@@ -367,6 +368,11 @@ export class TerrainView {
 }
 
 /** Far landscape beyond the playable heightfield (mountains or dunes), vertex coloured. */
+const smoothstepB = (a, b, v) => {
+  const t = Math.min(1, Math.max(0, (v - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
 export function buildBackdrop(track, hf, style, quality) {
   const ext = 3400;
   const cellB = quality === 'low' ? 80 : 50;
@@ -378,8 +384,8 @@ export function buildBackdrop(track, hf, style, quality) {
   const innerX = halfX - cellB * 1.2, innerZ = halfZ - cellB * 1.2;
   const G = track.ground;
   const c1 = new THREE.Color(), c2 = new THREE.Color();
-  const grassLow = new THREE.Color(style === 'dunes' ? 0xc9b48a : 0x4c6a30);
-  const grassHigh = new THREE.Color(style === 'dunes' ? 0xd9c49a : 0x3d5a2a);
+  const grassLow = new THREE.Color(style === 'dunes' ? 0xc9b48a : style === 'dirt' ? 0x5d4c3e : 0x4c6a30);
+  const grassHigh = new THREE.Color(style === 'dunes' ? 0xd9c49a : style === 'dirt' ? 0x534438 : 0x3d5a2a);
   const rock = new THREE.Color(style === 'dunes' ? 0xbca37a : 0x6f6a62);
   const snow = new THREE.Color(0xeef2f5);
   for (let j = 0; j <= m; j++) {
@@ -388,7 +394,12 @@ export function buildBackdrop(track, hf, style, quality) {
       const x = -ext + i * cellB, z = -ext + j * cellB;
       let h;
       if (Math.abs(x) <= halfX && Math.abs(z) <= halfZ) h = hf.height(x, z) - 2.5;
-      else h = G(x, z);
+      else {
+        // no distance haze: the far ground settles to the horizon instead of ending in a cut
+        const r = Math.max(Math.abs(x), Math.abs(z));
+        const fall = 1 - smoothstepB(ext * 0.7, ext * 0.97, r);
+        h = -8 + (G(x, z) + 8) * fall;
+      }
       pos[k * 3] = x; pos[k * 3 + 1] = h; pos[k * 3 + 2] = z;
       const hn = h / 120;
       c1.copy(grassLow).lerp(grassHigh, Math.min(1, Math.max(0, hn * 2)));

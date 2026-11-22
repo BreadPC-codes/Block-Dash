@@ -190,7 +190,7 @@ export const TRACKS = [
       ['L', 150, 18],
       ['S', 124, { features: [{ type: 'whoops', at: 20, n: 14, h: 0.5, spacing: 3.8 }] }],
       ['R', 120, 16],
-      ['S', 112, { features: [{ type: 'double', at: 18, h1: 2.0, face: 27, gap: 16, h2: 2.0, land: 22 }] }],
+      ['S', 112, { features: [{ type: 'double', at: 18, h1: 2.0, face: 27, gap: 16, h2: 2.0, land: 22, speed: 15 }] }],
       ['L', 165, 15],
       ['S', 196, {
         features: [

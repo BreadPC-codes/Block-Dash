@@ -1,4 +1,5 @@
-// Outdoor environment: sky, sun & shadows, fog, vegetation and trackside props.
+// Outdoor environment: sky, sun & shadows, rocks and trackside props (no fences, trees,
+// bushes, grass tufts or distance haze).
 // Everything is instanced or merged to keep draw calls low; solid props register
 // colliders that the bike physics uses.
 import * as THREE from 'three';
@@ -8,15 +9,15 @@ import { ColliderSet } from './colliders.js';
 import { makeRng, clamp, lerp, smoothstep } from './util.js';
 import { DS } from './track.js';
 import {
-  makeGrassTexture, makeBannerTexture, makeBannerAtlas, makeCheckerTexture, makeTapeTexture, makeWindowTexture,
+  makeBannerTexture, makeBannerAtlas, makeCheckerTexture, makeWindowTexture,
 } from './textures.js';
 import { makePartMaterial, bakePart, mergeBaked } from './part-material.js';
 import { computeEnvSH, patchRough, roughKey } from './ambient.js';
 
 export const QUALITY_PRESETS = {
-  low: { shadows: false, shadowMap: 1024, pixelRatio: 0.75, grass: 0, grassDist: 0, trees: 0.4, bushes: 0.35, props: 0.6, antialias: false, particles: 300, terrain: 'low', fogFar: 950, crowd: 0.4, lod0: 40, lod1: 170, bushDist: 200, skyRes: 256, aniso: 1 },
-  medium: { shadows: true, shadowMap: 1024, pixelRatio: 1.0, grass: 15000, grassDist: 50, trees: 0.7, bushes: 0.65, props: 1, antialias: true, particles: 700, terrain: 'medium', fogFar: 1500, crowd: 0.7, lod0: 55, lod1: 210, bushDist: 280, skyRes: 512, aniso: 2 },
-  high: { shadows: true, shadowMap: 2048, pixelRatio: 1.5, grass: 38000, grassDist: 72, trees: 1, bushes: 1, props: 1, antialias: true, particles: 1300, terrain: 'high', fogFar: 2200, crowd: 1, lod0: 75, lod1: 250, bushDist: 360, skyRes: 512, aniso: 4 },
+  low: { shadows: false, shadowMap: 1024, pixelRatio: 0.75, props: 0.6, antialias: false, particles: 300, terrain: 'low', crowd: 0.4, lod0: 40, skyRes: 256, aniso: 1 },
+  medium: { shadows: true, shadowMap: 1024, pixelRatio: 1.0, props: 1, antialias: true, particles: 700, terrain: 'medium', crowd: 0.7, lod0: 55, skyRes: 512, aniso: 2 },
+  high: { shadows: true, shadowMap: 2048, pixelRatio: 1.5, props: 1, antialias: true, particles: 1300, terrain: 'high', crowd: 1, lod0: 75, skyRes: 512, aniso: 4 },
 };
 
 const ENV_PRESETS = {
@@ -42,39 +43,6 @@ export function roughIBL(mat, key) {
   mat.onBeforeCompile = (sh) => patchRough(sh);
   mat.customProgramCacheKey = () => 'rough-' + key + '-' + roughKey();
   return mat;
-}
-
-/** Instances split into spatial cells, one InstancedMesh per cell (used for grass). */
-class ChunkedInstances {
-  constructor(geometry, material, cell = 96) {
-    this.geometry = geometry;
-    this.material = material;
-    this.cell = cell;
-    this.cells = new Map();
-  }
-  add(matrix, color) {
-    const x = matrix.elements[12], z = matrix.elements[14];
-    const key = Math.floor(x / this.cell) + ':' + Math.floor(z / this.cell);
-    let c = this.cells.get(key);
-    if (!c) this.cells.set(key, (c = { m: [], c: [] }));
-    c.m.push(matrix.clone());
-    if (color) c.c.push(color.clone());
-  }
-  build(group, { cast = true, receive = true } = {}) {
-    const meshes = [];
-    for (const c of this.cells.values()) {
-      const im = new THREE.InstancedMesh(this.geometry, this.material, c.m.length);
-      c.m.forEach((m, i) => im.setMatrixAt(i, m));
-      if (c.c.length) c.c.forEach((col, i) => im.setColorAt(i, col));
-      im.castShadow = cast;
-      im.receiveShadow = receive;
-      im.computeBoundingSphere();
-      im.matrixAutoUpdate = false;
-      group.add(im);
-      meshes.push(im);
-    }
-    return meshes;
-  }
 }
 
 const _sph = new THREE.Sphere();
@@ -232,65 +200,6 @@ function merge(list) {
 }
 
 // --- tree / plant geometries (lod 0 = full detail, higher = cheaper) -------------------------
-function pineGeometry(rng, lod = 0) {
-  const parts = [];
-  const trunk = lod ? new THREE.CylinderGeometry(0.13, 0.22, 2.4, 4, 1, true) : new THREE.CylinderGeometry(0.13, 0.22, 2.4, 7);
-  trunk.translate(0, 1.2, 0);
-  parts.push(colorize(trunk, 0x5a3d26, 0.1, rng));
-  const tiers = lod
-    ? [[1.9, 2.6, 1.7], [1.35, 2.4, 3.0], [0.75, 2.0, 4.4]]
-    : [[1.9, 2.4, 1.7], [1.55, 2.2, 2.75], [1.2, 2.0, 3.7], [0.85, 1.8, 4.55], [0.5, 1.4, 5.3]];
-  for (const [r, h, y] of tiers) {
-    const c = new THREE.ConeGeometry(r, h, lod ? 6 : 9, 1);
-    c.translate(0, y + h / 2 - 0.4, 0);
-    parts.push(colorize(c, 0x2b4a26, 0.14, rng));
-  }
-  return merge(parts);
-}
-function leafyGeometry(rng, lod = 0) {
-  const parts = [];
-  const trunk = lod ? new THREE.CylinderGeometry(0.16, 0.26, 3.2, 4, 1, true) : new THREE.CylinderGeometry(0.16, 0.26, 3.2, 7);
-  trunk.translate(0, 1.6, 0);
-  parts.push(colorize(trunk, 0x5e4630, 0.1, rng));
-  const blobs = lod >= 2
-    ? [[0, 4.3, 0, 2.15], [0.9, 3.7, 0.35, 1.5], [-0.8, 3.8, -0.45, 1.55]]
-    : [[0, 4.2, 0, 1.9], [1.0, 3.7, 0.5, 1.35], [-0.9, 3.8, -0.4, 1.4], [0.2, 3.6, -1.0, 1.3], [-0.3, 5.0, 0.3, 1.25]];
-  for (const [x, y, z, r] of blobs) {
-    const b = new THREE.IcosahedronGeometry(r, lod ? 0 : 1);
-    b.translate(x, y, z);
-    parts.push(colorize(b, 0x4a6e2c, 0.16, rng));
-  }
-  return merge(parts);
-}
-function palmGeometry(rng, lod = 0) {
-  const parts = [];
-  const pts = [];
-  for (let i = 0; i <= 6; i++) pts.push(new THREE.Vector3(Math.sin(i * 0.25) * 0.5, i * 0.95, 0));
-  const trunk = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), lod ? 5 : 12, 0.17, lod ? 4 : 7);
-  parts.push(colorize(trunk, 0x8a6f4e, 0.12, rng));
-  const top = pts[pts.length - 1];
-  const nl = lod ? 6 : 8;
-  for (let i = 0; i < nl; i++) {
-    const leaf = new THREE.BoxGeometry(0.5, 0.04, 2.6);
-    leaf.translate(0, 0, 1.3);
-    leaf.rotateX(0.45);
-    leaf.rotateY((i / nl) * Math.PI * 2);
-    leaf.translate(top.x, top.y, top.z);
-    parts.push(colorize(leaf, 0x4f7a2e, 0.15, rng));
-  }
-  return merge(parts);
-}
-function bushGeometry(rng, color = 0x45662a, lod = 0) {
-  const parts = [];
-  const r2 = makeRng(97);
-  for (let i = 0; i < (lod ? 2 : 3); i++) {
-    const b = new THREE.IcosahedronGeometry((0.55 + r2() * 0.35) * (lod ? 1.15 : 1), lod ? 0 : 1);
-    b.scale(1, 0.7, 1);
-    b.translate((r2() - 0.5) * 0.8, 0.35, (r2() - 0.5) * 0.8);
-    parts.push(colorize(b, color, 0.18, rng));
-  }
-  return merge(parts);
-}
 function rockGeometry(rng, lod = 0) {
   const g = new THREE.DodecahedronGeometry(0.7, lod ? 0 : 1);
   const p = g.getAttribute('position');
@@ -337,7 +246,6 @@ export class Environment {
   build() {
     this.scene.add(this.group);
     this.scatters = [];
-    this.grassCells = [];
     const T = (this.buildTimes = {});
     let t = performance.now();
     const lap = (k) => { const n = performance.now(); T[k] = Math.round(n - t); t = n; };
@@ -345,12 +253,15 @@ export class Environment {
     lap('sky');
     this._lights();
     if (this.track.def.seaSide) this._sea();
-    this._vegetation();
-    lap('vegetation');
-    this._trackProps();
-    lap('trackProps');
-    this._venue();
-    lap('venue');
+    // imported maps are shown as they are: no generated track dressing at all
+    if (!this.track.def.imported) {
+      this._rocks();
+      lap('rocks');
+      this._trackProps();
+      lap('trackProps');
+      this._venue();
+      lap('venue');
+    }
     this._batchStatic();
     lap('batch');
     return this;
@@ -386,9 +297,9 @@ export class Environment {
     const bgScene = new THREE.Scene();
     const sky = makeSky(true);
     bgScene.add(sky);
-    // below the horizon: the fog colour that distant terrain fades into
+    // below the horizon: the colour of the far ground (there is no distance haze)
     const belowGeo = new THREE.SphereGeometry(4000, 32, 12, 0, Math.PI * 2, Math.PI / 2 + 0.004, Math.PI / 2 - 0.004);
-    const belowMat = new THREE.MeshBasicMaterial({ color: env.fog, side: THREE.BackSide, fog: false });
+    const belowMat = new THREE.MeshBasicMaterial({ color: this.style === 'dunes' ? 0xb7a37c : this.style === 'dirt' ? 0x56483c : 0x51683b, side: THREE.BackSide, fog: false });
     const below = new THREE.Mesh(belowGeo, belowMat);
     below.renderOrder = 1;
     bgScene.add(below);
@@ -424,7 +335,7 @@ export class Environment {
       o.material.dispose();
     }
     pmrem.dispose();
-    this.scene.fog = new THREE.Fog(env.fog, 140, this.q.fogFar);
+    this.scene.fog = null; // no distance haze
     this.renderer.toneMappingExposure = env.exposure;
   }
 
@@ -476,104 +387,21 @@ export class Environment {
     return false;
   }
 
-  _slope(x, z) {
-    const n = this.hf.normal(x, z, { x: 0, y: 1, z: 0 }, 1.5);
-    return n.y;
-  }
-
-  _vegetation() {
+  /** A few rocks off the track. */
+  _rocks() {
     const hf = this.hf, track = this.track, def = track.def;
     const rng = makeRng((def.seed || 1) * 7 + 3);
     const hx = hf.halfX, hz = hf.halfZ;
-    // vegetation amounts scale with the map area (640 x 640 m is the reference)
-    const areaK = (hf.sizeX * hf.sizeZ) / (640 * 640);
     const q = this.q;
-    const noise = track.noise;
     const vegType = def.vegetation;
-    const maxDist = q.fogFar;
-    // --- trees (LOD geometry per type; until = camera distance where the next level starts)
-    const types = [];
     const treeMat = this.track_(roughIBL(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, flatShading: true }), 'tree'));
-    const L0 = q.lod0, L1 = q.lod1;
-    if (vegType === 'coastal') {
-      types.push({ lods: [[palmGeometry(rng), L0], [palmGeometry(rng, 1)]], weight: 0.6, r: 0.25, size: 6 });
-      types.push({ lods: [[bushGeometry(rng, 0x6b7a3a), L0 * 0.7], [bushGeometry(rng, 0x6b7a3a, 1)]], weight: 0.4, r: 0, small: true, size: 1.2 });
-    } else {
-      const pine = { lods: [[pineGeometry(rng), L0], [pineGeometry(rng, 1)]], r: 0.3, size: 6 };
-      const leafy = { lods: [[leafyGeometry(rng), L0 * 0.6], [leafyGeometry(rng, 1), L1], [leafyGeometry(rng, 2)]], r: 0.3, size: 6 };
-      types.push({ ...pine, weight: vegType === 'pine' ? 0.85 : 0.45 });
-      types.push({ ...leafy, weight: vegType === 'pine' ? 0.15 : 0.55 });
-    }
-    const scat = types.map((t) => {
-      const lods = t.lods.map(([geo, until]) => ({ geo: this.track_(geo), until: until || 1e9 }));
-      return new Scatter(lods, treeMat, { castLod0: q.shadows && this.qualityName === 'high', maxDist });
-    });
-    const baseCount = vegType === 'coastal' ? 520 : vegType === 'pine' ? 1900 : 1500;
-    const count = Math.round(baseCount * q.trees * areaK);
     const m = new THREE.Matrix4(), qt = new THREE.Quaternion(), sc = new THREE.Vector3(), pos = new THREE.Vector3();
-    const Y = new THREE.Vector3(0, 1, 0);
-    let placed = 0, tries = 0;
-    while (placed < count && tries < count * 25) {
-      tries++;
-      const x = (rng() * 2 - 1) * (hx - 3), z = (rng() * 2 - 1) * (hz - 3);
-      const td = this._trackDistAt(x, z);
-      if (td < 24) continue;
-      if (this._inPits(x, z, 10)) continue;
-      // clusters: denser where noise is high, plus a tree line near the boundary
-      const edge = Math.abs(x) > hx - 45 || Math.abs(z) > hz - 45;
-      const dens = noise.fbm(x / 85 + 9, z / 85 - 4, 3);
-      const p = edge ? 0.9 : vegType === 'pine' ? 0.35 + dens : 0.12 + dens * 1.2;
-      if (rng() > p) continue;
-      if (this._slope(x, z) < 0.8) continue;
-      let ti = 0;
-      const r0 = rng();
-      let acc = 0;
-      for (let i = 0; i < types.length; i++) { acc += types[i].weight; if (r0 <= acc) { ti = i; break; } }
-      const t = types[ti];
-      const s = t.small ? 0.8 + rng() * 0.8 : 0.75 + rng() * 0.75;
-      const h = hf.height(x, z);
-      pos.set(x, h - 0.1, z);
-      qt.setFromAxisAngle(Y, rng() * Math.PI * 2);
-      sc.set(s, s * (0.85 + rng() * 0.35), s);
-      m.compose(pos, qt, sc);
-      scat[ti].add(m, t.size * s);
-      if (t.r > 0 && Math.abs(x) < hx - 2 && Math.abs(z) < hz - 2) this.colliders.addCircle(x, z, t.r * s + 0.1, h - 1, h + 8 * s, 'a tree');
-      placed++;
-    }
-    for (const sct of scat) this.scatters.push(sct.build(this.group));
-
-    // --- bushes
-    const bushColor = vegType === 'coastal' ? 0x7d8442 : 0x42652a;
-    const bushes = new Scatter([
-      { geo: this.track_(bushGeometry(rng, bushColor)), until: L0 * 0.7 },
-      { geo: this.track_(bushGeometry(rng, bushColor, 1)), until: 1e9 },
-    ], treeMat, { maxDist: q.bushDist });
-    const bushCount = Math.round(900 * q.bushes * areaK);
-    placed = 0; tries = 0;
-    while (placed < bushCount && tries < bushCount * 20) {
-      tries++;
-      const x = (rng() * 2 - 1) * (hx - 3), z = (rng() * 2 - 1) * (hz - 3);
-      const td = this._trackDistAt(x, z);
-      if (td < 14 || this._inPits(x, z, 3)) continue;
-      const dens = noise.fbm(x / 60 - 3, z / 60 + 8, 2);
-      if (rng() > 0.25 + dens) continue;
-      const s = 0.6 + rng() * 0.9;
-      pos.set(x, hf.height(x, z) - 0.15, z);
-      qt.setFromAxisAngle(Y, rng() * 6.28);
-      sc.set(s, s, s);
-      m.compose(pos, qt, sc);
-      bushes.add(m, 1.2 * s);
-      placed++;
-    }
-    this.scatters.push(bushes.build(this.group));
-
-    // --- rocks
     const rocks = new Scatter([
-      { geo: this.track_(rockGeometry(rng)), until: L0 },
+      { geo: this.track_(rockGeometry(rng)), until: q.lod0 },
       { geo: this.track_(rockGeometry(rng, 1)), until: 1e9 },
-    ], treeMat, { castLod0: q.shadows, maxDist: q.bushDist + 60 });
+    ], treeMat, { castLod0: q.shadows, maxDist: 900 });
     const rockCount = Math.round((vegType === 'coastal' ? 60 : 160) * q.props);
-    placed = 0; tries = 0;
+    let placed = 0, tries = 0;
     while (placed < rockCount && tries < rockCount * 20) {
       tries++;
       const x = (rng() * 2 - 1) * (hx - 4), z = (rng() * 2 - 1) * (hz - 4);
@@ -589,75 +417,8 @@ export class Environment {
       placed++;
     }
     this.scatters.push(rocks.build(this.group));
-
-    // --- grass tufts near the track (only drawn close to the camera; they shrink away with distance)
-    if (q.grass > 0 && def.surface !== 'sand') {
-      const gtex = this.track_(makeGrassTexture());
-      const quad = [];
-      for (let i = 0; i < 3; i++) {
-        const p = new THREE.PlaneGeometry(0.95, 0.6, 1, 1);
-        p.translate(0, 0.3, 0);
-        p.rotateY((i / 3) * Math.PI);
-        quad.push(p);
-      }
-      const gg = merge(quad);
-      // normals straight up so tufts are lit like the ground
-      const nn = gg.getAttribute('normal');
-      for (let i = 0; i < nn.count; i++) nn.setXYZ(i, 0, 1, 0);
-      this.track_(gg);
-      const gmat = this.track_(new THREE.MeshStandardMaterial({ map: gtex, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 1, color: 0xc8d8a8 }));
-      const timeU = { value: 0 };
-      this.grassTime = timeU;
-      const fade = { value: new THREE.Vector2(q.grassDist * 0.65, q.grassDist) };
-      gmat.onBeforeCompile = (sh) => {
-        sh.uniforms.uTime = timeU;
-        sh.uniforms.uFade = fade;
-        sh.vertexShader = sh.vertexShader
-          .replace('#include <common>', '#include <common>\nuniform float uTime;\nuniform vec2 uFade;')
-          .replace(
-            '#include <begin_vertex>',
-            `#include <begin_vertex>
-            #ifdef USE_INSTANCING
-              vec3 ip = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]);
-            #else
-              vec3 ip = vec3(0.0);
-            #endif
-            float sway = sin(uTime * 1.7 + ip.x * 0.35 + ip.z * 0.21) * 0.08 + sin(uTime * 3.1 + ip.z * 0.5) * 0.03;
-            transformed.x += sway * position.y;
-            transformed.z += sway * 0.6 * position.y;
-            // shrink into the ground toward the draw distance (no popping)
-            transformed *= 1.0 - smoothstep(uFade.x, uFade.y, distance(ip.xz, cameraPosition.xz));`
-          );
-        // both faces of a tuft use the same up-facing normal (no back-face flip)
-        sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n\tnormal = normalize( vNormal );');
-        patchRough(sh);
-      };
-      gmat.customProgramCacheKey = () => 'grass-sway-3' + roughKey();
-      const grass = new ChunkedInstances(gg, gmat, 40);
-      const gCount = Math.round(q.grass * areaK);
-      placed = 0; tries = 0;
-      while (placed < gCount && tries < gCount * 12) {
-        tries++;
-        const x = (rng() * 2 - 1) * (hx - 2), z = (rng() * 2 - 1) * (hz - 2);
-        const td = this._trackDistAt(x, z);
-        if (td < 7.5 || td > 70) continue;
-        const ci = hf.cellIndex(x, z);
-        if (ci < 0 || hf.splat[ci * 4 + 1] < 200) continue;
-        const s = 0.6 + rng() * 0.8;
-        pos.set(x, hf.height(x, z) - 0.03, z);
-        qt.setFromAxisAngle(Y, rng() * 6.28);
-        sc.set(s, s * (0.7 + rng() * 0.6), s);
-        m.compose(pos, qt, sc);
-        grass.add(m);
-        placed++;
-      }
-      for (const im of grass.build(this.group, { cast: false, receive: true })) {
-        const bs = im.boundingSphere;
-        this.grassCells.push({ mesh: im, x: bs.center.x, z: bs.center.z, r: bs.radius });
-      }
-      this.grassDist = q.grassDist;
-    }
   }
+
 
   // ---------------------------------------------------------------------------------
   /** Is a point free of the track surface (any part) and inside the map? */
@@ -670,59 +431,8 @@ export class Environment {
   }
 
   _trackProps() {
-    const track = this.track, hf = this.hf, q = this.q;
+    const track = this.track;
     const rng = makeRng((track.def.seed || 1) * 13 + 5);
-    // ---- stakes and tape along both edges
-    const stakeGeo = this.track_(new THREE.BoxGeometry(0.05, 1.0, 0.05));
-    stakeGeo.translate(0, 0.5, 0);
-    const stakeMat = this.track_(new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.6 }));
-    const stakes = [];
-    const tapePos = [], tapeUv = [], tapeIdx = [];
-    const tapeTex = this.track_(makeTapeTexture());
-    const step = 6;
-    const gateS = track.gateS;
-    for (const side of [1, -1]) {
-      let prev = null;
-      for (let s = 0; s < track.length; s += step) {
-        const w = track.interp(track.W, s);
-        const B = track.interp(track.B, s);
-        const outer = (B > 0 && side < 0) || (B < 0 && side > 0);
-        const d = side * (w + 1.4 + (outer ? Math.abs(B) * 1.6 + 1.2 : 0));
-        const p = track.pose(s, d);
-        const nearGate = Math.abs(track.wrapS(s - gateS + 12)) < 18;
-        // do not place on top of another section of track
-        const pr = track.project(p.x, p.z);
-        const otherW = track.interp(track.W, pr.s);
-        const onOther = Math.abs(track.wrapS(pr.s - s + track.length / 2) - track.length / 2) > 25 && pr.dist < otherW + 1.2;
-        if (nearGate || onOther) { prev = null; continue; }
-        const h = hf.height(p.x, p.z);
-        const pt = new THREE.Vector3(p.x, h, p.z);
-        stakes.push(pt);
-        if (prev && prev.distanceTo(pt) < step * 1.6) {
-          const base = tapePos.length / 3;
-          const y0 = 0.82, y1 = 0.9;
-          tapePos.push(prev.x, prev.y + y0, prev.z, prev.x, prev.y + y1, prev.z, pt.x, pt.y + y0, pt.z, pt.x, pt.y + y1, pt.z);
-          const L = prev.distanceTo(pt) / 0.8;
-          tapeUv.push(0, 0, 0, 1, L, 0, L, 1);
-          tapeIdx.push(base, base + 2, base + 1, base + 1, base + 2, base + 3);
-        }
-        prev = pt;
-      }
-    }
-    const stakeSc = new Scatter([{ geo: stakeGeo, until: 1e9 }], stakeMat, { castLod0: q.shadows, maxDist: 240 });
-    const m = new THREE.Matrix4();
-    for (const p of stakes) stakeSc.add(m.makeTranslation(p.x, p.y - 0.1, p.z), 1);
-    this.scatters.push(stakeSc.build(this.group));
-    const tgeo = this.track_(new THREE.BufferGeometry());
-    tgeo.setAttribute('position', new THREE.Float32BufferAttribute(tapePos, 3));
-    tgeo.setAttribute('uv', new THREE.Float32BufferAttribute(tapeUv, 2));
-    tgeo.setIndex(tapeIdx);
-    tgeo.computeVertexNormals();
-    const tmat = this.track_(new THREE.MeshStandardMaterial({ map: tapeTex, side: THREE.DoubleSide, roughness: 0.7 }));
-    const tape = new THREE.Mesh(tgeo, tmat);
-    tape.castShadow = false;
-    this.group.add(tape);
-
     // ---- start gate
     this._startGate();
     // ---- finish line + gantry
@@ -971,8 +681,8 @@ export class Environment {
     hayLo.rotateZ(Math.PI / 2);
     hayLo.translate(0, 0.5, 0);
     const hayMat = this.track_(new THREE.MeshStandardMaterial({ color: 0xc8a75a, roughness: 1 }));
-    const stacks = new Scatter([{ geo: stackGeo, until: 40 }, { geo: stackLo, until: 1e9 }], tireMat, { castLod0: q.shadows, maxDist: 320 });
-    const bales = new Scatter([{ geo: hay, until: 60 }, { geo: hayLo, until: 1e9 }], hayMat, { castLod0: q.shadows, maxDist: 360 });
+    const stacks = new Scatter([{ geo: stackGeo, until: 40 }, { geo: stackLo, until: 1e9 }], tireMat, { castLod0: q.shadows, maxDist: 1200 });
+    const bales = new Scatter([{ geo: hay, until: 60 }, { geo: hayLo, until: 1e9 }], hayMat, { castLod0: q.shadows, maxDist: 1200 });
     const m = new THREE.Matrix4(), qq = new THREE.Quaternion(), sc = new THREE.Vector3(1, 1, 1), pos = new THREE.Vector3();
     const Y = new THREE.Vector3(0, 1, 0);
     let corner = 0;
@@ -1005,62 +715,8 @@ export class Environment {
 
   // ---------------------------------------------------------------------------------
   _venue() {
-    const track = this.track, hf = this.hf, q = this.q;
+    const track = this.track, hf = this.hf;
     const rng = makeRng((track.def.seed || 1) * 31 + 7);
-    // ---- perimeter fence (posts and rails) around the venue
-    const b = track.bounds;
-    const margin = 42;
-    const x0 = Math.max(-hf.halfX + 6, b.minX - margin), x1 = Math.min(hf.halfX - 6, b.maxX + margin);
-    const z0 = Math.max(-hf.halfZ + 6, b.minZ - margin), z1 = Math.min(hf.halfZ - 6, b.maxZ + margin);
-    const postGeo = this.track_(new THREE.CylinderGeometry(0.07, 0.08, 1.3, 6));
-    postGeo.translate(0, 0.55, 0);
-    const woodMat = this.track_(new THREE.MeshStandardMaterial({ color: 0x8a6a48, roughness: 0.9 }));
-    const posts = [];
-    const rails = [];
-    const edges = [[x0, z0, x1, z0], [x1, z0, x1, z1], [x1, z1, x0, z1], [x0, z1, x0, z0]];
-    for (const [ax, az, bx, bz] of edges) {
-      const len = Math.hypot(bx - ax, bz - az);
-      const n = Math.max(1, Math.round(len / 3));
-      let prev = null;
-      for (let i = 0; i <= n; i++) {
-        const x = ax + ((bx - ax) * i) / n, z = az + ((bz - az) * i) / n;
-        if (this._trackDistAt(x, z) < 12 || this._inPits(x, z, 2)) { prev = null; continue; }
-        const h = hf.height(x, z);
-        const p = new THREE.Vector3(x, h, z);
-        posts.push(p);
-        if (prev) {
-          rails.push([prev, p]);
-          this.colliders.addSegment(prev.x, prev.z, p.x, p.z, 0.12, Math.min(prev.y, p.y) - 1, Math.max(prev.y, p.y) + 1.2, 'the fence');
-        }
-        prev = p;
-      }
-    }
-    if (posts.length) {
-      const sc = new Scatter([{ geo: postGeo, until: 1e9 }], woodMat, { castLod0: q.shadows, maxDist: 300 });
-      const m = new THREE.Matrix4();
-      for (const p of posts) sc.add(m.makeTranslation(p.x, p.y, p.z), 1);
-      this.scatters.push(sc.build(this.group));
-    }
-    if (rails.length) {
-      const railGeo = this.track_(new THREE.BoxGeometry(0.06, 0.1, 1));
-      const rs = new Scatter([{ geo: railGeo, until: 1e9 }], woodMat, { castLod0: q.shadows, maxDist: 300 });
-      const m = new THREE.Matrix4(), qq = new THREE.Quaternion(), sc = new THREE.Vector3(), mid = new THREE.Vector3(), dir = new THREE.Vector3();
-      const Z = new THREE.Vector3(0, 0, 1);
-      for (const [a, c] of rails) {
-        dir.subVectors(c, a);
-        const len = dir.length();
-        qq.setFromUnitVectors(Z, dir.normalize());
-        for (const y of [0.55, 1.0]) {
-          mid.addVectors(a, c).multiplyScalar(0.5);
-          mid.y += y;
-          sc.set(1, 1, len);
-          m.compose(mid, qq, sc);
-          rs.add(m, len * 0.5 + 0.2);
-        }
-      }
-      this.scatters.push(rs.build(this.group));
-    }
-
     // ---- pits: garages, vans, tents, porta-johns on the gravel area
     for (const pit of hf.pits || []) this._pits(pit, rng);
 
@@ -1253,8 +909,8 @@ export class Environment {
       }
     }
     if (people.length) {
-      const bodies = new Scatter([{ geo: bodyGeo, until: 1e9 }], bodyMat, { castLod0: q.shadows, maxDist: 400, cell: 48 });
-      const heads = new Scatter([{ geo: headGeo, until: 1e9 }], headMat, { maxDist: 260, cell: 48 });
+      const bodies = new Scatter([{ geo: bodyGeo, until: 1e9 }], bodyMat, { castLod0: q.shadows, maxDist: 1200, cell: 48 });
+      const heads = new Scatter([{ geo: headGeo, until: 1e9 }], headMat, { maxDist: 700, cell: 48 });
       const col = new THREE.Color();
       const shirt = [0xd4241c, 0x1f5fd6, 0xf2c418, 0x2fae3c, 0xf26a10, 0xeeeeee, 0x222222, 0x8e44ad, 0x16a085];
       const wm = new THREE.Matrix4();
@@ -1320,10 +976,9 @@ export class Environment {
     }
   }
 
-  /** Per frame: shadow focus, LOD/visibility of vegetation and grass, gate animation. */
+  /** Per frame: shadow focus, LOD / visibility of the scattered props, gate animation. */
   update(dt, focus, camera) {
     this.time += dt;
-    if (this.grassTime) this.grassTime.value = this.time;
     // shadow camera follows the focus point, snapped to texels to avoid shimmering
     const sun = this.sun;
     if (sun) {
@@ -1339,8 +994,6 @@ export class Environment {
       _frustum.setFromProjectionMatrix(_pm);
       const cp = camera.position;
       for (const sc of this.scatters) sc.update(cp, _frustum, focus, 62);
-      const gd = this.grassDist || 0;
-      for (const c of this.grassCells) c.mesh.visible = Math.hypot(c.x - cp.x, c.z - cp.z) - c.r < gd;
     }
     // gate animation
     const g = this.gate;
