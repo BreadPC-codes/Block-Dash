@@ -63,6 +63,40 @@ export function whipRun(steerFn, { assist = 2, v = 18, trace = false, side = nul
   };
 }
 
+/**
+ * Front / back flip on the double: hold rider lean (dir -1 = back, +1 = forward) until the
+ * bike has turned `releaseAt` degrees, then let go. Returns the total rotation, the largest
+ * whip reading and yaw rate while flipping, and the outcome.
+ */
+export function flipRun(dir, releaseAt, { assist = 2, v = 18, spec = SPEC } = {}) {
+  const f = buildFeature(spec);
+  const lip = f.lips[0];
+  const terr = new FunctionTerrain((x, z) => (z > 0 && z < f.length ? f.height(z) : 0));
+  const b = new BikePhysics(terr);
+  b.tune.assist = assist;
+  b.reset(new Vector3(0, 0, -160), 0);
+  let t = 0, tAir = -1, rot = 0, landed = false, released = false, maxWhip = 0, maxYaw = 0;
+  while (t < 30 && !b.crashed && b.pos.z < f.length + 40) {
+    const z = b.pos.z;
+    if (b.airborne && z > lip - 1 && tAir < 0) tAir = 0;
+    const inAir = tAir >= 0 && !landed;
+    const thr = tAir < 0 ? Math.min(1, Math.max(0, (v - b.forwardSpeed) * 0.9 + (z > 0 ? 0.65 : 0.3))) : 0.3;
+    if (inAir && !released && deg(Math.abs(rot)) > releaseAt) released = true;
+    b.step(dt, { throttle: thr, brakeF: 0, brakeR: 0, steer: 0, lean: inAir && !released ? dir : 0, side: 0 });
+    t += dt;
+    if (inAir) {
+      tAir += dt;
+      rot += b.angVel.dot(b.right) * dt;
+      if (b.airborne) {
+        maxWhip = Math.max(maxWhip, Math.abs(b.whip.whipAngle));
+        maxYaw = Math.max(maxYaw, Math.abs(b.angVel.y));
+      }
+      if (tAir > 0.3 && !b.airborne) landed = true;
+    }
+  }
+  return { rot: deg(rot), crashed: b.crashed ? b.crashReason : '', maxWhip: deg(maxWhip), maxYaw: deg(maxYaw), air: tAir };
+}
+
 const isMain = process.argv[1] && import.meta.url.endsWith(process.argv[1].split('/').pop());
 if (isMain) {
   let fails = 0;
@@ -124,6 +158,22 @@ if (isMain) {
   ok(Math.abs(lowAir.peak) < Math.abs(R.full.peak) * 0.8, `Air control setting scales the whip (${lowAir.peak.toFixed(1)} deg at 60 %)`);
   ok(gas.pitchAt > base.pitchAt + 4 && brk.pitchAt < base.pitchAt - 4, 'W lifts the nose, S drops it');
   ok(back.pitchAt > base.pitchAt + 4 && fwd.pitchAt < base.pitchAt - 4, 'left stick back lifts the nose, forward drops it');
+  console.log('flips');
+  const BIG = { type: 'double', h1: 4.2, face: 30, gap: 38, h2: 4, land: 18 };
+  const fl = [];
+  for (const [name, dir, spec, v] of [['back flip, 1.9 s jump', -1, SPEC, 18], ['front flip, 1.9 s jump', 1, SPEC, 18], ['back flip, 2.5 s jump', -1, BIG, 23], ['front flip, 2.5 s jump', 1, BIG, 23]]) {
+    for (const rel of [200, 240, 280]) {
+      const r = flipRun(dir, rel, { spec, v });
+      fl.push(r);
+      console.log(`  ${name}, let go after ${rel} deg: turned ${r.rot.toFixed(0)} deg, whip reading <= ${r.maxWhip.toFixed(1)} deg, yaw rate <= ${r.maxYaw.toFixed(0)} deg/s, ${r.crashed || 'landed'}`);
+    }
+  }
+  // (one full turn, give or take the takeoff and landing angles: it leaves the lip nose-up and
+  // lands on the down-ramp)
+  ok(fl.every((r) => !r.crashed && Math.abs(r.rot) > 280 && Math.abs(r.rot) < 470), 'front and back flips: hold rider lean back / forward, let go once it is round - one flip, lands (the rider brings it round)');
+  ok(fl.every((r) => r.maxWhip < 10 && r.maxYaw < 60), 'a flip is not mistaken for a whip (no yaw spin, no sideways twist)');
+  const held = flipRun(-1, 9999);
+  ok(Math.abs(held.rot) > 365, `holding lean back for the whole jump keeps it turning past a full flip (${held.rot.toFixed(0)} deg)`);
   console.log(fails ? `${fails} FAILURES` : 'WHIP PHYSICS OK');
   process.exitCode = fails ? 1 : 0;
 }

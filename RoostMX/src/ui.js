@@ -22,6 +22,8 @@ const TIPS = [
   'Start a whip on the last metres of the jump face and the bike leaves the lip already turning.',
   'Press F3 to see the whip physics: angles, rotation speeds, torques and your inputs.',
   'Got MX Bikes tracks? Import a .pkz on the track list and scale it up or down - 100 % is the real size.',
+  'Practising a jump? Stop before it and hold ↓ for 3 seconds to drop a marker, then tap ↓ to go back there.',
+  'Flips: on a big jump hold ↓ (back flip) or ↑ (front flip) and let go once the bike comes round.',
   'The rear brake (S) helps you slide the bike around tight corners.',
   'Berms let you lean deeper and carry more speed through turns.',
   'Sand has less grip and much more drag: keep the throttle on.',
@@ -1013,13 +1015,40 @@ export class UI {
     ctx.fillRect(track.x[fi] * sc + ox, track.z[fi] * sc + oz, 4, 4);
   }
 
-  drawMinimap(x, z, heading, nextCp) {
+  /** Progress (0..1) of holding the marker key; 0 hides it. */
+  markerHold(frac) {
+    const on = frac > 0;
+    if (this.hudCache.markerOn !== on) {
+      this.hudCache.markerOn = on;
+      $('hud-marker').classList.toggle('on', on);
+    }
+    if (on) $('hud-marker-fill').style.width = Math.round(Math.min(1, frac) * 100) + '%';
+  }
+
+  drawMinimap(x, z, heading, nextCp, marker) {
     if (!this.mm || !this.settings.graphics.minimap) return;
     const cv = $('minimap');
     const ctx = cv.getContext('2d');
     const m = this.mm;
     ctx.clearRect(0, 0, m.W, m.H);
     ctx.drawImage(m.off, 0, 0);
+    if (marker) {
+      // track marker: a small flag
+      const fx = clamp(marker.x * m.sc + m.ox, 4, m.W - 4), fy = clamp(marker.z * m.sc + m.oz, 10, m.H - 4);
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(fx, fy);
+      ctx.lineTo(fx, fy - 10);
+      ctx.stroke();
+      ctx.fillStyle = '#f26a10';
+      ctx.beginPath();
+      ctx.moveTo(fx, fy - 10);
+      ctx.lineTo(fx + 7, fy - 7.5);
+      ctx.lineTo(fx, fy - 5);
+      ctx.closePath();
+      ctx.fill();
+    }
     if (nextCp) {
       ctx.strokeStyle = '#ffd400';
       ctx.lineWidth = 2;

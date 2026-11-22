@@ -97,11 +97,24 @@ controller* restore the defaults below.
 | Rider lean forward, back | ↑ / ↓ | Left stick ↑ ↓ |
 | Shift up / down | E / Q | RB / LB |
 | Reset bike | R | A or View |
+| Track marker: hold 3 s to set, tap to go back | ↓ (hold / tap) | (unbound - map it in Settings) |
 | Change camera | C | Y |
 | Look back | B (hold) | B (hold) |
 | Camera left / right / up / down | (unbound) | D-pad |
 | Pause | Esc | Menu (Start) |
 | Fullscreen | F11 or Alt+Enter | — |
+
+### Track marker
+
+Practising a section? Stop where you want to start from and **hold ↓ for 3 seconds**
+(with the wheels on the ground): a bar fills, then a flag marks the spot on the track and
+the minimap. From then on a **quick tap of ↓** puts you back at the marker, standing
+still and facing the same way - also straight after a crash. Holding ↓ remains *rider lean
+back* (wheelies, back flips), and taps in the air are pitch corrections, so neither ever
+teleports you. Setting a new marker replaces the old one; each track keeps its own for the
+session. In a timed lap, going back to the marker makes that lap invalid. The marker has its
+own binding in Settings → Controls if you would rather put it on another key or a
+controller button.
 
 ### Whips and air control
 
@@ -113,6 +126,7 @@ not an animation:
 | Whip left / right (rear swings out, bike lays over) | A / D | Left stick ← → |
 | Nose up / down (pitch) | W / S (throttle lifts the nose, rear brake drops it) or ↓ / ↑ | Left stick ↓ ↑ |
 | Throw the body left / right (roll, scrub) | ← / → | Right stick ← → |
+| Back flip / front flip: hold, let go once it comes round | ↓ / ↑ | Left stick ↓ / ↑ |
 
 - The input builds up rider *effort* over a fraction of a second; effort becomes torque
   on the bike, and the bike keeps rotating on its own momentum after you let go. A tap
@@ -132,6 +146,10 @@ not an animation:
   opposite input) — the same input gives a similar whip on every level.
 - *Air control (whips)* in Bike settings scales the rider's strength in the air
   (50–150 %).
+- **Flips**: a big jump (about 1.8 s of air or more) leaves time for a back flip (hold ↓)
+  or a front flip (hold ↑). The bike keeps turning while you hold; let go once it is
+  most of the way round. With assists on, the rider then finishes the rotation and lines
+  the bike up for the landing - let go too late and it over-rotates and loops out.
 - **F3** (or Settings → Graphics → *Physics debug overlay*, off by default) shows whip
   angle, pitch, roll, angular velocities, rider / recovery / gyro / aero torques, the
   efforts, the keyboard and controller inputs and the time to landing.
@@ -409,7 +427,8 @@ node tests/whip-sim.mjs
 
 Whips on a big double: small vs big inputs, symmetry, momentum after release, bounded
 angular acceleration, soft limits, straightening before touchdown, a whip held into the
-landing crashing, assist levels, the Air control setting, and W / S / stick pitch.
+landing crashing, assist levels, the Air control setting, W / S / stick pitch, and front /
+back flips that come round and land (and are never mistaken for whips).
 `node tests/turn-radius.mjs` prints turn radius by speed for each rider position.
 
 ```bash
@@ -444,7 +463,8 @@ the game's UI in a browser.
 
 Browser tests (`tests/smoke.cjs`, `tests/flows.cjs`, `tests/gamepad.cjs` — virtual
 controller, rider lean, button remapping — `tests/whip.cjs` — keyboard and controller
-whips on the Big Air Line, the F3 overlay, rider counterbalance — and
+whips and a keyboard back flip on the Big Air Line, the F3 overlay, rider counterbalance —
+`tests/marker.cjs` — setting a track marker and going back to it — and
 `tests/perf.cjs <low|medium|high>`, a
 frame-time / draw-call benchmark) and the Electron smoke test
 (`tests/electron-smoke.cjs`) use [Playwright](https://playwright.dev); start

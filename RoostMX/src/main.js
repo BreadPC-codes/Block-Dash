@@ -54,6 +54,10 @@ class Game {
     this.garage = new Garage(this);
     this.importCache = new Map();
     this.importedTracks = []; // summaries of imported MX Bikes tracks (see imported-track.js)
+    // track markers (one per track, this session): hold the marker key on the ground to set
+    // one, tap it to go back there
+    this.markers = {};
+    this._mk = { down: false, t: 0, hold: 0, done: false, block: false, last: 0 };
     this.activeBikeName = 'Roost 450 (procedural)';
     this.bikeDirty = false;
     this.mode = this.settings.game.mode;
@@ -259,7 +263,10 @@ class Game {
     const marks = new TireMarks(this.scene, q.terrain === 'low' ? 300 : 700);
     const rig = new CameraRig(this.camera, hf);
     rig.setMode(this.settings.camera.mode || 'chase');
-    this.world = { def, track, hf, terrainView, terrainMat, backdrop, env, physics, particles, marks, rig, timer: new LapTimer(track) };
+    const markerMesh = buildMarkerMesh();
+    this.scene.add(markerMesh);
+    this.world = { def, track, hf, terrainView, terrainMat, backdrop, env, physics, particles, marks, rig, markerMesh, timer: new LapTimer(track) };
+    this.placeMarkerMesh();
     this.applyPhysicsTune();
     this.applyCameraSettings();
     await this.buildBikeVisual();
@@ -293,6 +300,10 @@ class Game {
     w.env.dispose();
     w.particles.dispose();
     w.marks.dispose();
+    if (w.markerMesh) {
+      this.scene.remove(w.markerMesh);
+      w.markerMesh.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+    }
     this.removeBikeVisual();
     this.world = null;
   }
@@ -600,6 +611,95 @@ class Game {
     this.ui.clearNotify();
   }
 
+  // ---------------------------------------------------------------------------------
+  // Track marker: hold the marker key (default the down arrow) for 3 s with the wheels on the
+  // ground to drop a marker; a quick tap brings the bike back to it. A longer press is just
+  // rider lean back (the default key does both), and taps in the air are pitch corrections.
+  _blockMarker() {
+    const mk = this._mk;
+    mk.block = true; // until the key is released
+    mk.down = false;
+    this.ui.markerHold(0);
+  }
+
+  updateMarker(dt, inp, frozen) {
+    const mk = this._mk;
+    const ph = this.world.physics;
+    if (mk.block) {
+      if (!inp.marker) mk.block = false;
+      return;
+    }
+    // timed on the wall clock: "hold for 3 seconds" is real seconds, also on a slow machine
+    // where the game's own clock can fall behind
+    const now = performance.now() / 1000;
+    if (inp.marker && !frozen) {
+      if (!mk.down) { mk.down = true; mk.t = 0; mk.hold = 0; mk.done = false; mk.last = now; }
+      const step = Math.min(0.5, now - mk.last);
+      mk.last = now;
+      mk.t += step;
+      mk.hold = !ph.airborne && !ph.crashed ? mk.hold + step : 0;
+      if (!mk.done) {
+        if (mk.hold >= MARKER_HOLD) {
+          mk.done = true;
+          this.ui.markerHold(0);
+          this.setMarker();
+        } else {
+          this.ui.markerHold(mk.hold > 0.35 ? mk.hold / MARKER_HOLD : 0);
+        }
+      }
+    } else if (mk.down) {
+      mk.down = false;
+      this.ui.markerHold(0);
+      if (!mk.done && mk.t < MARKER_TAP && this.markers[this.world.def.id] && (ph.crashed || !ph.airborne)) this.respawnAtMarker();
+    }
+  }
+
+  markerKeyLabel() {
+    const k = (this.settings.controls.keys.marker || []).find((c) => c);
+    const p = (this.settings.controls.pad.marker || []).find((c) => c);
+    if (this.input.lastDevice === 'gamepad' && p) return padLabel(p, this.input.pad.standard);
+    return k ? keyLabel(k) : p ? padLabel(p, this.input.pad.standard) : 'the marker key';
+  }
+
+  setMarker() {
+    const w = this.world, ph = w.physics;
+    this.markers[w.def.id] = { x: ph.pos.x, z: ph.pos.z, heading: Math.atan2(ph.fwd.x, ph.fwd.z) };
+    this.placeMarkerMesh();
+    this.audio.uiSelect();
+    this.ui.notify('Marker set', 'Tap ' + this.markerKeyLabel() + ' to come back here', '', 2400);
+  }
+
+  respawnAtMarker() {
+    const w = this.world, ph = w.physics;
+    const m = this.markers[w.def.id];
+    if (!m) return;
+    ph.reset(_v.set(m.x, 0, m.z), m.heading);
+    w.rig.snapNext = true;
+    w.marks.break(0);
+    w.marks.break(1);
+    this.crashAuto = 0;
+    this.attachRider();
+    const tm = w.timer;
+    if (!w.def.noTiming && tm.valid && (tm.lapStart != null || w.track.open)) {
+      tm.valid = false;
+      tm.invalidReason = 'Marker';
+      this.ui.toast('Lap invalid - back to the marker', 'bad', 2200);
+    }
+    tm.teleported(w.track.project(m.x, m.z, -1).s);
+    this.ui.notify('Back to the marker', '', '', 1100);
+  }
+
+  /** Put the marker flag where this track's marker is (hidden without one). */
+  placeMarkerMesh() {
+    const w = this.world;
+    if (!w || !w.markerMesh) return;
+    const m = this.markers[w.def.id];
+    w.markerMesh.visible = !!m;
+    if (!m) return;
+    w.markerMesh.position.set(m.x, w.hf.height(m.x, m.z), m.z);
+    w.markerMesh.rotation.y = m.heading;
+  }
+
   attachRider() {
     if (!this.rider || !this.bikeVisual) return;
     if (this.rider.group.parent !== this.bikeVisual.root) {
@@ -642,6 +742,7 @@ class Game {
     this.world.rig.setMode(this.settings.camera.mode || 'chase');
     this.world.rig.snapNext = true;
     this.sessionStart = this.time;
+    this._blockMarker();
   }
 
   restartSession() {
@@ -666,6 +767,7 @@ class Game {
     this.ui.showHud(true);
     this.input.clearRiding();
     this.acc = 0;
+    this._blockMarker();
   }
 
   toMainMenu() {
@@ -969,6 +1071,7 @@ class Game {
     if (resetReq) {
       this.resetBike();
     }
+    this.updateMarker(dt, inp, frozen);
     if (ph.crashed) {
       this.crashAuto += dt;
       if (this.crashAuto > 4.5 || (ph.ragdoll.settle > 1.5 && this.crashAuto > 2.5)) this.resetBike();
@@ -1027,6 +1130,7 @@ class Game {
     w.rig.update(dt, ctx, free);
     // world
     w.env.update(dt, ph.pos, this.camera);
+    if (w.markerMesh.visible) w.markerMesh.userData.flag.rotation.y = Math.sin(this.time * 3.1) * 0.25 + Math.sin(this.time * 7.3) * 0.08;
     this.emitEffects(dt);
     w.particles.update(dt, w.hf);
     w.marks.update(dt);
@@ -1309,7 +1413,7 @@ class Game {
       fpsText: `${this.fps.value.toFixed(0)} FPS · ${Math.round(this.renderer.getPixelRatio() / Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio) * 100)}% res · ${this.renderer.info.render.calls} calls · ${(this.renderer.info.render.triangles / 1000).toFixed(0)}k tris`,
     });
     const hdg = Math.atan2(ph.fwd.x, ph.fwd.z);
-    this.ui.drawMinimap(ph.pos.x, ph.pos.z, hdg, tm.nextCheckpoint());
+    this.ui.drawMinimap(ph.pos.x, ph.pos.z, hdg, w.def.noTiming ? null : tm.nextCheckpoint(), this.markers[w.def.id]);
   }
 
   /** Text of the physics debug overlay (only built while it is shown). */
@@ -1337,6 +1441,30 @@ class Game {
 }
 
 const _gl = new THREE.Vector3(), _gr = new THREE.Vector3();
+const MARKER_HOLD = 3; // s on the ground to set a marker
+const MARKER_TAP = 0.35; // s: a shorter press is a tap (go back to the marker)
+
+/** A small flag on a pole with a ring on the ground: where the track marker is. */
+function buildMarkerMesh() {
+  const g = new THREE.Group();
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 2.3, 6), new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.45, metalness: 0.6 }));
+  // the pole stands at the left edge of the ring, beside the spot rather than through the rider
+  pole.position.set(1.12, 1.15, 0);
+  const flagGeo = new THREE.PlaneGeometry(0.78, 0.46);
+  flagGeo.translate(0.39, 0, 0);
+  const flag = new THREE.Mesh(flagGeo, new THREE.MeshStandardMaterial({ color: 0xf26a10, emissive: 0x5a2200, roughness: 0.75, side: THREE.DoubleSide }));
+  flag.position.set(1.12, 2.06, 0);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.25, 40), new THREE.MeshBasicMaterial({ color: 0xf26a10, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.06;
+  ring.renderOrder = 2;
+  pole.castShadow = flag.castShadow = true;
+  g.add(pole, flag, ring);
+  g.userData.flag = flag;
+  g.visible = false;
+  return g;
+}
+
 const escapeHtml = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 // ---------------------------------------------------------------------------------

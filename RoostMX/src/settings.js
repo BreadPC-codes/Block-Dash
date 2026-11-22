@@ -6,7 +6,7 @@
 export const ACTIONS = [
   'throttle', 'brakeFront', 'brakeRear', 'steerLeft', 'steerRight',
   'riderLeft', 'riderRight', 'leanForward', 'leanBack',
-  'shiftUp', 'shiftDown', 'reset', 'camera', 'lookBack',
+  'shiftUp', 'shiftDown', 'reset', 'marker', 'camera', 'lookBack',
   'camLeft', 'camRight', 'camUp', 'camDown', 'pause',
 ];
 
@@ -23,6 +23,9 @@ export const DEFAULT_KEYS = {
   shiftUp: ['KeyE', ''],
   shiftDown: ['KeyQ', ''],
   reset: ['KeyR', ''],
+  // hold 3 s on the ground: set a track marker; tap: back to the marker (shares the key
+  // with rider lean back on purpose - holding still leans, a quick tap goes back)
+  marker: ['ArrowDown', ''],
   camera: ['KeyC', ''],
   lookBack: ['KeyB', ''],
   camLeft: ['', ''],
@@ -51,6 +54,7 @@ export const DEFAULT_PAD = {
   shiftUp: ['b5', ''],
   shiftDown: ['b4', ''],
   reset: ['b0', 'b8'],
+  marker: ['', ''],
   camera: ['b3', ''],
   lookBack: ['b1', ''],
   camLeft: ['b14', ''],
@@ -73,6 +77,7 @@ export const ACTION_LABELS = {
   shiftUp: 'Shift up',
   shiftDown: 'Shift down',
   reset: 'Reset bike',
+  marker: 'Track marker (hold 3 s: set · tap: go back)',
   camera: 'Change camera',
   lookBack: 'Look back',
   camLeft: 'Camera left',

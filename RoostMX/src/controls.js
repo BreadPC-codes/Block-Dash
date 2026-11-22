@@ -25,7 +25,7 @@ export class Input {
     this.pad = new GamepadManager();
     this.state = {
       throttle: 0, brakeF: 0, brakeR: 0, steer: 0, lean: 0, side: 0, lookBack: false,
-      shiftUp: false, shiftDown: false, reset: false, resetHold: 0, camera: false, pause: false,
+      shiftUp: false, shiftDown: false, reset: false, resetHold: 0, camera: false, pause: false, marker: false,
     };
     this.kb = { throttle: 0, brakeF: 0, brakeR: 0, steer: 0, lean: 0, side: 0 };
     this._orbit = { dx: 0, dy: 0 };
@@ -168,6 +168,7 @@ export class Input {
     let camera = this.pressed('camera');
     let pause = this.keyPressed('Escape');
     let resetHeld = this.down('reset');
+    let marker = this.down('marker');
     // --- controller (every action goes through the user's bindings)
     if (hasPad) {
       const c = this.settings.controls;
@@ -190,6 +191,7 @@ export class Input {
       pause = pause || this.padPressed('pause');
       reset = reset || this.padPressed('reset');
       resetHeld = resetHeld || this.padDown('reset');
+      marker = marker || this.padDown('marker');
     }
     s.throttle = clamp(throttle, 0, 1);
     s.brakeF = clamp(brakeF, 0, 1);
@@ -204,6 +206,7 @@ export class Input {
     s.resetHold = resetHeld ? s.resetHold + dt : 0;
     s.camera = camera;
     s.pause = pause;
+    s.marker = marker;
     return s;
   }
 

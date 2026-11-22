@@ -60,7 +60,7 @@ const DEG = 180 / Math.PI;
     for (const wh of ph.wheels) wh.omega = v / wh.radius;
     w.rig.snapNext = true;
     const lip = tr.pose(f.lips[0], 0);
-    const state = { lip, tx: p.tx, tz: p.tz, v, leftLip: false, maxWhip: 0, maxTwist: 0, maxCounter: 0, maxRoll: 0, air: 0, landed: false, crashed: '', overlayAir: false };
+    const state = { lip, tx: p.tx, tz: p.tz, v, leftLip: false, maxWhip: 0, maxTwist: 0, maxCounter: 0, maxRoll: 0, air: 0, landed: false, crashed: '', overlayAir: false, rot: 0 };
     window.__whipTest = state;
     if (!ph.__origStep) ph.__origStep = ph.step;
     ph.step = function (dt, inp) {
@@ -72,7 +72,7 @@ const DEG = 180 / Math.PI;
       }
       this.__origStep(dt, inp);
       if (s.leftLip && !s.landed) {
-        if (this.airborne) s.air += dt;
+        if (this.airborne) { s.air += dt; s.rot += this.angVel.dot(this.right) * dt; }
         const W = this.whip;
         if (Math.abs(W.whipAngle) > Math.abs(s.maxWhip)) s.maxWhip = W.whipAngle;
         if (Math.abs(W.riderTwist) > Math.abs(s.maxTwist)) s.maxTwist = W.riderTwist;
@@ -91,11 +91,13 @@ const DEG = 180 / Math.PI;
     await page.waitForFunction(() => window.__whipTest.leftLip, null, { timeout: 60000, polling: 30 });
     await page.waitForTimeout(80);
     await whipDown();
-    await page.waitForTimeout(450);
+    // 0.45 s of game time (the test browser can run far slower than real time)
+    const a0 = await page.evaluate(() => window.__whipTest.air);
+    await page.waitForFunction((t0) => window.__whipTest.air >= t0 + 0.45 || window.__whipTest.landed, a0, { timeout: 30000, polling: 10 });
     await whipUp();
-    // screenshot around the peak of the whip, overlay on
-    await page.waitForFunction(() => Math.abs(window.__roost.world.physics.whip.whipAngle) > 0.3 || window.__whipTest.landed, null, { timeout: 20000, polling: 30 });
+    // overlay text while still in the air, then a screenshot around the peak of the whip
     const txt = await page.textContent('#whip-debug');
+    await page.waitForFunction(() => Math.abs(window.__roost.world.physics.whip.whipAngle) > 0.2 || window.__whipTest.landed, null, { timeout: 20000, polling: 30 });
     if (shot) await page.screenshot({ path: dir + shot });
     await page.waitForFunction(() => window.__whipTest.landed || window.__whipTest.crashed, null, { timeout: 30000, polling: 50 });
     await page.waitForTimeout(1500);
@@ -122,6 +124,19 @@ const DEG = 180 / Math.PI;
   // 3) keyboard and controller together: stick pitch + keyboard whip at the same time
   const both = await ride('stick back + D', 2, () => page.evaluate(() => { window.__pad.axes[1] = 0.6; window.__pad.timestamp++; }).then(() => page.keyboard.down('KeyD')), () => page.evaluate(() => { window.__pad.axes[1] = 0; window.__pad.timestamp++; }).then(() => page.keyboard.up('KeyD')), null);
   ok(both.maxWhip * DEG > 15, `keyboard whip still works while the stick is used for pitch (${(both.maxWhip * DEG).toFixed(1)} deg)`);
+
+  // 4) a back flip on the keyboard: hold the down arrow after takeoff, let go once it is round
+  const flipInfo = await setup(3);
+  await page.waitForFunction(() => window.__whipTest.leftLip, null, { timeout: 60000, polling: 30 });
+  await page.keyboard.down('ArrowDown');
+  await page.waitForFunction(() => window.__whipTest.rot > 4.3 || window.__whipTest.landed, null, { timeout: 20000, polling: 10 });
+  await page.keyboard.up('ArrowDown');
+  await page.waitForFunction(() => window.__whipTest.landed || window.__whipTest.crashed, null, { timeout: 30000, polling: 50 });
+  await page.waitForTimeout(1500);
+  const fl = await page.evaluate(() => ({ ...window.__whipTest, crashedNow: window.__roost.world.physics.crashed, marker: !!window.__roost.markers[window.__roost.world.def.id] }));
+  console.log(`    back flip (down arrow): jump at ${flipInfo.at.toFixed(0)} m, air ${fl.air.toFixed(2)} s, turned ${(fl.rot * DEG).toFixed(0)} deg, ${fl.crashed || 'rode away'}`);
+  ok(Math.abs(fl.rot * DEG - 360) < 80 && !fl.crashed && !fl.crashedNow, 'back flip with the down arrow: comes round and lands');
+  ok(!fl.marker, 'holding the down arrow in the air does not drop a track marker');
 
   // F3 hides it again
   await page.keyboard.press('F3');

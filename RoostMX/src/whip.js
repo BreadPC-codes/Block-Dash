@@ -32,6 +32,7 @@ export const WHIP = {
   whipRollTorque: 205, // laying the bike over into the whip (works against the wheels' gyro)
   bodyRollTorque: 110, // rider lean left / right (right stick, arrow keys) rolls the bike
   pitchTorque: 270, // body English forward / back (left stick up / down, arrow keys)
+  flipRateFade: 7, // rad/s: around this flip rotation speed the rider can't push it any faster
   throttlePitch: 0.45, // W / S in the air: throttle lifts the nose, rear brake drops it
   pedalThreshold: 0.35, // only a deliberate throttle / brake press counts (holding a little is normal)
   faceWhip: 0.4, // share of the whip effort that already acts on the jump face
@@ -74,7 +75,7 @@ export const WHIP = {
   landingLookahead: 0.15, // s of whip / roll momentum counted at touchdown
 };
 
-const _L = new Vector3(), _g = new Vector3();
+const _L = new Vector3(), _g = new Vector3(), _h = new Vector3();
 const approach = (v, target, rate, dt) => v + clamp(target - v, -rate * dt, rate * dt);
 /** Input with a small extra deadzone, rescaled to the full range. */
 const deadzone = (v, dz) => (Math.abs(v) < dz ? 0 : (v - Math.sign(v) * dz) / (1 - dz));
@@ -113,16 +114,41 @@ export class WhipController {
   }
 
   /**
-   * Whip angle: heading of the bike vs its direction of travel (rad, + = nose right).
-   * Both are taken in 3D, so a bike pitched steeply up or down along its flight path does
-   * not read as whipped (a horizontal projection becomes ill-defined near vertical).
+   * The bike's heading on the level, taken from its sideways (axle) axis: the horizontal
+   * direction square to it. Pitching the bike - a jump face, a nose-dive, a whole front or
+   * back flip - turns the bike about that axis and leaves this heading alone, where the
+   * nose's own direction would swing through 180 degrees once the bike passes vertical.
+   * Writes into out (unit, y = 0); falls back to the nose when the bike lies on its side.
    */
-  static angle(fwd, vel) {
-    const vl = vel.length();
-    if (vl < 1.5 || Math.hypot(vel.x, vel.z) < 1) return 0;
-    const vx = vel.x / vl, vy = vel.y / vl, vz = vel.z / vl;
+  static heading(ph, out) {
+    const r = ph.right, f = ph.fwd;
+    let hx = r.z, hz = -r.x; // world up x right
+    const l = Math.hypot(hx, hz);
+    // laid far over (a big whip) but not pitched: the nose itself is the better reference
+    // (the right way round when upside down)
+    const lf = Math.hypot(f.x, f.z);
+    const w = l < 0.15 ? 1 : smoothstep(0.35, 0.7, Math.abs(r.y)) * (1 - smoothstep(0.5, 0.8, Math.abs(f.y)));
+    if (l > 1e-6) { hx /= l; hz /= l; }
+    if (w > 0 && lf > 1e-6) {
+      const sgn = ph.up.y < 0 ? -1 : 1;
+      hx += ((sgn * f.x) / lf - hx) * w;
+      hz += ((sgn * f.z) / lf - hz) * w;
+    }
+    const n = Math.hypot(hx, hz) || 1;
+    return out.set(hx / n, 0, hz / n);
+  }
+
+  /**
+   * Whip angle: the bike's level heading vs its horizontal direction of travel
+   * (rad, + = nose right). Not affected by pitch, so flips do not read as whips.
+   */
+  static angle(ph, h = WhipController.heading(ph, _h)) {
+    const vel = ph.vel;
+    const hv = Math.hypot(vel.x, vel.z);
+    if (hv < 1) return 0;
+    const vx = vel.x / hv, vz = vel.z / hv;
     // rotating the bike about +Y by this angle lines it up with the velocity
-    return Math.atan2(fwd.z * vx - fwd.x * vz, fwd.x * vx + fwd.y * vy + fwd.z * vz);
+    return Math.atan2(h.z * vx - h.x * vz, h.x * vx + h.z * vz);
   }
 
   /**
@@ -164,12 +190,15 @@ export class WhipController {
     const c = this.cfg;
     const fwd = ph.fwd, up = ph.up, right = ph.right, w = ph.angVel, vel = ph.vel;
     const A = c.airControl * authority;
-    const psi = WhipController.angle(fwd, vel);
+    // roll is measured and applied about the level heading: the same as about the nose for
+    // a bike flying straight, and still the right way round upside down in a flip
+    const h = WhipController.heading(ph, _h);
+    const psi = WhipController.angle(ph, h);
     const phi = ph.leanAngle;
     this.whipAngle = psi;
     this.whipRate = -w.y;
-    this.rollRate = w.dot(fwd);
-    let tYaw = 0, tRoll = 0, tPitch = 0; // about world Y, bike fwd, bike right
+    this.rollRate = w.dot(h);
+    let tYaw = 0, tRoll = 0, tPitch = 0; // about world Y, the level heading, bike right
 
     // 1) rider effort -> torque. Near the limits the rider's body runs out of reach, so
     //    pushing further gets weaker (pulling back stays at full strength)
@@ -178,8 +207,13 @@ export class WhipController {
     const rollE = this.whipEffort * c.whipRollTorque + this.sideEffort * c.bodyRollTorque;
     const reachL = rollE * phi > 0 ? 1 - smoothstep(c.reachStart * maxL, maxL * 1.05, Math.abs(phi)) : 1;
     tYaw += -this.whipEffort * c.whipYawTorque * A * reachW;
-    tRoll += rollE * A * reachL;
-    tPitch += -this.pitchEffort * c.pitchTorque * A;
+    // the rider lays the bike over about its own nose (on a nose-up bike this also turns it
+    // a little); everything that rights the bike acts about the level heading (below)
+    const tLay = rollE * A * reachL;
+    // body English: full strength until the bike already flips fast the same way
+    const push = -this.pitchEffort * c.pitchTorque * A;
+    const wp = w.dot(right);
+    tPitch += push * (push * wp > 0 ? 1 - smoothstep(c.flipRateFade * 0.75, c.flipRateFade * 1.25, Math.abs(wp)) : 1);
 
     // 2) soft limits: the rider can't hold the bike past them (spring + damper, capped, so
     //    a fast whip is caught over a few degrees instead of bouncing off a wall)
@@ -240,7 +274,7 @@ export class WhipController {
     // 6) air + body damping per axis
     T.addScaledVector(right, -c.damping.pitch * w.dot(right));
     T.addScaledVector(up, -c.damping.yaw * w.dot(up));
-    T.addScaledVector(fwd, -c.damping.roll * this.rollRate);
+    T.addScaledVector(fwd, -c.damping.roll * w.dot(fwd));
 
     // 7) rider counterbalance: the upper body lags and counter-rotates; its reaction acts
     //    back on the bike (internal torque)
@@ -257,10 +291,11 @@ export class WhipController {
     tRoll += -c.riderInertia * aL;
 
     T.y += tYaw;
-    T.addScaledVector(fwd, tRoll);
+    T.addScaledVector(fwd, tLay);
+    T.addScaledVector(h, tRoll);
     T.addScaledVector(right, tPitch);
     this.torque.yaw = tYaw;
-    this.torque.roll = tRoll;
+    this.torque.roll = tRoll + tLay;
     this.torque.pitch = tPitch;
 
     // 8) bars turned back toward the direction of travel (front wheel directional stability);
@@ -278,9 +313,10 @@ export class WhipController {
    */
   ground(ph, dt, T, authority) {
     const c = this.cfg;
-    this.whipAngle = WhipController.angle(ph.fwd, ph.vel);
+    const h = WhipController.heading(ph, _h);
+    this.whipAngle = WhipController.angle(ph, h);
     this.whipRate = -ph.angVel.y;
-    this.rollRate = ph.angVel.dot(ph.fwd);
+    this.rollRate = ph.angVel.dot(h);
     this.landIn = -1;
     this.recovery = 0;
     this.torque.gyro = 0;

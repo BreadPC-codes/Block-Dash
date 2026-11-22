@@ -326,6 +326,9 @@ const HARD_POINTS = [
   { name: 'head', p: null, crash: true, mu: 0.6 },
 ].map((h) => ({ ...h, v: h.p ? new Vector3(h.p[0], h.p[1], h.p[2]) : new Vector3() }));
 
+/** N·m the rider can use to slow a front / back flip once he lets go (assists off/low/full). */
+const WHIP_FLIP_BRAKE = [0, 520, 720];
+
 // temporaries
 const _whipIn = { steer: 0, lean: 0, side: 0, throttle: 0, brakeR: 0 };
 const _v1 = new Vector3(), _v2 = new Vector3(), _v3 = new Vector3(), _v4 = new Vector3();
@@ -415,6 +418,7 @@ export class BikePhysics {
     this.leanTarget = 0;
     this.leanAngle = 0;
     this.pitchAngle = 0;
+    this.airPitch = 0; // pitch that keeps counting through front / back flips (rad, + = nose up)
     this.steerAngle = 0;
     this.steerGround = 0;
     this.airTime = 0;
@@ -852,19 +856,43 @@ export class BikePhysics {
               pTarget = lerp(pTarget, slope + 0.1, prep);
             }
           }
-          const pitchNow = this.pitchAngle;
           const kp = assist === 2 ? 260 : 110;
           const kdp = assist === 2 ? 70 : 35;
           const cap = 240 + prep * (assist === 2 ? 120 : 60);
           // the rider's own pitch input takes over smoothly
           const own = 1 - Math.min(1, Math.abs(this.whip.pitchEffort) / 0.15);
-          // about the level axis across the bike's heading: this changes only how far the
-          // nose points up / down, also while the bike is laid over in a whip (pitching
-          // about the tilted chassis axis would swing the nose sideways)
-          const fh = Math.hypot(fwd.x, fwd.z);
-          if (fh > 0.2) _v2.set(-fwd.z / fh, 0, fwd.x / fh);
+          // about the bike's sideways axis on the level: this changes only how far the nose
+          // points up / down, also while the bike is laid over in a whip (pitching about the
+          // tilted chassis axis would swing the nose sideways), and it keeps pointing the
+          // same way when the bike is upside down
+          const rh = Math.hypot(right.x, right.z);
+          if (rh > 0.2) _v2.set(right.x / rh, 0, right.z / rh);
           else _v2.copy(right);
-          T.addScaledVector(_v2, own * clamp(kp * (pTarget - pitchNow) - kdp * this.angVel.dot(_v2), -cap, cap));
+          const wp = this.angVel.dot(_v2);
+          // (everyday jumps stay on the PD below; only a flip - far off upright or turning
+          // fast - is handled by spreading the rotation over the time left)
+          // flips: which way up to land - the one nearest to where the rotation would stop
+          // if the rider braked it now (let go late in a flip and he finishes it, let go
+          // early and he holds it back; a spinning bike never sets off on another turn)
+          const TWO_PI = 2 * Math.PI;
+          const aBrake = Math.max(cap, WHIP_FLIP_BRAKE[assist]) / this.inertia.x;
+          const rest = this.airPitch + (wp * Math.abs(wp)) / (2 * aBrake);
+          const turns = Math.round((rest - pTarget) / TWO_PI);
+          const err = pTarget + turns * TWO_PI - this.airPitch;
+          let tq, lim = cap;
+          if (Math.abs(err) > 1.2 || Math.abs(wp) > 3) {
+            // a big rotation: spread what is left over the time to touchdown (no overshoot);
+            // stretching out arms and legs slows a spinning rider a lot, so stopping a flip
+            // can take more than the everyday pitch correction
+            const land = this.whip.landIn;
+            const tRem = land > 0 ? Math.max(0.3, land - 0.15) : 0.6;
+            const wWant = clamp(err / tRem, -7, 7);
+            tq = this.inertia.x * (wWant - wp) * 5;
+            if (tq * wp < 0) lim = Math.max(cap, WHIP_FLIP_BRAKE[assist]);
+          } else {
+            tq = kp * err - kdp * wp;
+          }
+          T.addScaledVector(_v2, own * clamp(tq, -lim, lim));
         }
       }
     } else {
@@ -921,6 +949,17 @@ export class BikePhysics {
       this.wheelieAngle = 0;
     }
     this.sinceLanding += dt;
+    if (this.airborne) {
+      // unwrapped pitch, re-synced to the measured one whenever the bike is the right way up
+      // (keeping the whole turns of a flip)
+      this.airPitch += this.angVel.dot(this.right) * dt;
+      if (this.up.y > 0.5) {
+        const p = Math.asin(clamp(this.fwd.y, -1, 1));
+        this.airPitch = p + Math.round((this.airPitch - p) / (2 * Math.PI)) * 2 * Math.PI;
+      }
+    } else {
+      this.airPitch = Math.asin(clamp(this.fwd.y, -1, 1));
+    }
     if (this.airborne) {
       this.airTime += dt;
       this.groundTime = 0;
