@@ -13,14 +13,26 @@ export const SURFACES = [
   { id: SURF.GRAVEL, name: 'Gravel', mu: 1.2, rr: 0.03, dust: 0.7, loose: 0.06, color: [0.45, 0.43, 0.4] },
 ];
 
+/** Map size of a track definition: `size` is a number (square) or [x, z] (rectangle). */
+export function mapSize(def) {
+  const v = def.size;
+  return Array.isArray(v) ? { x: v[0], z: v[1] } : { x: v, z: v };
+}
+
 export class Heightfield {
+  /** size: number (square map) or [sizeX, sizeZ] */
   constructor(size, cell) {
-    this.size = size;
+    const sx = Array.isArray(size) ? size[0] : size;
+    const sz = Array.isArray(size) ? size[1] : size;
+    this.sizeX = sx;
+    this.sizeZ = sz;
     this.cell = cell;
-    this.n = Math.round(size / cell) + 1;
-    this.half = size / 2;
+    this.nx = Math.round(sx / cell) + 1;
+    this.nz = Math.round(sz / cell) + 1;
+    this.halfX = sx / 2;
+    this.halfZ = sz / 2;
     this.inv = 1 / cell;
-    const count = this.n * this.n;
+    const count = this.nx * this.nz;
     this.h = new Float32Array(count);
     // splat weights for rendering: dirt, grass, sand, gravel (0..255)
     this.splat = new Uint8Array(count * 4);
@@ -31,24 +43,25 @@ export class Heightfield {
     this.maxH = 0;
   }
 
-  /** Grid-space coordinate of a world position. */
-  gx(x) {
-    return (x + this.half) * this.inv;
+  /** Grid index of the cell nearest to a world position, or -1 outside the map. */
+  cellIndex(x, z) {
+    const ix = Math.round((x + this.halfX) * this.inv), iz = Math.round((z + this.halfZ) * this.inv);
+    if (ix < 0 || iz < 0 || ix >= this.nx || iz >= this.nz) return -1;
+    return iz * this.nx + ix;
   }
 
   inBounds(x, z, margin = 0) {
-    const lim = this.half - margin;
-    return x > -lim && x < lim && z > -lim && z < lim;
+    return x > -this.halfX + margin && x < this.halfX - margin && z > -this.halfZ + margin && z < this.halfZ - margin;
   }
 
   /** Interpolated height at world (x, z). Clamped to the grid edges. */
   height(x, z) {
-    const n = this.n;
-    const max = n - 1.0001;
-    let gx = (x + this.half) * this.inv;
-    let gz = (z + this.half) * this.inv;
-    if (gx < 0) gx = 0; else if (gx > max) gx = max;
-    if (gz < 0) gz = 0; else if (gz > max) gz = max;
+    const n = this.nx;
+    let gx = (x + this.halfX) * this.inv;
+    let gz = (z + this.halfZ) * this.inv;
+    const mx = n - 1.0001, mz = this.nz - 1.0001;
+    if (gx < 0) gx = 0; else if (gx > mx) gx = mx;
+    if (gz < 0) gz = 0; else if (gz > mz) gz = mz;
     const ix = gx | 0;
     const iz = gz | 0;
     const fx = gx - ix;
@@ -84,12 +97,11 @@ export class Heightfield {
 
   /** Surface type at a world position (nearest cell). */
   surface(x, z) {
-    const n = this.n;
-    let ix = Math.round((x + this.half) * this.inv);
-    let iz = Math.round((z + this.half) * this.inv);
-    if (ix < 0) ix = 0; else if (ix >= n) ix = n - 1;
-    if (iz < 0) iz = 0; else if (iz >= n) iz = n - 1;
-    return this.surf[iz * n + ix];
+    let ix = Math.round((x + this.halfX) * this.inv);
+    let iz = Math.round((z + this.halfZ) * this.inv);
+    if (ix < 0) ix = 0; else if (ix >= this.nx) ix = this.nx - 1;
+    if (iz < 0) iz = 0; else if (iz >= this.nz) iz = this.nz - 1;
+    return this.surf[iz * this.nx + ix];
   }
 
   /** Cast a ray against the terrain by marching; returns distance or -1. */
@@ -135,7 +147,7 @@ export class FunctionTerrain {
   constructor(fn, surfaceFn = () => SURF.DIRT) {
     this.fn = fn;
     this.surfaceFn = surfaceFn;
-    this.half = 1e6;
+    this.halfX = this.halfZ = 1e6;
   }
   height(x, z) {
     return this.fn(x, z);

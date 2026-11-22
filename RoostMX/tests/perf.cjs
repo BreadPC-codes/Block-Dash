@@ -1,14 +1,15 @@
-// Performance probe: node tests/perf.cjs <quality> [url]
+// Performance probe: node tests/perf.cjs <quality> [url] [trackId]
 // Rides on Ridgeback with a fixed input pattern and reports frame time, JS time,
 // draw calls and triangles. Under SwiftShader the frame time is CPU rasterisation,
 // so it is a fair *relative* measure of GPU work between builds.
 const { chromium } = require('playwright');
 const quality = process.argv[2] || 'low';
 const url = process.argv[3] || 'http://localhost:8765/';
+const trackId = process.argv[4] || 'ridgeback';
 (async () => {
   const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
-  await page.addInitScript((q) => localStorage.setItem('roostmx.settings.v1', JSON.stringify({ graphics: { quality: q, fullscreen: false, showFps: false, dynamicRes: false }, game: { track: 'ridgeback', mode: 'free' } })), quality);
+  await page.addInitScript(([q, t]) => localStorage.setItem('roostmx.settings.v1', JSON.stringify({ graphics: { quality: q, fullscreen: false, showFps: false, dynamicRes: false }, game: { track: t, mode: 'free' } })), [quality, trackId]);
   const t0 = Date.now();
   await page.goto(url);
   await page.waitForSelector('#screen-main.active', { timeout: 300000 });

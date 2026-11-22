@@ -129,7 +129,7 @@ button { font-family: inherit; color: inherit; }
 .play-track b { color: var(--text); font-family: var(--head); font-style: italic; font-size: 20px; text-transform: uppercase; margin-left: 6px; }
 
 /* ---------- track select */
-.track-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.track-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
 .track-card { text-align: left; background: var(--panel2); border: 1px solid var(--line); padding: 0; cursor: pointer; outline: none; transition: border-color .15s, transform .15s; overflow: hidden; }
 .track-card:hover, .track-card.focus, .track-card:focus-visible { border-color: var(--orange); transform: translateY(-3px); }
 .track-card.selected { border-color: var(--orange); box-shadow: 0 0 0 1px var(--orange); }
@@ -137,7 +137,7 @@ button { font-family: inherit; color: inherit; }
 .track-info { padding: 12px 14px 14px; }
 .track-kind { font-family: var(--head); font-weight: 700; font-style: italic; text-transform: uppercase; letter-spacing: 2px; font-size: 13px; color: var(--orange); }
 .track-name { font-family: var(--head); font-weight: 900; font-style: italic; text-transform: uppercase; font-size: 26px; margin: 2px 0 6px; }
-.track-desc { color: var(--muted); font-size: 13px; line-height: 1.4; min-height: 54px; }
+.track-desc { color: var(--muted); font-size: 13px; line-height: 1.4; min-height: 72px; }
 .track-stats { display: flex; gap: 14px; margin-top: 8px; font-size: 13px; color: var(--muted); }
 .track-stats b { color: var(--text); }
 

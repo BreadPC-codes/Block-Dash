@@ -94,7 +94,7 @@ controller* restore the defaults below.
 | Rear brake | S | X |
 | Steer / lean bike left, right | A / D | Left stick ← → |
 | Rider lean left, right | ← / → | Right stick ← → |
-| Rider lean forward, back | ↑ / ↓ | Right stick ↑ ↓ |
+| Rider lean forward, back | ↑ / ↓ | Left stick ↑ ↓ |
 | Shift up / down | E / Q | RB / LB |
 | Reset bike | R | A or View |
 | Change camera | C | Y |
@@ -130,6 +130,15 @@ In the other cameras, dragging the mouse orbits the view and the wheel changes d
 | Ridgeback Valley | Outdoor motocross | 1.4 km |
 | Pine Hollow Practice | Compact practice track | 0.7 km |
 | Dune Coast | Sand track by the sea | 1.0 km |
+| Big Air Line | Point-to-point jump line | 2.7 km |
+
+**Big Air Line** is one dead-straight dirt strip with 28 big jumps in a row — tables,
+doubles, triples and a step-up, 2.2 to 4.2 m tall with gaps up to 38 m and up to
+~2.4 s of air time. The jumps are sized so their ideal takeoff speeds climb smoothly
+from about 47 to 83 km/h: carry your speed from one landing into the next jump. A
+run starts at the gate and the clock stops at the far end; a few seconds after the
+finish you are taken back to the start. Every jump on it is checked with the real bike
+physics (`node tests/jump-tuner.mjs`) for a safe speed window and a mid-ramp landing.
 
 Tracks include a start straight with a working starting gate, bermed corners, doubles,
 a triple, tabletops, a step-up, a rhythm section, whoops, rollers, braking bumps and
@@ -167,6 +176,10 @@ Dirt, grass, gravel and sand each have their own grip and rolling resistance.
   leaned or sideways, nose-diving, casing a jump, front-end tucks from overloading the
   front tire (e.g. braking hard while leaned), and hitting obstacles. The rider
   separates and tumbles as a ragdoll; reset with R / A (or your binding) or automatically.
+- **Landings**: with assists the rider levels the bike in the air and, coming down,
+  lines it up with the slope it is about to land on (a few degrees nose-up so the rear
+  touches first), keeps the rear wheel near road speed so it does not land spinning,
+  and eases the front brake before the rear lifts (anti-lift).
 - **Rider assists** (Full / Low / Off): wheelie and stoppie control, traction control,
   brake modulation when leaned, grip-aware lean and landing assist. Off = raw sim (only
   the rider's instinctive roll-off before looping a wheelie or going over the bars).
@@ -319,7 +332,14 @@ Lap timer: laps, splits, cut / wrong-way / off-track detection.
 npm run test:autopilot
 ```
 
-A simple autopilot rides every track headless and reports crashes and lap times.
+A simple autopilot rides every track headless and reports crashes and lap / run times.
+
+```bash
+node tests/jump-tuner.mjs jumpline
+```
+
+Rides every jump of a track with the real physics at takeoff speeds from 10 to 28 m/s
+and reports the safe speed window and the sweet spot (mid-ramp landing) of each.
 
 Browser tests (`tests/smoke.cjs`, `tests/flows.cjs`, `tests/gamepad.cjs` — virtual
 controller, rider lean, button remapping — and `tests/perf.cjs <low|medium|high>`, a

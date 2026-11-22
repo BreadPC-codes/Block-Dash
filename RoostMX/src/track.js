@@ -2,11 +2,12 @@
 //
 // A track is described with "turtle" commands (straights and constant-radius turns,
 // like a real track designer would sketch it). The loop is closed automatically with a
-// Dubins path. Jumps, rhythm sections, whoops and rollers sit on straights; berms are
+// Dubins path; tracks marked `open` are point-to-point lines instead (start gate at one
+// end, finish at the other). Jumps, rhythm sections, whoops and rollers sit on straights; berms are
 // generated on the outside of corners. The result is stamped into a Heightfield together
 // with surface types (dirt, grass, sand, gravel) used by both physics and rendering.
 
-import { Heightfield, SURF } from './heightfield.js';
+import { Heightfield, SURF, mapSize } from './heightfield.js';
 import { SimplexNoise, clamp, lerp, smoothstep, DEG } from './util.js';
 
 export const DS = 0.25; // centerline sample spacing (m)
@@ -304,12 +305,13 @@ function arcPoint(prim, a) {
   return { x: cx - r * Math.sin(t2), z: cz + r * Math.cos(t2), th: t2 };
 }
 
-function circularSmooth(arr, windowSamples) {
+function circularSmooth(arr, windowSamples, open = false) {
   const n = arr.length;
   const w = Math.max(1, Math.round(windowSamples));
   const half = Math.floor(w / 2);
   const prefix = new Float64Array(n * 3 + 1);
-  for (let i = 0; i < n * 3; i++) prefix[i + 1] = prefix[i] + arr[i % n];
+  // closed loops wrap around; open lines repeat their end values
+  for (let i = 0; i < n * 3; i++) prefix[i + 1] = prefix[i] + (open ? arr[Math.min(n - 1, Math.max(0, i - n))] : arr[i % n]);
   const out = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     const a = i + n - half, b = i + n + half + 1;
@@ -324,6 +326,7 @@ function circularSmooth(arr, windowSamples) {
 export class Track {
   constructor(def) {
     this.def = def;
+    this.open = !!def.open;
     this.noise = new SimplexNoise(def.seed ?? 1);
     this.noise2 = new SimplexNoise((def.seed ?? 1) + 77);
     const { prims, end } = layoutToPrims(def);
@@ -348,9 +351,10 @@ export class Track {
       total += p.len;
       p.s1 = total;
     }
-    const n = Math.floor(total / DS);
+    // a loop's last sample joins the first; an open line also keeps its end point
+    const n = this.open ? Math.floor(total / DS) + 1 : Math.floor(total / DS);
     this.n = n;
-    this.length = n * DS;
+    this.length = this.open ? (n - 1) * DS : n * DS;
     this.x = new Float32Array(n);
     this.z = new Float32Array(n);
     this.tx = new Float32Array(n);
@@ -401,14 +405,23 @@ export class Track {
     this.bounds = { minX: minX - cx, maxX: maxX - cx, minZ: minZ - cz, maxZ: maxZ - cz };
   }
 
-  /** Index of sample nearest arc length s (wrapping). */
+  /** Index of sample nearest arc length s (wrapping on loops, clamped on open lines). */
   idx(s) {
+    if (this.open) return Math.min(this.n - 1, Math.max(0, Math.round(s / DS)));
     let i = Math.round(s / DS) % this.n;
     if (i < 0) i += this.n;
     return i;
   }
 
+  /** Sample index k steps from i (wraps on loops, clamps on open lines). */
+  step(i, k) {
+    const j = i + k;
+    if (this.open) return j < 0 ? 0 : j >= this.n ? this.n - 1 : j;
+    return ((j % this.n) + this.n) % this.n;
+  }
+
   wrapS(s) {
+    if (this.open) return Math.min(this.length, Math.max(0, s));
     let v = s % this.length;
     if (v < 0) v += this.length;
     return v;
@@ -419,7 +432,7 @@ export class Track {
     const f = this.wrapS(s) / DS;
     const i0 = Math.floor(f);
     const t = f - i0;
-    const a = arr[i0 % this.n], b = arr[(i0 + 1) % this.n];
+    const a = arr[this.step(i0, 0)], b = arr[this.step(i0, 1)];
     return a + (b - a) * t;
   }
 
@@ -448,8 +461,8 @@ export class Track {
     const n = this.n;
     const raw = new Float32Array(n);
     for (let i = 0; i < n; i++) raw[i] = this.ground(this.x[i], this.z[i]);
-    let E = circularSmooth(raw, 44 / DS);
-    E = circularSmooth(E, 44 / DS);
+    let E = circularSmooth(raw, 44 / DS, this.open);
+    E = circularSmooth(E, 44 / DS, this.open);
     // Flatten segments flagged flat (start straight etc.)
     const flatSegs = new Set();
     this.def.layout.forEach((it, k) => {
@@ -460,11 +473,11 @@ export class Track {
       const s0 = this.segStart(k), s1 = this.segEnd(k);
       const i0 = this.idx(s0), cnt = Math.round((s1 - s0) / DS);
       let sum = 0;
-      for (let j = 0; j < cnt; j++) sum += E[(i0 + j) % n];
+      for (let j = 0; j < cnt; j++) sum += E[this.step(i0, j)];
       const mean = sum / Math.max(1, cnt);
-      for (let j = 0; j < cnt; j++) E[(i0 + j) % n] = mean;
+      for (let j = 0; j < cnt; j++) E[this.step(i0, j)] = mean;
     }
-    E = circularSmooth(E, 24 / DS);
+    E = circularSmooth(E, 24 / DS, this.open);
     this.E = E;
   }
 
@@ -483,6 +496,7 @@ export class Track {
         this.features.push(info);
         const i0 = Math.floor(fs0 / DS), i1 = Math.ceil(fs1 / DS);
         for (let i = i0; i <= i1; i++) {
+          if (this.open && (i < 0 || i >= n)) continue;
           const ii = ((i % n) + n) % n;
           const v = f.height(i * DS - fs0);
           if (v > this.F[ii]) this.F[ii] = v;
@@ -509,6 +523,7 @@ export class Track {
       for (let i = i0; i <= i1; i++) {
         const s = i * DS;
         const w = smoothstep(p.s0 - lead, p.s0 + 3, s) * (1 - smoothstep(p.s1 - 3, p.s1 + trail, s));
+        if (this.open && (i < 0 || i >= n)) continue;
         const ii = ((i % n) + n) % n;
         B[ii] += sgn * h * w;
       }
@@ -525,7 +540,7 @@ export class Track {
       const opts = (it[0] === 'S' ? it[2] : it[3]) || {};
       W[i] = opts.w ?? base;
     }
-    this.W = circularSmooth(W, 16 / DS);
+    this.W = circularSmooth(W, 16 / DS, this.open);
   }
 
   _buildIndex() {
@@ -551,14 +566,22 @@ export class Track {
     const first = this.def.layout[0];
     const opts = first[2] || {};
     this.gateS = opts.gate ?? 20;
-    this.finishS = opts.finish ?? 70;
     const count = this.def.checkpoints ?? 8;
     this.checkpoints = [];
-    for (let k = 0; k < count; k++) {
-      const s = this.wrapS(this.finishS + (k * this.length) / count);
+    const cp = (s) => {
       const i = this.idx(s);
-      this.checkpoints.push({ s, x: this.x[i], z: this.z[i], tx: this.tx[i], tz: this.tz[i] });
+      return { s, x: this.x[i], z: this.z[i], tx: this.tx[i], tz: this.tz[i] };
+    };
+    if (this.open) {
+      // point to point: the run starts just past the gate and ends at the finish line
+      this.finishS = Math.min(opts.finish ?? this.length - 30, this.length - 5);
+      this.startS = this.gateS + 2;
+      for (let k = 0; k < count; k++) this.checkpoints.push(cp(this.startS + (k * (this.finishS - this.startS)) / count));
+      this.finishPoint = cp(this.finishS);
+      return;
     }
+    this.finishS = opts.finish ?? 70;
+    for (let k = 0; k < count; k++) this.checkpoints.push(cp(this.wrapS(this.finishS + (k * this.length) / count)));
   }
 
   /**
@@ -570,7 +593,7 @@ export class Track {
     if (hint >= 0) {
       const range = Math.round(30 / DS);
       for (let k = -range; k <= range; k += 2) {
-        const i = (((hint + k) % this.n) + this.n) % this.n;
+        const i = this.step(hint, k);
         const dx = x - this.x[i], dz = z - this.z[i];
         const d2 = dx * dx + dz * dz;
         if (d2 < bestD2) { bestD2 = d2; best = i; }
@@ -599,7 +622,7 @@ export class Track {
     }
     // refine around best
     for (let k = -4; k <= 4; k++) {
-      const i = (((best + k) % this.n) + this.n) % this.n;
+      const i = this.step(best, k);
       const dx = x - this.x[i], dz = z - this.z[i];
       const d2 = dx * dx + dz * dz;
       if (d2 < bestD2) { bestD2 = d2; best = i; }
@@ -663,8 +686,9 @@ export class Track {
 export function makeGroundFunction(def, noise, hills) {
   const und = def.undulation ?? 3;
   const style = def.groundStyle ?? 'valley';
-  const half = def.size / 2;
-  const edgeStart = def.edgeStart ?? half * 0.8;
+  const ms = mapSize(def);
+  const hx = ms.x / 2, hz = ms.z / 2, hmin = Math.min(hx, hz);
+  const edgeStart = def.edgeStart ?? hmin * 0.8;
   const mountain = def.mountainHeight ?? 70;
   return (x, z) => {
     let h = noise.fbm(x / 230, z / 230, 3) * und + noise.fbm(x / 70 + 31.7, z / 70 - 12.1, 3) * und * 0.22;
@@ -673,7 +697,8 @@ export function makeGroundFunction(def, noise, hills) {
       const q = (dx * dx + dz * dz) / (hl.r * hl.r);
       if (q < 9) h += hl.h * Math.exp(-q);
     }
-    const ax = Math.abs(x), az = Math.abs(z);
+    // distance measure to the map edge (rounded square; long maps are stretched along x/z)
+    const ax = Math.max(0, Math.abs(x) - (hx - hmin)), az = Math.max(0, Math.abs(z) - (hz - hmin));
     const r = Math.sqrt(Math.sqrt(ax * ax * ax * ax + az * az * az * az));
     const e = smoothstep(edgeStart, edgeStart + 380, r);
     if (e > 0) {
@@ -682,7 +707,7 @@ export function makeGroundFunction(def, noise, hills) {
         h += e * (8 + 26 * dune) * e;
         if (def.seaSide) {
           const sideCoord = def.seaSide === 'south' ? z : -z;
-          const sea = smoothstep(half * 0.95, half * 1.6, sideCoord);
+          const sea = smoothstep(hz * 0.95, hz * 1.6, sideCoord);
           h = lerp(h, -10, sea);
         }
       } else {
@@ -699,30 +724,31 @@ export function makeGroundFunction(def, noise, hills) {
 // ---------------------------------------------------------------------------
 export function generateTerrain(track, cell = 0.5) {
   const def = track.def;
-  const hf = new Heightfield(def.size, cell);
-  const n = hf.n, half = hf.half;
-  const count = n * n;
+  const ms = mapSize(def);
+  const hf = new Heightfield([ms.x, ms.z], cell);
+  const nx = hf.nx, nz = hf.nz, halfX = hf.halfX, halfZ = hf.halfZ;
+  const count = nx * nz;
   const G = track.ground;
   const noise = track.noise, noise2 = track.noise2;
   const isSand = def.surface === 'sand';
 
   // 1) Base ground on a coarse grid, bilinearly upsampled.
   const cc = 4; // coarse factor
-  const cn = Math.ceil((n - 1) / cc) + 1;
-  const coarse = new Float32Array(cn * cn);
-  for (let j = 0; j < cn; j++) {
-    for (let i = 0; i < cn; i++) {
-      coarse[j * cn + i] = G(i * cc * cell - half, j * cc * cell - half);
+  const cnx = Math.ceil((nx - 1) / cc) + 1, cnz = Math.ceil((nz - 1) / cc) + 1;
+  const coarse = new Float32Array(cnx * cnz);
+  for (let j = 0; j < cnz; j++) {
+    for (let i = 0; i < cnx; i++) {
+      coarse[j * cnx + i] = G(i * cc * cell - halfX, j * cc * cell - halfZ);
     }
   }
   const H = hf.h;
-  for (let iz = 0; iz < n; iz++) {
-    const fz = iz / cc, jz = Math.min(cn - 2, Math.floor(fz)), tz = fz - jz;
-    for (let ix = 0; ix < n; ix++) {
-      const fx = ix / cc, jx = Math.min(cn - 2, Math.floor(fx)), tx = fx - jx;
-      const a = coarse[jz * cn + jx], b = coarse[jz * cn + jx + 1];
-      const c = coarse[(jz + 1) * cn + jx], d = coarse[(jz + 1) * cn + jx + 1];
-      H[iz * n + ix] = (a + (b - a) * tx) * (1 - tz) + (c + (d - c) * tx) * tz;
+  for (let iz = 0; iz < nz; iz++) {
+    const fz = iz / cc, jz = Math.min(cnz - 2, Math.floor(fz)), tz = fz - jz;
+    for (let ix = 0; ix < nx; ix++) {
+      const fx = ix / cc, jx = Math.min(cnx - 2, Math.floor(fx)), tx = fx - jx;
+      const a = coarse[jz * cnx + jx], b = coarse[jz * cnx + jx + 1];
+      const c = coarse[(jz + 1) * cnx + jx], d = coarse[(jz + 1) * cnx + jx + 1];
+      H[iz * nx + ix] = (a + (b - a) * tx) * (1 - tz) + (c + (d - c) * tx) * tz;
     }
   }
 
@@ -739,21 +765,21 @@ export function generateTerrain(track, cell = 0.5) {
   const partSpan = Math.round(80 / DS);
   const circ = (a, b) => {
     const d = Math.abs(a - b);
-    return d < N - d ? d : N - d;
+    return track.open || d < N - d ? d : N - d;
   };
   for (let i = 0; i < N; i += stride) {
     const cx = track.x[i], cz = track.z[i];
-    const ix0 = Math.max(0, Math.floor((cx - R + half) / cell));
-    const ix1 = Math.min(n - 1, Math.ceil((cx + R + half) / cell));
-    const iz0 = Math.max(0, Math.floor((cz - R + half) / cell));
-    const iz1 = Math.min(n - 1, Math.ceil((cz + R + half) / cell));
+    const ix0 = Math.max(0, Math.floor((cx - R + halfX) / cell));
+    const ix1 = Math.min(nx - 1, Math.ceil((cx + R + halfX) / cell));
+    const iz0 = Math.max(0, Math.floor((cz - R + halfZ) / cell));
+    const iz1 = Math.min(nz - 1, Math.ceil((cz + R + halfZ) / cell));
     for (let iz = iz0; iz <= iz1; iz++) {
-      const dz = iz * cell - half - cz;
+      const dz = iz * cell - halfZ - cz;
       const dz2 = dz * dz;
       if (dz2 > R2) continue;
-      let c = iz * n + ix0;
+      let c = iz * nx + ix0;
       for (let ix = ix0; ix <= ix1; ix++, c++) {
-        const dx = ix * cell - half - cx;
+        const dx = ix * cell - halfX - cx;
         const d2 = dx * dx + dz2;
         if (d2 > R2) continue;
         const i1 = b1i[c];
@@ -784,7 +810,7 @@ export function generateTerrain(track, cell = 0.5) {
   const refine = (c, idx, wx, wz) => {
     let best = idx, bd = Infinity;
     for (let k = -stride; k <= stride; k++) {
-      const j = (((idx + k) % N) + N) % N;
+      const j = track.step(idx, k);
       const dx = wx - track.x[j], dz = wz - track.z[j];
       const d2 = dx * dx + dz * dz;
       if (d2 < bd) { bd = d2; best = j; }
@@ -853,11 +879,11 @@ export function generateTerrain(track, cell = 0.5) {
   const p1 = {}, p2 = {};
   const pits = (def.pits || []).map((pt) => resolvePit(track, pt));
 
-  for (let iz = 0; iz < n; iz++) {
-    const wz = iz * cell - half;
-    for (let ix = 0; ix < n; ix++) {
-      const c = iz * n + ix;
-      const wx = ix * cell - half;
+  for (let iz = 0; iz < nz; iz++) {
+    const wz = iz * cell - halfZ;
+    for (let ix = 0; ix < nx; ix++) {
+      const c = iz * nx + ix;
+      const wx = ix * cell - halfX;
       let h = H[c];
       let dirtW = 0, wearW = 0, nearTrack = 1e4;
       if (b1i[c] >= 0) {

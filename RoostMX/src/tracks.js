@@ -2,7 +2,69 @@
 //   ['S', length, { features, w, flat, gate, finish }]   straight
 //   ['L'|'R', angleDeg, radius, { berm, w }]             constant radius turn (rider-relative)
 //   ['CLOSE', radius]                                     Dubins path back to the start
-// Feature `at` values are meters from the start of their straight.
+// Feature `at` values are meters from the start of their straight. `open: true` tracks are
+// point to point (no CLOSE): start gate at one end, finish line at the other. `size` is the
+// map size in meters, a number (square) or [x, z].
+import { buildFeature } from './track.js';
+
+/**
+ * Lay jumps out one after another: each entry is [run-up before it (m), feature spec].
+ * Returns the specs with their `at` positions and where the last one ends.
+ */
+function jumpSequence(start, items) {
+  const features = [];
+  let at = start;
+  for (const [runup, spec] of items) {
+    at += runup;
+    features.push({ ...spec, at: Math.round(at * 10) / 10 });
+    at += buildFeature(spec).length;
+  }
+  return { features, end: at };
+}
+
+// Big Air Line: one very long dead-straight strip of escalating big jumps.
+// `speed` = takeoff speed in m/s that lands mid-ramp (measured with tests/jump-tuner.mjs).
+// long, gentle landings (18 deg) so carrying a bit too much speed still lands on the ramp
+const T = (h, top, extra = {}) => ({ type: 'table', h, face: 26 + Math.min(3, (h - 2) * 1.5), top, land: 18, ...extra });
+const D = (h, gap, extra = {}) => ({ type: 'double', h1: h, face: 26 + Math.min(4, (h - 2) * 2), gap, h2: h - 0.2, land: 18, ...extra });
+const M = (h, gap, extra = {}) => D(h, gap, { mid: { h: h - 1.2, w: 12 }, ...extra });
+// Each jump is sized (gap / table top) so its ideal takeoff speed is close to the previous
+// one's: the line flows, speed builds from ~47 to ~83 km/h, no hard braking in between.
+const JUMP_LINE = jumpSequence(70, [
+  // warm up (13-15 m/s)
+  [0, T(2.2, 12, { speed: 13 })],
+  [36, T(2.6, 14, { speed: 14 })],
+  [36, { type: 'stepup', h1: 2.0, face: 28, gap: 8, h2: 3.4, plateau: 9, down: 15, speed: 13.5 }],
+  [38, D(2.4, 15, { speed: 14.5 })],
+  [36, T(2.8, 16, { speed: 15 })],
+  [36, D(2.6, 17, { speed: 15.5 })],
+  // building up (16-18.5 m/s)
+  [38, T(3.0, 18, { speed: 16 })],
+  [38, D(2.8, 20, { speed: 16.5 })],
+  [36, D(2.8, 20, { speed: 16.5 })],
+  [38, T(3.2, 20, { speed: 17 })],
+  [38, D(3.0, 22, { speed: 17.5 })],
+  [38, T(3.4, 24, { speed: 18 })],
+  [38, D(3.2, 25, { speed: 18.5 })],
+  [36, D(3.2, 25, { speed: 18.5 })],
+  // big (19-21.5 m/s)
+  [40, T(3.6, 26, { speed: 19 })],
+  [40, D(3.4, 28, { speed: 19.5 })],
+  [40, M(3.6, 29, { speed: 20 })],
+  [40, T(3.8, 31, { speed: 20.5 })],
+  [40, D(3.4, 28, { speed: 19.5 })],
+  [40, D(3.6, 33, { speed: 21 })],
+  [42, M(3.8, 33, { speed: 21.5 })],
+  // finale (21-23 m/s)
+  [42, T(4.0, 35, { speed: 22 })],
+  [42, D(3.6, 33, { speed: 21 })],
+  [42, M(3.8, 33, { speed: 21.5 })],
+  [42, T(4.0, 35, { speed: 22 })],
+  [44, D(4.0, 38, { speed: 22.5 })],
+  [44, D(4.2, 38, { speed: 23 })],
+  [46, D(4.2, 38, { speed: 23 })],
+]);
+const JUMP_LINE_LENGTH = Math.ceil(JUMP_LINE.end + 70);
 
 export const TRACKS = [
   {
@@ -143,6 +205,25 @@ export const TRACKS = [
     ],
     hills: [{ seg: 6, t: 0.5, h: 6, r: 60, side: 40 }],
     pits: [{ seg: 0, at: 60, side: -1, offset: 34, length: 80, depth: 28 }],
+  },
+  {
+    id: 'jumpline',
+    name: 'Big Air Line',
+    kind: 'Jump Line',
+    description:
+      'One dead-straight dirt strip, almost 3 km long, with 28 big jumps in a row: tables, doubles, triples and a step-up that keep getting bigger and faster. Carry your speed - the clock stops at the far end.',
+    seed: 5150,
+    open: true,
+    size: [JUMP_LINE_LENGTH + 160, 300],
+    surface: 'dirt',
+    groundStyle: 'valley',
+    vegetation: 'mixed',
+    halfWidth: 7,
+    undulation: 1.4,
+    mountainHeight: 70,
+    checkpoints: 10,
+    layout: [['S', JUMP_LINE_LENGTH, { w: 7.5, flat: true, gate: 20, finish: JUMP_LINE_LENGTH - 45, features: JUMP_LINE.features }]],
+    pits: [{ seg: 0, at: 40, side: -1, offset: 34, length: 70, depth: 26 }],
   },
 ];
 

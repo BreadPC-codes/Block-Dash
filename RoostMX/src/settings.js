@@ -34,8 +34,9 @@ export const DEFAULT_KEYS = {
 /**
  * Controller bindings. Codes: 'b7' = button 7, 'a0-' / 'a0+' = axis 0 pushed negative /
  * positive, 'a5t+' = trigger-style axis resting at -1 (full travel = 0..1).
- * Defaults follow the standard (Xbox) layout: left stick steers the bike, right stick
- * moves the rider, triggers throttle / front brake, d-pad looks around.
+ * Defaults follow the standard (Xbox) layout: left stick steers the bike (X) and moves the
+ * rider forward / back (Y), right stick leans the rider left / right, triggers throttle /
+ * front brake, d-pad looks around.
  */
 export const DEFAULT_PAD = {
   throttle: ['b7', ''],
@@ -45,8 +46,8 @@ export const DEFAULT_PAD = {
   steerRight: ['a0+', ''],
   riderLeft: ['a2-', ''],
   riderRight: ['a2+', ''],
-  leanForward: ['a3-', ''],
-  leanBack: ['a3+', ''],
+  leanForward: ['a1-', ''],
+  leanBack: ['a1+', ''],
   shiftUp: ['b5', ''],
   shiftDown: ['b4', ''],
   reset: ['b0', 'b8'],
@@ -99,7 +100,7 @@ export const DEFAULT_SETTINGS = {
   controls: {
     keys: JSON.parse(JSON.stringify(DEFAULT_KEYS)),
     pad: JSON.parse(JSON.stringify(DEFAULT_PAD)),
-    padVersion: 2,
+    padVersion: 3,
     padSteerSens: 1.0,
     padDeadzone: 0.12,
     invertLean: false,
@@ -191,9 +192,20 @@ export function loadSettings() {
   // older versions had a fixed controller layout: start from the new defaults
   if (!s.controls.pad || typeof s.controls.pad !== 'object' || (s.controls.padVersion || 1) < 2) {
     s.controls.pad = JSON.parse(JSON.stringify(DEFAULT_PAD));
-    s.controls.padVersion = 2;
+    s.controls.padVersion = 3;
   }
   fix(s.controls.pad, DEFAULT_PAD);
+  // v2 -> v3: rider forward / back moved from the right stick to the left stick (only when
+  // the player still had the old defaults there)
+  if ((s.controls.padVersion || 2) < 3) {
+    const P = s.controls.pad;
+    if (P.leanForward[0] === 'a3-' && P.leanBack[0] === 'a3+') {
+      for (const a of Object.keys(P)) for (let i = 0; i < 2; i++) if (P[a][i] === 'a1-' || P[a][i] === 'a1+') P[a][i] = '';
+      P.leanForward[0] = 'a1-';
+      P.leanBack[0] = 'a1+';
+    }
+    s.controls.padVersion = 3;
+  }
   return s;
 }
 

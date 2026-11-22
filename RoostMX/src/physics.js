@@ -671,12 +671,25 @@ export class BikePhysics {
       if (this.rear.slip > 1.3) this.brakeR *= 0.45;
       if (this.front.slip > 1.6) this.brakeF *= 0.6;
     }
+    if (!crashed && assist > 0 && this.rear.contact && this.brakeF > 0.2 && !this.airborne) {
+      // anti-lift: as the rear goes light under hard front braking the rider eases the
+      // lever, so the bike brakes right at the limit without standing on its nose
+      const light = this.rear.loadF / (this.mass * G * 0.5);
+      const keep = assist === 2 ? 0.2 : 0.1;
+      this.brakeF *= clamp(0.35 + (0.65 * light) / keep, 0.35, 1);
+    }
     if (!crashed && this.front.contact && !this.rear.contact && !this.airborne) {
       // stoppie control: ease off the front brake when the rear lifts (assists off: only
       // the instinctive release before going over the bars)
-      const stoppie = -Math.asin(clamp(fwd.dot(this.front.normal), -1, 1)) - 0.2 * pitchRate;
-      const lim = assist === 2 ? 0.12 : assist === 1 ? 0.3 : 0.5;
-      this.brakeF *= 1 - smoothstep(lim, lim + 0.18, stoppie);
+      const stoppie = -Math.asin(clamp(fwd.dot(this.front.normal), -1, 1)) - 0.3 * pitchRate;
+      const lim = assist === 2 ? 0.05 : assist === 1 ? 0.2 : 0.5;
+      this.brakeF *= 1 - smoothstep(lim, lim + 0.15, stoppie);
+    }
+    if (!crashed && assist > 0 && this.airborne) {
+      // in the air the rider keeps the rear wheel close to road speed, so it does not land
+      // spinning far faster than the ground (that kicks the bike onto its nose)
+      const over = this.rear.omega * this.rear.radius - (this.forwardSpeed + 1.0);
+      throttle *= 1 - smoothstep(0, assist === 2 ? 2.5 : 5, over);
     }
     this.throttle = throttle;
     const clutchIn = crashed || (this.airborne && this.brakeR > 0.15);
@@ -778,6 +791,8 @@ export class BikePhysics {
           const lim = assist === 2 ? 0.1 : 0.4;
           if (this.wheelieAngle > lim) T.addScaledVector(right, -(this.wheelieAngle - lim) * (assist === 2 ? 1400 : 600));
         }
+        // on the front wheel only (stoppie, nose-first landing) the rider keeps it straight
+        if (assist > 0 && this.front.contact && !this.rear.contact) T.addScaledVector(up, -this.angVel.dot(up) * this.inertia.y * (assist === 2 ? 9 : 5));
         // rider keeps the yaw rate consistent with the lean (throttle/brake/body control)
         const yawRate = this.angVel.dot(up);
         if (speed > 2.5 && assist > 0) {
@@ -810,19 +825,38 @@ export class BikePhysics {
             // rotation about +Y takes +Z toward +X: sin = (f x v).y
             yawErr = Math.asin(clamp(fz * vx - fx * vz, -1, 1));
           }
-          T.y += stab * (110 * yawErr - 28 * this.angVel.y);
-          T.addScaledVector(fwd, stab * (-95 * phi - 22 * phiDot));
+          // with assists the rider levels the bike well before the landing (big jumps have
+          // 2-3 s of air time); steering or leaning the rider overrides it
+          const kRoll = assist === 2 ? 2.6 : assist === 1 ? 1.8 : 1;
+          T.y += stab * (110 * yawErr - 28 * this.angVel.y) * (assist > 0 ? 1.6 : 1);
+          T.addScaledVector(fwd, stab * kRoll * (-95 * phi - 30 * phiDot));
           void Yx; void Yy; void Yz;
         }
-        // pitch assist: the rider keeps the bike roughly parallel to its flight path
+        // pitch assist: the rider keeps the bike roughly parallel to its flight path and,
+        // coming down, lines it up with the slope of the spot where it is going to land
         if (assist > 0 && Math.abs(this.leanIn) < 0.15) {
           const hv = Math.hypot(vel.x, vel.z);
           const pathAngle = Math.atan2(vel.y, Math.max(hv, 1));
-          const pTarget = pathAngle * 0.85;
+          let pTarget = pathAngle * 0.85;
+          let prep = 0;
+          // only for real jumps: skipping over whoops / rollers keeps the old behaviour
+          if (vel.y < 0 && hv > 3 && this.airTime > 0.3) {
+            const land = this._predictLanding(_v1);
+            if (land > 0) {
+              const dx = vel.x / hv, dz = vel.z / hv;
+              const T0 = this.terrain;
+              const slope = clamp(Math.atan2(T0.height(_v1.x + dx * 2.5, _v1.z + dz * 2.5) - T0.height(_v1.x - dx * 2.5, _v1.z - dz * 2.5), 5), -0.5, 0.35);
+              // a few degrees nose-up relative to the ramp so the rear wheel lands first;
+              // the rider starts setting up well before touchdown
+              prep = smoothstep(1.6, 0.55, land);
+              pTarget = lerp(pTarget, slope + 0.1, prep);
+            }
+          }
           const pitchNow = this.pitchAngle;
           const kp = assist === 2 ? 260 : 110;
           const kdp = assist === 2 ? 70 : 35;
-          T.addScaledVector(right, clamp(kp * (pTarget - pitchNow) - kdp * this.angVel.dot(right), -240, 240));
+          const cap = 240 + prep * (assist === 2 ? 120 : 60);
+          T.addScaledVector(right, clamp(kp * (pTarget - pitchNow) - kdp * this.angVel.dot(right), -cap, cap));
         }
         T.addScaledVector(this.angVel, -2.5);
       }
@@ -866,10 +900,10 @@ export class BikePhysics {
 
     // ---- bounds
     const T0 = this.terrain;
-    if (T0.half && T0.half < 1e5) {
-      const lim = T0.half - 6;
-      if (Math.abs(this.pos.x) > lim) { this.pos.x = Math.sign(this.pos.x) * lim; vel.x *= -0.2; }
-      if (Math.abs(this.pos.z) > lim) { this.pos.z = Math.sign(this.pos.z) * lim; vel.z *= -0.2; }
+    if (T0.halfX && T0.halfX < 1e5) {
+      const lx = T0.halfX - 6, lz = T0.halfZ - 6;
+      if (Math.abs(this.pos.x) > lx) { this.pos.x = Math.sign(this.pos.x) * lx; vel.x *= -0.2; }
+      if (Math.abs(this.pos.z) > lz) { this.pos.z = Math.sign(this.pos.z) * lz; vel.z *= -0.2; }
     }
 
     // ---- state bookkeeping
@@ -904,6 +938,21 @@ export class BikePhysics {
   }
 
   // --- wheel contact and forces -------------------------------------------------
+  /** Time (s) until the ballistic path meets the ground (-1 if > 2 s); out = landing point. */
+  _predictLanding(out) {
+    const p = this.pos, v = this.vel, T0 = this.terrain;
+    for (let k = 1; k <= 40; k++) {
+      const t = k * 0.05;
+      const x = p.x + v.x * t, z = p.z + v.z * t;
+      const y = p.y + v.y * t - 0.5 * G * t * t;
+      if (y - 0.75 < T0.height(x, z)) {
+        out.set(x, y, z);
+        return t;
+      }
+    }
+    return -1;
+  }
+
   _wheel(w, dt, F, T, driveTorque, driveInertia) {
     const terrain = this.terrain;
     const right = this.right, up = this.up, fwd = this.fwd;

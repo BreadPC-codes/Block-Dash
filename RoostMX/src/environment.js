@@ -463,9 +463,8 @@ export class Environment {
   // ---------------------------------------------------------------------------------
   _trackDistAt(x, z) {
     const hf = this.hf;
-    const ix = Math.round((x + hf.half) / hf.cell), iz = Math.round((z + hf.half) / hf.cell);
-    if (ix < 0 || iz < 0 || ix >= hf.n || iz >= hf.n) return 1e4;
-    return hf.trackDist[iz * hf.n + ix];
+    const c = hf.cellIndex(x, z);
+    return c < 0 ? 1e4 : hf.trackDist[c];
   }
 
   _inPits(x, z, margin = 4) {
@@ -485,7 +484,9 @@ export class Environment {
   _vegetation() {
     const hf = this.hf, track = this.track, def = track.def;
     const rng = makeRng((def.seed || 1) * 7 + 3);
-    const half = hf.half;
+    const hx = hf.halfX, hz = hf.halfZ;
+    // vegetation amounts scale with the map area (640 x 640 m is the reference)
+    const areaK = (hf.sizeX * hf.sizeZ) / (640 * 640);
     const q = this.q;
     const noise = track.noise;
     const vegType = def.vegetation;
@@ -508,18 +509,18 @@ export class Environment {
       return new Scatter(lods, treeMat, { castLod0: q.shadows && this.qualityName === 'high', maxDist });
     });
     const baseCount = vegType === 'coastal' ? 520 : vegType === 'pine' ? 1900 : 1500;
-    const count = Math.round(baseCount * q.trees * (def.size / 640) ** 2);
+    const count = Math.round(baseCount * q.trees * areaK);
     const m = new THREE.Matrix4(), qt = new THREE.Quaternion(), sc = new THREE.Vector3(), pos = new THREE.Vector3();
     const Y = new THREE.Vector3(0, 1, 0);
     let placed = 0, tries = 0;
     while (placed < count && tries < count * 25) {
       tries++;
-      const x = (rng() * 2 - 1) * (half - 3), z = (rng() * 2 - 1) * (half - 3);
+      const x = (rng() * 2 - 1) * (hx - 3), z = (rng() * 2 - 1) * (hz - 3);
       const td = this._trackDistAt(x, z);
       if (td < 24) continue;
       if (this._inPits(x, z, 10)) continue;
       // clusters: denser where noise is high, plus a tree line near the boundary
-      const edge = Math.max(Math.abs(x), Math.abs(z)) > half - 45;
+      const edge = Math.abs(x) > hx - 45 || Math.abs(z) > hz - 45;
       const dens = noise.fbm(x / 85 + 9, z / 85 - 4, 3);
       const p = edge ? 0.9 : vegType === 'pine' ? 0.35 + dens : 0.12 + dens * 1.2;
       if (rng() > p) continue;
@@ -536,7 +537,7 @@ export class Environment {
       sc.set(s, s * (0.85 + rng() * 0.35), s);
       m.compose(pos, qt, sc);
       scat[ti].add(m, t.size * s);
-      if (t.r > 0 && Math.abs(x) < half - 2 && Math.abs(z) < half - 2) this.colliders.addCircle(x, z, t.r * s + 0.1, h - 1, h + 8 * s, 'a tree');
+      if (t.r > 0 && Math.abs(x) < hx - 2 && Math.abs(z) < hz - 2) this.colliders.addCircle(x, z, t.r * s + 0.1, h - 1, h + 8 * s, 'a tree');
       placed++;
     }
     for (const sct of scat) this.scatters.push(sct.build(this.group));
@@ -547,11 +548,11 @@ export class Environment {
       { geo: this.track_(bushGeometry(rng, bushColor)), until: L0 * 0.7 },
       { geo: this.track_(bushGeometry(rng, bushColor, 1)), until: 1e9 },
     ], treeMat, { maxDist: q.bushDist });
-    const bushCount = Math.round(900 * q.bushes * (def.size / 640) ** 2);
+    const bushCount = Math.round(900 * q.bushes * areaK);
     placed = 0; tries = 0;
     while (placed < bushCount && tries < bushCount * 20) {
       tries++;
-      const x = (rng() * 2 - 1) * (half - 3), z = (rng() * 2 - 1) * (half - 3);
+      const x = (rng() * 2 - 1) * (hx - 3), z = (rng() * 2 - 1) * (hz - 3);
       const td = this._trackDistAt(x, z);
       if (td < 14 || this._inPits(x, z, 3)) continue;
       const dens = noise.fbm(x / 60 - 3, z / 60 + 8, 2);
@@ -575,7 +576,7 @@ export class Environment {
     placed = 0; tries = 0;
     while (placed < rockCount && tries < rockCount * 20) {
       tries++;
-      const x = (rng() * 2 - 1) * (half - 4), z = (rng() * 2 - 1) * (half - 4);
+      const x = (rng() * 2 - 1) * (hx - 4), z = (rng() * 2 - 1) * (hz - 4);
       if (this._trackDistAt(x, z) < 20 || this._inPits(x, z, 6)) continue;
       const s = 0.4 + rng() * rng() * 2.2;
       const h = hf.height(x, z);
@@ -633,16 +634,15 @@ export class Environment {
       };
       gmat.customProgramCacheKey = () => 'grass-sway-3' + roughKey();
       const grass = new ChunkedInstances(gg, gmat, 40);
-      const gCount = Math.round(q.grass * (def.size / 640) ** 2);
+      const gCount = Math.round(q.grass * areaK);
       placed = 0; tries = 0;
-      const n = hf.n;
       while (placed < gCount && tries < gCount * 12) {
         tries++;
-        const x = (rng() * 2 - 1) * (half - 2), z = (rng() * 2 - 1) * (half - 2);
+        const x = (rng() * 2 - 1) * (hx - 2), z = (rng() * 2 - 1) * (hz - 2);
         const td = this._trackDistAt(x, z);
         if (td < 7.5 || td > 70) continue;
-        const ix = Math.round((x + half) / hf.cell), iz = Math.round((z + half) / hf.cell);
-        if (hf.splat[(iz * n + ix) * 4 + 1] < 200) continue;
+        const ci = hf.cellIndex(x, z);
+        if (ci < 0 || hf.splat[ci * 4 + 1] < 200) continue;
         const s = 0.6 + rng() * 0.8;
         pos.set(x, hf.height(x, z) - 0.03, z);
         qt.setFromAxisAngle(Y, rng() * 6.28);
@@ -663,7 +663,7 @@ export class Environment {
   /** Is a point free of the track surface (any part) and inside the map? */
   _free(x, z, clear = 3) {
     const hf = this.hf;
-    if (Math.abs(x) > hf.half - 3 || Math.abs(z) > hf.half - 3) return false;
+    if (Math.abs(x) > hf.halfX - 3 || Math.abs(z) > hf.halfZ - 3) return false;
     const pr = this.track.project(x, z);
     const w = this.track.interp(this.track.W, pr.s);
     return this._trackDistAt(x, z) > w + clear && pr.dist > w + clear;
@@ -1008,11 +1008,10 @@ export class Environment {
     const track = this.track, hf = this.hf, q = this.q;
     const rng = makeRng((track.def.seed || 1) * 31 + 7);
     // ---- perimeter fence (posts and rails) around the venue
-    const half = hf.half;
     const b = track.bounds;
     const margin = 42;
-    const x0 = Math.max(-half + 6, b.minX - margin), x1 = Math.min(half - 6, b.maxX + margin);
-    const z0 = Math.max(-half + 6, b.minZ - margin), z1 = Math.min(half - 6, b.maxZ + margin);
+    const x0 = Math.max(-hf.halfX + 6, b.minX - margin), x1 = Math.min(hf.halfX - 6, b.maxX + margin);
+    const z0 = Math.max(-hf.halfZ + 6, b.minZ - margin), z1 = Math.min(hf.halfZ - 6, b.maxZ + margin);
     const postGeo = this.track_(new THREE.CylinderGeometry(0.07, 0.08, 1.3, 6));
     postGeo.translate(0, 0.55, 0);
     const woodMat = this.track_(new THREE.MeshStandardMaterial({ color: 0x8a6a48, roughness: 0.9 }));

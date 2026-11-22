@@ -10,7 +10,7 @@ const pct = (v) => Math.round(v * 100) + '%';
 const num = (v) => v.toFixed(2);
 
 const TIPS = [
-  'Lean the rider forward (↑ / right stick up) on the takeoff to keep the front end down.',
+  'Lean the rider forward (↑ / left stick up) on the takeoff to keep the front end down.',
   'Counter-lean to turn faster: lean the rider (← → / right stick) to the OUTSIDE of the turn while the bike leans in. More grip, tighter line.',
   'Throw the rider\'s body left or right in the air (← → / right stick) to tilt the bike for a scrub.',
   'Every key and controller button can be remapped in Settings > Controls.',

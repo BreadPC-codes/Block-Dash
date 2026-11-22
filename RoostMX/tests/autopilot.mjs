@@ -19,7 +19,7 @@ for (const def of TRACKS) {
   const spawn = (s) => { const p = tr.pose(s, 0); b.reset(new Vector3(p.x, 0, p.z), p.heading); };
   spawn(tr.gateS - 2);
   const crashes = [];
-  let hint = -1, prevS = null, dist = 0, t = 0, lapStart = null, laps = [], maxAir = 0, maxSpeed = 0;
+  let hint = -1, prevS = null, dist = 0, t = 0, lapStart = null, laps = [], maxAir = 0, maxSpeed = 0, sinceAir = 9;
   const dt = PHYSICS_DT;
   const maxT = 400;
   // precompute speed limit from curvature ahead
@@ -35,11 +35,18 @@ for (const def of TRACKS) {
         v = Math.min(v, vc + k * 0.35);
       }
     }
-    // approach speed for jumps: aim for the lip at a sensible speed
+    // approach speed for jumps: the track's recommended takeoff speed, or a sensible default
     const f = tr.featureAt(s + 12) || tr.featureAt(s + 4);
     if (f) {
-      const target = { double: 15, table: 14.5, stepup: 14, rhythm: 11, whoops: 13, rollers: 11, stepdown: 12, hill: 18 }[f.type] || 14;
-      v = Math.min(v, target);
+      const target = f.spec.speed ?? ({ double: 15, table: 14.5, stepup: 14, rhythm: 11, whoops: 13, rollers: 11, stepdown: 12, hill: 18 }[f.type] || 14);
+      v = f.spec.speed != null ? target : Math.min(v, target);
+    }
+    if (tr.open && !f) {
+      // straight line: build speed for the next jump
+      for (let k = 12; k <= 70; k += 4) {
+        const g = tr.featureAt(s + k);
+        if (g && g.spec.speed != null) { v = g.spec.speed; break; }
+      }
     }
     return v;
   };
@@ -55,10 +62,22 @@ for (const def of TRACKS) {
       if (d > tr.length / 2) d -= tr.length;
       dist += d;
       const relPrev = (prevS - tr.finishS + tr.length) % tr.length, rel = (pr.s - tr.finishS + tr.length) % tr.length;
-      if (rel < relPrev - tr.length / 2 && dist > tr.length * 0.9) {
+      if (!tr.open && rel < relPrev - tr.length / 2 && dist > tr.length * 0.9) {
         if (lapStart != null) laps.push(t - lapStart);
         lapStart = t;
         dist = 0;
+      }
+    }
+    if (tr.open) {
+      // point to point: a run from the gate to the finish line, then back to the start
+      if (lapStart == null && pr.s >= tr.startS) lapStart = t;
+      if (pr.s >= tr.finishS) {
+        if (lapStart != null) laps.push(t - lapStart);
+        lapStart = null;
+        spawn(tr.gateS - 2);
+        hint = -1;
+        prevS = null;
+        continue;
       }
     }
     prevS = pr.s;
@@ -77,13 +96,20 @@ for (const def of TRACKS) {
     // hold the line: aim back toward the centerline when drifting wide
     let steer = clamp(-err * 1.8 + b.angVel.y * 0.25 + clamp(pr.d, -3, 3) * -0.08 * Math.sign(1), -1, 1);
     if (b.airborne) steer = 0;
+    // keep the bars straight on a jump face (steering there sends the bike off the lip rolling)
+    const onFace = tr.interp(tr.F, pr.s) > 0.25 && tr.interp(tr.F, pr.s + 1) > tr.interp(tr.F, pr.s);
+    if (onFace && Math.abs(pr.d) < 3) steer = 0;
     const vt = vLimitAt(pr.s);
     let throttle = 0, brakeF = 0, brakeR = 0;
     const ev = vt - speed;
-    if (ev > 0) throttle = clamp(0.3 + ev * 0.5, 0, 1);
-    else { brakeF = clamp(-ev * 0.25, 0, 0.8); brakeR = clamp(-ev * 0.2, 0, 0.6); throttle = 0.05; }
-    if (b.airborne) { throttle = 0.3; brakeF = 0; brakeR = 0; }
+    if (ev > 0) throttle = clamp(0.3 + ev * (tr.open ? 0.9 : 0.5), 0, 1);
+    else { brakeF = clamp(-ev * (tr.open ? 0.45 : 0.25), 0, 0.8); brakeR = clamp(-ev * (tr.open ? 0.35 : 0.2), 0, 0.6); throttle = 0.05; }
+    if (b.airborne) { throttle = 0.3; brakeF = 0; brakeR = 0; sinceAir = 0; } else sinceAir += dt;
     if (!b.front.contact) brakeF = 0;
+    // like a rider: no braking on a landing ramp or right after touching down
+    const descending = tr.interp(tr.F, pr.s) > 0.2 && tr.interp(tr.F, pr.s + 1) < tr.interp(tr.F, pr.s);
+    if (tr.open && (descending || sinceAir < 0.6)) { brakeF = 0; brakeR = Math.min(brakeR, 0.15); }
+    if (tr.open && (!b.front.contact || !b.rear.contact) && !b.airborne && Math.abs(pr.d) < 3) steer = 0;
     b.step(dt, { throttle, brakeF, brakeR, steer, lean: 0 });
     t += dt;
     if (process.env.LOG_FROM && t >= +process.env.LOG_FROM && t <= +process.env.LOG_TO && Math.round(t / dt) % 6 === 0) {

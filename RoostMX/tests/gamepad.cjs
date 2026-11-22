@@ -12,7 +12,11 @@ const ok = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fai
   page.on('pageerror', (e) => logs.push('[pageerror] ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') logs.push('[error] ' + m.text()); });
   await page.addInitScript(() => {
-    localStorage.setItem('roostmx.settings.v1', JSON.stringify({ graphics: { quality: 'low', fullscreen: false }, game: { mode: 'free' } }));
+    // a layout saved by the previous version (rider forward/back on the right stick) must migrate
+    if (!sessionStorage.getItem('seeded')) {
+      sessionStorage.setItem('seeded', '1');
+      localStorage.setItem('roostmx.settings.v1', JSON.stringify({ graphics: { quality: 'low', fullscreen: false }, game: { mode: 'free' }, controls: { padVersion: 2, pad: { leanForward: ['a3-', ''], leanBack: ['a3+', ''] } } }));
+    }
     // virtual Xbox-style pad
     const pad = { id: 'Virtual Xbox Controller (STANDARD GAMEPAD)', index: 0, connected: true, mapping: 'standard', timestamp: 0,
       axes: [0, 0, 0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 })) };
@@ -26,6 +30,8 @@ const ok = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fai
   await page.evaluate(() => { window.__padOn = true; window.dispatchEvent(Object.assign(new Event('gamepadconnected'), { gamepad: window.__pad })); });
   await page.waitForTimeout(400);
   ok(/Controller/.test(await page.textContent('#pad-status')), 'controller detected: ' + (await page.textContent('#pad-status')));
+  const mig = await page.evaluate(() => ({ f: window.__roost.settings.controls.pad.leanForward[0], b: window.__roost.settings.controls.pad.leanBack[0], v: window.__roost.settings.controls.padVersion }));
+  ok(mig.f === 'a1-' && mig.b === 'a1+' && mig.v === 3, `old saved layout migrated: rider forward/back on the left stick (${mig.f} / ${mig.b}, v${mig.v})`);
   ok(await page.isVisible('.toast'), 'on-screen notification shown');
   const press = async (b) => { await page.evaluate((b) => window.__setBtn(b, 1), b); await page.waitForTimeout(150); await page.evaluate((b) => window.__setBtn(b, 0), b); await page.waitForTimeout(150); };
   // menu navigation: down (13) twice then A (0) -> Garage? first item focused is Play; press A on Play
@@ -65,11 +71,15 @@ const ok = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fai
   await page.waitForTimeout(900);
   const r1 = await page.evaluate(() => ({ side: window.__roost.input.state.side, rs: window.__roost.world.physics.riderSide, steer: window.__roost.input.state.steer, comLean: window.__roost.world.physics.comLean, crashed: window.__roost.world.physics.crashed, why: window.__roost.world.physics.crashReason, st: window.__roost.state, v: window.__roost.world.physics.speed }));
   ok(!r1.crashed && r1.side > 0.8 && r1.rs > 0.6 && Math.abs(r1.steer) < 0.05 && r1.comLean > 0.05, `right stick X leans the rider, not the steering (input ${r1.side.toFixed(2)}, rider ${r1.rs.toFixed(2)}, steer ${r1.steer.toFixed(2)}, CoM shift ${(r1.comLean * 57.3).toFixed(1)}°)`);
-  await page.evaluate(() => { window.__pad.axes[2] = 0; window.__pad.axes[3] = -0.9; });
+  await page.evaluate(() => { window.__pad.axes[2] = 0; window.__pad.axes[1] = -0.9; });
   await page.waitForTimeout(500);
-  const r2 = await page.evaluate(() => window.__roost.input.state.lean);
-  ok(r2 > 0.8, `right stick up leans the rider forward (${r2.toFixed(2)})`);
-  await page.evaluate(() => { window.__pad.axes[3] = 0; window.__setBtn(7, 0); window.__setBtn(15, 1); });
+  const r2 = await page.evaluate(() => ({ lean: window.__roost.input.state.lean, steer: window.__roost.input.state.steer }));
+  ok(r2.lean > 0.8 && Math.abs(r2.steer) < 0.05, `left stick up leans the rider forward without steering (${r2.lean.toFixed(2)})`);
+  await page.evaluate(() => { window.__pad.axes[1] = 0.9; });
+  await page.waitForTimeout(500);
+  const r3 = await page.evaluate(() => window.__roost.input.state.lean);
+  ok(r3 < -0.8, `left stick down leans the rider back (${r3.toFixed(2)})`);
+  await page.evaluate(() => { window.__pad.axes[1] = 0; window.__setBtn(7, 0); window.__setBtn(15, 1); });
   const yaw0 = await page.evaluate(() => window.__roost.world.rig.yawOff);
   await page.waitForTimeout(500);
   const yaw1 = await page.evaluate(() => window.__roost.world.rig.yawOff);

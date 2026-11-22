@@ -169,30 +169,30 @@ export class TerrainView {
 
   chunkSteps(quality) {
     const hf = this.hf;
-    const cn = Math.ceil((hf.n - 1) / CH);
-    const steps = new Int32Array(cn * cn);
+    const cnx = Math.ceil((hf.nx - 1) / CH), cnz = Math.ceil((hf.nz - 1) / CH);
+    const steps = new Int32Array(cnx * cnz);
     const near = quality === 'high' ? 1 : 2;
     const mid = quality === 'high' ? 2 : 4;
     const far = quality === 'low' ? 8 : 4;
-    for (let cz = 0; cz < cn; cz++) {
-      for (let cx = 0; cx < cn; cx++) {
+    for (let cz = 0; cz < cnz; cz++) {
+      for (let cx = 0; cx < cnx; cx++) {
         let minD = 1e9;
         for (let j = 0; j <= CH; j += 4) {
           for (let i = 0; i <= CH; i += 4) {
-            const gx = Math.min(hf.n - 1, cx * CH + i), gz = Math.min(hf.n - 1, cz * CH + j);
-            const d = hf.trackDist[gz * hf.n + gx];
+            const gx = Math.min(hf.nx - 1, cx * CH + i), gz = Math.min(hf.nz - 1, cz * CH + j);
+            const d = hf.trackDist[gz * hf.nx + gx];
             if (d < minD) minD = d;
           }
         }
-        steps[cz * cn + cx] = minD < 34 ? near : minD < 95 ? mid : far;
+        steps[cz * cnx + cx] = minD < 34 ? near : minD < 95 ? mid : far;
       }
     }
-    return { cn, steps };
+    return { cnx, cnz, steps };
   }
 
   /** Largest height error along a chunk's edges when sampled every `s` cells. */
   _edgeError(gx0, gz0, size, sizeZ, s) {
-    const H = this.hf.h, n = this.hf.n;
+    const H = this.hf.h, n = this.hf.nx;
     let err = 0;
     const along = (fixed, len, isX) => {
       for (let a = 0; a <= len; a++) {
@@ -213,7 +213,7 @@ export class TerrainView {
 
   _chunkGeo(gx0, gz0, size, sizeZ, s, ox, oy, oz, skirt) {
     const hf = this.hf;
-    const n = hf.n, H = hf.h, cell = hf.cell, half = hf.half;
+    const n = hf.nx, nzMax = hf.nz - 1, H = hf.h, cell = hf.cell, halfX = hf.halfX, halfZ = hf.halfZ;
     const mx = Math.ceil(size / s), mz = Math.ceil(sizeZ / s);
     const vx = mx + 1, vz = mz + 1;
     const nMain = vx * vz;
@@ -226,14 +226,14 @@ export class TerrainView {
     let k = 0;
     for (let j = 0; j < vz; j++) {
       const gz = gz0 + Math.min(j * s, sizeZ);
-      const zm = Math.max(0, gz - d), zp = Math.min(n - 1, gz + d);
+      const zm = Math.max(0, gz - d), zp = Math.min(nzMax, gz + d);
       for (let i = 0; i < vx; i++, k++) {
         const gx = gx0 + Math.min(i * s, size);
         const xm = Math.max(0, gx - d), xp = Math.min(n - 1, gx + d);
         const c = gz * n + gx;
-        pos[k * 3] = gx * cell - half - ox;
+        pos[k * 3] = gx * cell - halfX - ox;
         pos[k * 3 + 1] = H[c] - oy;
-        pos[k * 3 + 2] = gz * cell - half - oz;
+        pos[k * 3 + 2] = gz * cell - halfZ - oz;
         const nx = -(H[gz * n + xp] - H[gz * n + xm]) / ((xp - xm) * cell);
         const nz = -(H[zp * n + gx] - H[zm * n + gx]) / ((zp - zm) * cell);
         const il = 1 / Math.sqrt(nx * nx + 1 + nz * nz);
@@ -296,23 +296,23 @@ export class TerrainView {
   build(quality, material) {
     this.dispose();
     const hf = this.hf;
-    const { cn, steps } = this.chunkSteps(quality);
+    const { cnx, cnz, steps } = this.chunkSteps(quality);
     const dist = LOD_DIST[quality] || LOD_DIST.medium;
-    const n = hf.n, H = hf.h, cell = hf.cell, half = hf.half;
+    const n = hf.nx, H = hf.h, cell = hf.cell, halfX = hf.halfX, halfZ = hf.halfZ;
     // per-chunk levels and the skirt depth needed to cover the worst neighbour mismatch
     const info = [];
-    for (let cz = 0; cz < cn; cz++) {
-      for (let cx = 0; cx < cn; cx++) {
-        const s0 = steps[cz * cn + cx];
+    for (let cz = 0; cz < cnz; cz++) {
+      for (let cx = 0; cx < cnx; cx++) {
+        const s0 = steps[cz * cnx + cx];
         const gx0 = cx * CH, gz0 = cz * CH;
-        const size = Math.min(CH, n - 1 - gx0), sizeZ = Math.min(CH, n - 1 - gz0);
+        const size = Math.min(CH, hf.nx - 1 - gx0), sizeZ = Math.min(CH, hf.nz - 1 - gz0);
         const levels = [s0];
         while (levels.length < 3 && levels[levels.length - 1] * 2 <= Math.min(32, size)) levels.push(levels[levels.length - 1] * 2);
         const err = size > 0 && sizeZ > 0 ? this._edgeError(gx0, gz0, size, sizeZ, levels[levels.length - 1]) : 0;
         info.push({ cx, cz, gx0, gz0, size, sizeZ, levels, err });
       }
     }
-    const errAt = (cx, cz) => (cx < 0 || cz < 0 || cx >= cn || cz >= cn ? 0 : info[cz * cn + cx].err);
+    const errAt = (cx, cz) => (cx < 0 || cz < 0 || cx >= cnx || cz >= cnz ? 0 : info[cz * cnx + cx].err);
     let tris = 0;
     for (const c of info) {
       if (c.size <= 0 || c.sizeZ <= 0) continue;
@@ -320,7 +320,7 @@ export class TerrainView {
       const skirt = c.err + neigh + 0.35;
       // LOD origin at the chunk centre (mean height) so distances are measured from there
       const gxc = c.gx0 + (c.size >> 1), gzc = c.gz0 + (c.sizeZ >> 1);
-      const ox = gxc * cell - half, oz = gzc * cell - half, oy = H[gzc * n + gxc];
+      const ox = gxc * cell - halfX, oz = gzc * cell - halfZ, oy = H[gzc * n + gxc];
       const lod = new THREE.LOD();
       lod.position.set(ox, oy, oz);
       lod.updateMatrix();
@@ -343,6 +343,21 @@ export class TerrainView {
     return this.group;
   }
 
+  /**
+   * Hide chunks that lie entirely beyond `maxDist` (the fog's far distance): they would be
+   * drawn in pure fog colour, which is what the background shows there anyway.
+   */
+  cull(cam, maxDist) {
+    const r = CH * this.hf.cell * 0.75; // chunk half-diagonal plus a margin
+    const lim = maxDist + r;
+    const lim2 = lim * lim;
+    for (const l of this.lods) {
+      const p = l.position;
+      const dx = p.x - cam.x, dz = p.z - cam.z;
+      l.visible = dx * dx + dz * dz < lim2;
+    }
+  }
+
   dispose() {
     for (const m of this.meshes) m.geometry.dispose();
     for (const l of this.lods) this.group.remove(l);
@@ -359,8 +374,8 @@ export function buildBackdrop(track, hf, style, quality) {
   const vcount = (m + 1) * (m + 1);
   const pos = new Float32Array(vcount * 3);
   const col = new Float32Array(vcount * 3);
-  const half = hf.half;
-  const inner = half - cellB * 1.2;
+  const halfX = hf.halfX, halfZ = hf.halfZ;
+  const innerX = halfX - cellB * 1.2, innerZ = halfZ - cellB * 1.2;
   const G = track.ground;
   const c1 = new THREE.Color(), c2 = new THREE.Color();
   const grassLow = new THREE.Color(style === 'dunes' ? 0xc9b48a : 0x4c6a30);
@@ -372,7 +387,7 @@ export function buildBackdrop(track, hf, style, quality) {
       const k = j * (m + 1) + i;
       const x = -ext + i * cellB, z = -ext + j * cellB;
       let h;
-      if (Math.abs(x) <= half && Math.abs(z) <= half) h = hf.height(x, z) - 2.5;
+      if (Math.abs(x) <= halfX && Math.abs(z) <= halfZ) h = hf.height(x, z) - 2.5;
       else h = G(x, z);
       pos[k * 3] = x; pos[k * 3 + 1] = h; pos[k * 3 + 2] = z;
       const hn = h / 120;
@@ -386,7 +401,7 @@ export function buildBackdrop(track, hf, style, quality) {
   for (let j = 0; j < m; j++) {
     for (let i = 0; i < m; i++) {
       const x0 = -ext + i * cellB, z0 = -ext + j * cellB;
-      if (x0 >= -inner && x0 + cellB <= inner && z0 >= -inner && z0 + cellB <= inner) continue;
+      if (x0 >= -innerX && x0 + cellB <= innerX && z0 >= -innerZ && z0 + cellB <= innerZ) continue;
       const a = j * (m + 1) + i, b = a + 1, c = a + m + 1, d = c + 1;
       idx.push(a, c, b, b, c, d);
     }

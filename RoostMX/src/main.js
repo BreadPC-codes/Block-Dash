@@ -442,8 +442,7 @@ class Game {
     this.crashAuto = 0;
     this.attachRider();
     // keep lap progress consistent
-    w.timer.hint = tr.idx(s);
-    w.timer.prevRel = w.timer.rel(s);
+    w.timer.teleported(s);
     this.ui.clearNotify();
   }
 
@@ -462,6 +461,7 @@ class Game {
   // ---------------------------------------------------------------------------------
   // State transitions
   async startRide() {
+    this.returnTimer = 0;
     this.audio.init().catch(() => {});
     this.mode = this.settings.game.mode;
     if (this.bikeDirty) await this.buildBikeVisual();
@@ -652,6 +652,7 @@ class Game {
 
   render() {
     if (!this.world) return;
+    if (this.scene.fog) this.world.terrainView.cull(this.camera.position, this.scene.fog.far);
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -834,6 +835,14 @@ class Game {
     // physics events
     for (const e of ph.events) this.onPhysicsEvent(e);
     ph.events.length = 0;
+    if (this.returnTimer > 0) {
+      this.returnTimer -= dt;
+      if (this.returnTimer <= 0) {
+        this.returnTimer = 0;
+        this.startRide();
+        return;
+      }
+    }
 
     this.syncBikeVisual(dt, false);
     // camera
@@ -1052,6 +1061,13 @@ class Game {
 
   onTimerEvent(e) {
     const w = this.world;
+    const open = w.track.open;
+    if (e.type === 'finish') {
+      // point-to-point track: back to the start gate a few seconds after the finish line
+      this.returnTimer = 3.5;
+      if (!e.valid && (this.mode === 'trial' || this.settings.graphics.freeRideTimer)) this.ui.notify('Finish', 'run invalid', '', 2200);
+      return;
+    }
     if (this.mode !== 'trial' && !this.settings.graphics.freeRideTimer) return;
     const id = w.def.id;
     if (e.type === 'lap') {
@@ -1060,14 +1076,15 @@ class Game {
       if (isBest) {
         this.records[id] = { best: e.time, splits: e.splits, date: Date.now(), mode: this.mode };
         saveRecords(this.records);
-        this.ui.notify('Best lap!', formatTime(e.time), 'best', 2600);
+        this.ui.notify(open ? 'New record!' : 'Best lap!', formatTime(e.time), 'best', 2600);
         this.audio.bestLap();
       } else {
-        this.ui.notify('Lap ' + (w.timer.lap - 1), formatTime(e.time) + '  ' + formatDelta(e.time - rec.best), '', 2200);
+        this.ui.notify(open ? 'Finish' : 'Lap ' + (w.timer.lap - 1), formatTime(e.time) + '  ' + formatDelta(e.time - rec.best), '', 2200);
         this.audio.checkpoint();
       }
     } else if (e.type === 'lapStart') {
-      if (e.lap === 1) this.ui.notify('Lap 1', 'timing started', '', 1400);
+      if (open) this.ui.notify('Run ' + e.lap, 'send it!', '', 1400);
+      else if (e.lap === 1) this.ui.notify('Lap 1', 'timing started', '', 1400);
     } else if (e.type === 'cp') {
       this.audio.checkpoint();
     } else if (e.type === 'invalid') {
@@ -1082,9 +1099,14 @@ class Game {
     const rec = this.records[w.def.id];
     const cur = tm.current(this.time);
     let lapLabel;
+    const open = w.track.open;
     if (this.state === 'countdown') lapLabel = 'GET READY';
-    else if (tm.lapStart == null) lapLabel = this.mode === 'trial' ? 'OUT LAP' : 'CROSS THE LINE';
-    else lapLabel = (tm.valid ? 'LAP ' + tm.lap : 'LAP ' + tm.lap + ' · INVALID');
+    else if (open && tm.finished) lapLabel = 'FINISHED · BACK TO START';
+    else if (tm.lapStart == null) lapLabel = open ? 'GO TO THE GATE' : this.mode === 'trial' ? 'OUT LAP' : 'CROSS THE LINE';
+    else {
+      const word = open ? 'RUN ' : 'LAP ';
+      lapLabel = tm.valid ? word + tm.lap : word + tm.lap + ' · INVALID';
+    }
     let split = '', splitCls = '';
     if (tm.lastSplitDelta != null && tm.valid) {
       split = formatDelta(tm.lastSplitDelta);
