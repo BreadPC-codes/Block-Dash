@@ -21,6 +21,7 @@ import { Vector3, Quaternion } from 'three';
 import { SURFACES, SURF } from './heightfield.js';
 import { clamp, lerp, smoothstep } from './util.js';
 import { GEO, AXIS_FRONT, AXIS_REAR } from './bike-geometry.js';
+import { WhipController } from './whip.js';
 
 /** Lateral reach of the rider's centre of mass when leaning fully left/right (m). */
 const RIDER_SIDE_REACH = 0.28;
@@ -56,6 +57,7 @@ export const DEFAULT_TUNE = {
   assist: 2, // 0 = off, 1 = low, 2 = full
   autoGearbox: true,
   grip: 1.0, // tyre grip multiplier (Bike settings)
+  airControl: 1.0, // whip / air control authority multiplier (Bike settings)
 };
 
 // ---------------------------------------------------------------------------
@@ -325,6 +327,7 @@ const HARD_POINTS = [
 ].map((h) => ({ ...h, v: h.p ? new Vector3(h.p[0], h.p[1], h.p[2]) : new Vector3() }));
 
 // temporaries
+const _whipIn = { steer: 0, lean: 0, side: 0, throttle: 0, brakeR: 0 };
 const _v1 = new Vector3(), _v2 = new Vector3(), _v3 = new Vector3(), _v4 = new Vector3();
 const _n = new Vector3(), _nTmp = new Vector3();
 const _r = new Vector3();
@@ -360,6 +363,7 @@ export class BikePhysics {
     this.tune = { ...DEFAULT_TUNE };
     this.events = [];
     this.drive = { torque: 0, inertia: 0 };
+    this.whip = new WhipController();
     this.applyTune();
     this.reset(new Vector3(0, 1, 0), 0);
   }
@@ -412,8 +416,10 @@ export class BikePhysics {
     this.leanAngle = 0;
     this.pitchAngle = 0;
     this.steerAngle = 0;
+    this.steerGround = 0;
     this.airTime = 0;
     this.lastAirTime = 0;
+    this.sinceLanding = 9;
     this.groundTime = 0;
     this.airborne = false;
     this.wasAirborne = false;
@@ -430,6 +436,7 @@ export class BikePhysics {
     this.leanIn = 0;
     this.sideIn = 0;
     this.wheelieAngle = 0;
+    this.whip.reset();
     this.events.length = 0;
     this.engine.reset();
     for (const w of this.wheels) w.reset();
@@ -530,6 +537,13 @@ export class BikePhysics {
     this.steerIn = crashed ? 0 : clamp(input.steer * tune.steerSens, -1, 1);
     this.leanIn = crashed ? 0 : input.lean;
     this.sideIn = crashed ? 0 : clamp(input.side || 0, -1, 1);
+    // rider effort for whips / air control builds up from the inputs (see whip.js)
+    _whipIn.steer = this.steerIn;
+    _whipIn.lean = this.leanIn;
+    _whipIn.side = this.sideIn;
+    _whipIn.throttle = throttleIn;
+    _whipIn.brakeR = this.brakeR;
+    this.whip.updateEffort(dt, _whipIn, this.airborne);
 
     const vel = this.vel;
     this.forwardSpeed = vel.dot(this.fwd);
@@ -609,6 +623,8 @@ export class BikePhysics {
       const muEst = muBase * (assist === 2 ? 0.82 : assist === 1 ? 0.87 : 1.15);
       const tb = Math.tan(beta);
       const tanMax = clamp((muEst + tb) / Math.max(0.2, 1 - muEst * tb), 0.15, 2.0);
+      // on a jump face, steering mostly sets up a whip (see whip.js) instead of turning
+      const steerTurn = this.whip.onFace ? this.steerIn * this.whip.cfg.faceSteer : this.steerIn;
       const leanSpeed = lerp(0.12, 0.98, smoothstep(0.6, 11.5, speed)) * (1 + COUNTER_LEAN * this.counter);
       const leanLimit = Math.min(leanSpeed, Math.atan(tanMax));
       // The turn is set by the lean of the COMBINED centre of mass (bike + rider). Steering
@@ -616,7 +632,7 @@ export class BikePhysics {
       // bike itself leans by that minus the rider's offset: hang off -> bike more upright,
       // counter-lean -> the bike is laid down further under the rider.
       this.comLean = Math.atan2(-this.com.x, Math.max(0.3, this.com.y));
-      const comTarget = clamp(this.steerIn * (1 + COUNTER_STEER * this.counter), -1, 1) * leanLimit;
+      const comTarget = clamp(steerTurn * (1 + COUNTER_STEER * this.counter), -1, 1) * leanLimit;
       let bikeLean = comTarget - this.comLean;
       if (Math.abs(bikeLean) > MAX_BIKE_LEAN && this.comLean * comTarget < 0) {
         // the bike is already laid down as far as it goes: the rider's body cannot hang any
@@ -649,7 +665,8 @@ export class BikePhysics {
       }
       if (this.forwardSpeed < -0.5) delta = deltaDirect; // rolling backwards
       delta = clamp(delta, -0.66, 0.66);
-      this.steerAngle += (delta - this.steerAngle) * (1 - Math.exp(-dt / 0.035));
+      this.steerGround = delta; // the bars in the air are set by the whip controller
+      if (!this.airborne) this.steerAngle += (delta - this.steerAngle) * (1 - Math.exp(-dt / 0.035));
     } else {
       this.steerAngle *= 1 - dt * 2;
     }
@@ -778,8 +795,13 @@ export class BikePhysics {
         const frontGrip = this.front.contact ? 1 - smoothstep(1.4, 3.0, this.front.slip) : 0.7;
         // at low speed MX riders dab a foot, which can save a lot of lean
         const dab = (assist > 0 ? 1700 : 900) * (1 - smoothstep(5, 13, speed));
-        const cap = 1500 * (0.15 + 0.85 * frontGrip) + dab;
-        let tau = Iroll * (26 * (this.leanTarget - phi) - 8 * phiDot);
+        // just after landing a jump the rider (and the bars, through the steering trail) can
+        // absorb a much bigger roll kick than in steady riding: a slightly crooked landing
+        // is saved instead of being thrown over
+        const landK = this.sinceLanding < 0.6 ? Math.exp(-this.sinceLanding / 0.28) : 0;
+        const landCap = landK * (assist === 2 ? 4200 : assist === 1 ? 3000 : 1300);
+        const cap = 1500 * (0.15 + 0.85 * frontGrip) + dab + landCap;
+        let tau = Iroll * (26 * (this.leanTarget - phi) - (8 + landK * 10) * phiDot);
         tau = clamp(tau, -cap, cap);
         this.dbgTau = tau;
         this.dbgCap = cap;
@@ -791,6 +813,8 @@ export class BikePhysics {
           const lim = assist === 2 ? 0.1 : 0.4;
           if (this.wheelieAngle > lim) T.addScaledVector(right, -(this.wheelieAngle - lim) * (assist === 2 ? 1400 : 600));
         }
+        // a whip can be set up on the jump face (the tyres still push the bike round)
+        this.whip.ground(this, dt, T, this.tune.airControl ?? 1);
         // on the front wheel only (stoppie, nose-first landing) the rider keeps it straight
         if (assist > 0 && this.front.contact && !this.rear.contact) T.addScaledVector(up, -this.angVel.dot(up) * this.inertia.y * (assist === 2 ? 9 : 5));
         // rider keeps the yaw rate consistent with the lean (throttle/brake/body control)
@@ -804,44 +828,20 @@ export class BikePhysics {
           T.addScaledVector(up, -yawRate * 4);
         }
       } else {
-        // air control: pitch by body English (rider forward/back), whip by steering input,
-        // roll by throwing the rider's body left/right
-        T.addScaledVector(right, -this.leanIn * 230);
-        const whip = this.steerIn;
-        const Yx = 0, Yy = 1, Yz = 0;
-        T.y += -whip * 170;
-        T.addScaledVector(fwd, whip * 85 + this.sideIn * 110);
-        const stab = (1 - Math.abs(whip)) * (1 - 0.85 * Math.abs(this.sideIn)) * (assist === 2 ? 1.25 : assist === 1 ? 0.85 : 0.5);
-        if (stab > 0.01) {
-          // straighten the bike with the direction of travel and level it
-          let fx = fwd.x, fz = fwd.z;
-          const fl = Math.hypot(fx, fz) || 1;
-          fx /= fl; fz /= fl;
-          let vx = vel.x, vz = vel.z;
-          const vl = Math.hypot(vx, vz);
-          let yawErr = 0;
-          if (vl > 2) {
-            vx /= vl; vz /= vl;
-            // rotation about +Y takes +Z toward +X: sin = (f x v).y
-            yawErr = Math.asin(clamp(fz * vx - fx * vz, -1, 1));
-          }
-          // with assists the rider levels the bike well before the landing (big jumps have
-          // 2-3 s of air time); steering or leaning the rider overrides it
-          const kRoll = assist === 2 ? 2.6 : assist === 1 ? 1.8 : 1;
-          T.y += stab * (110 * yawErr - 28 * this.angVel.y) * (assist > 0 ? 1.6 : 1);
-          T.addScaledVector(fwd, stab * kRoll * (-95 * phi - 30 * phiDot));
-          void Yx; void Yy; void Yz;
-        }
+        // air control: whips, rider body English and recovery (torque based, see whip.js)
+        this.whip.air(this, dt, T, F, assist, this.tune.airControl ?? 1);
         // pitch assist: the rider keeps the bike roughly parallel to its flight path and,
         // coming down, lines it up with the slope of the spot where it is going to land
-        if (assist > 0 && Math.abs(this.leanIn) < 0.15) {
+        if (assist > 0 && Math.abs(this.whip.pitchEffort) < 0.15) {
           const hv = Math.hypot(vel.x, vel.z);
           const pathAngle = Math.atan2(vel.y, Math.max(hv, 1));
           let pTarget = pathAngle * 0.85;
           let prep = 0;
           // only for real jumps: skipping over whoops / rollers keeps the old behaviour
           if (vel.y < 0 && hv > 3 && this.airTime > 0.3) {
-            const land = this._predictLanding(_v1);
+            // touchdown time / point predicted this step by the whip controller
+            const land = this.whip.landIn;
+            _v1.copy(this.whip.landPoint);
             if (land > 0) {
               const dx = vel.x / hv, dz = vel.z / hv;
               const T0 = this.terrain;
@@ -856,9 +856,16 @@ export class BikePhysics {
           const kp = assist === 2 ? 260 : 110;
           const kdp = assist === 2 ? 70 : 35;
           const cap = 240 + prep * (assist === 2 ? 120 : 60);
-          T.addScaledVector(right, clamp(kp * (pTarget - pitchNow) - kdp * this.angVel.dot(right), -cap, cap));
+          // the rider's own pitch input takes over smoothly
+          const own = 1 - Math.min(1, Math.abs(this.whip.pitchEffort) / 0.15);
+          // about the level axis across the bike's heading: this changes only how far the
+          // nose points up / down, also while the bike is laid over in a whip (pitching
+          // about the tilted chassis axis would swing the nose sideways)
+          const fh = Math.hypot(fwd.x, fwd.z);
+          if (fh > 0.2) _v2.set(-fwd.z / fh, 0, fwd.x / fh);
+          else _v2.copy(right);
+          T.addScaledVector(_v2, own * clamp(kp * (pTarget - pitchNow) - kdp * this.angVel.dot(_v2), -cap, cap));
         }
-        T.addScaledVector(this.angVel, -2.5);
       }
     } else {
       // crashed: lots of angular damping when touching the ground
@@ -913,6 +920,7 @@ export class BikePhysics {
     } else {
       this.wheelieAngle = 0;
     }
+    this.sinceLanding += dt;
     if (this.airborne) {
       this.airTime += dt;
       this.groundTime = 0;
@@ -941,14 +949,19 @@ export class BikePhysics {
   /** Time (s) until the ballistic path meets the ground (-1 if > 2 s); out = landing point. */
   _predictLanding(out) {
     const p = this.pos, v = this.vel, T0 = this.terrain;
+    let prevGap = p.y - 0.75 - T0.height(p.x, p.z);
     for (let k = 1; k <= 40; k++) {
       const t = k * 0.05;
       const x = p.x + v.x * t, z = p.z + v.z * t;
       const y = p.y + v.y * t - 0.5 * G * t * t;
-      if (y - 0.75 < T0.height(x, z)) {
-        out.set(x, y, z);
-        return t;
+      const gap = y - 0.75 - T0.height(x, z);
+      if (gap < 0) {
+        // interpolate the crossing inside the last 50 ms (keeps the time continuous)
+        const tc = prevGap > 0 ? t - 0.05 * (-gap / (prevGap - gap)) : t;
+        out.set(p.x + v.x * tc, p.y + v.y * tc - 0.5 * G * tc * tc, p.z + v.z * tc);
+        return tc;
       }
+      prevGap = gap;
     }
     return -1;
   }
@@ -1273,6 +1286,7 @@ export class BikePhysics {
   _onLanding(aNonGrav) {
     const air = this.airTime;
     this.lastAirTime = air;
+    if (air > 0.35) this.sinceLanding = 0;
     if (air < 0.25) return;
     const w = this.front.contact && !this.rear.contact ? this.front : this.rear.contact ? this.rear : this.front;
     const n = w.normal;
@@ -1291,7 +1305,18 @@ export class BikePhysics {
       yawSlip = Math.acos(clamp(_v2.dot(_v1) / vt, -1, 1));
     }
     const tol = this.tune.assist === 2 ? 1.15 : this.tune.assist === 1 ? 1.0 : 0.85;
-    if (Math.abs(rollRel) > 0.62 * tol) return this.crash('Landed leaned over');
+    // a bike that is still whipping / rolling keeps going for a moment after touchdown
+    const look = this.whip.cfg.landingLookahead;
+    if (vt > 1) {
+      // signed slip about the ground normal (+ = nose right of travel)
+      _v2.copy(this.fwd).addScaledVector(n, -this.fwd.dot(n)).normalize();
+      const sgn = Math.sign(_v3.crossVectors(_v2, _v1).dot(n)) || 1;
+      const yawRateN = -this.angVel.dot(n);
+      yawSlip = Math.max(yawSlip, Math.abs(yawSlip * sgn + yawRateN * look));
+    }
+    // rollRel is + with the right side up; a roll rate about fwd is + toward the right side down
+    const rollSoon = rollRel - this.angVel.dot(this.fwd) * look * 0.5;
+    if (Math.abs(rollRel) > 0.62 * tol || Math.abs(rollSoon) > 0.7 * tol) return this.crash('Landed leaned over');
     if (yawSlip > 0.75 * tol && vt > 6) return this.crash('Landed sideways');
     // landing on a face that points back against the direction of travel = casing
     const hvl = Math.hypot(this.vel.x, this.vel.z) || 1;

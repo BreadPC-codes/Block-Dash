@@ -19,6 +19,7 @@ export class CameraRig {
     this.yaw = 0;
     this.pitchOff = 0;
     this.yawOff = 0;
+    this.travelW = 0.6; // how much the chase camera follows the direction of travel
     this.orbitIdle = 10;
     this.target = new THREE.Vector3();
     this.look = new THREE.Vector3();
@@ -110,10 +111,13 @@ export class CameraRig {
     // forward direction of the bike projected on the ground
     _v.set(0, 0, 1).applyQuaternion(ctx.quat);
     let heading = Math.atan2(_v.x, _v.z);
+    // in the air the camera follows the direction of travel, so a whip is seen as the bike
+    // turning sideways under the camera; on the ground it stays closer to the bike's heading
+    this.travelW += ((ctx.airborne && !ctx.crashed ? 0.92 : 0.6) - this.travelW) * (1 - Math.exp(-3 * dt));
     if (ctx.speed > 4 && !ctx.crashed) {
       // blend toward the travel direction to soften whips and slides
       const vh = Math.atan2(ctx.vel.x, ctx.vel.z);
-      const w = clamp((ctx.speed - 4) / 10, 0, 0.6);
+      const w = clamp((ctx.speed - 4) / 10, 0, 1) * this.travelW;
       heading = heading + wrapAngle(vh - heading) * w;
     }
     if (this.mode === 'helmet' && !ctx.crashed) {

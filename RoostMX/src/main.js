@@ -64,7 +64,7 @@ class Game {
     this._ctx = { quat: null, vel: null, speed: 0, airborne: false, crashed: false, focus: null, eye: null, lookBack: false };
     this._eye = new THREE.Vector3();
     this._free = { fx: 0, fy: 0, fz: 0, fast: false, wheel: 0 };
-    this._pose = { stance: 0, riderLean: 0, side: 0, legE: 0, lean: 0, steer: 0, speed: 0, airborne: false, whip: 0, brake: 0 };
+    this._pose = { stance: 0, riderLean: 0, side: 0, legE: 0, lean: 0, steer: 0, speed: 0, airborne: false, whip: 0, brake: 0, twist: 0, upper: 0, lookAt: null };
     this._bikeState = { steer: 0, compF: 0, compR: 0, spinF: 0, spinR: 0 };
     // dynamic resolution: scales the render resolution to hold the display's frame rate
     this.dyn = { scale: 1, acc: 0, frames: 0, ok: 0, upDelay: 2, since: 0, lastUp: -1e9, refresh: 60, pAcc: 0 };
@@ -100,6 +100,14 @@ class Game {
       if (e.code === 'F11' || (e.code === 'Enter' && e.altKey)) {
         e.preventDefault();
         this.setFullscreen(!this.isFullscreen());
+      }
+      if (e.code === 'F3' && !e.repeat) {
+        // physics debug overlay (also in Settings > Graphics)
+        e.preventDefault();
+        const g = this.settings.graphics;
+        g.physicsDebug = !g.physicsDebug;
+        saveSettings(this.settings);
+        this.ui.toast(g.physicsDebug ? 'Physics debug overlay on (F3 to hide)' : 'Physics debug overlay off');
       }
     });
     this.resize();
@@ -335,6 +343,7 @@ class Game {
       brakeFront: b.brakeFront,
       brakeRear: b.brakeRear,
       grip: b.grip,
+      airControl: b.airControl ?? 1,
       assist: b.assist,
       autoGearbox: b.autoGearbox,
     });
@@ -966,7 +975,12 @@ class Game {
       ps.steer = ph.steerAngle;
       ps.speed = ph.speed;
       ps.airborne = ph.airborne;
-      ps.whip = ph.airborne ? ph.steerIn : 0;
+      // whips: the rider's upper body counter-rotates (physics DOFs in whip.js) and the
+      // head looks where the bike is going while its rear swings out
+      ps.whip = ph.airborne ? ph.whip.whipEffort : 0;
+      ps.twist = ph.whip.riderTwist;
+      ps.upper = ph.whip.riderLean;
+      ps.lookAt = ph.airborne ? ph.whip.whipAngle : null;
       ps.brake = ph.brakeF;
       rider.updateRiding(dt, ps, gl, gr);
       const fp = w.rig.mode === 'helmet' && this.state !== 'menu';
@@ -1117,7 +1131,8 @@ class Game {
     const crashHint = this.input.lastDevice === 'gamepad' && padReset ? `Press ${padLabel(padReset, this.input.pad.standard)} to reset` : keyReset ? `Press ${keyLabel(keyReset)} to reset` : 'Resetting';
     const auto = Math.max(0, 4.5 - this.crashAuto);
     this.ui.updateHud({
-      speed: ph.forwardSpeed,
+      // in the air (whips) the speedo keeps showing the speed over the ground
+      speed: ph.airborne && !ph.crashed ? Math.hypot(ph.vel.x, ph.vel.z) : ph.forwardSpeed,
       gear: ph.engine.gear,
       auto: this.settings.bike.autoGearbox,
       rpm: ph.engine.rpm,
@@ -1134,10 +1149,34 @@ class Game {
       crashed: ph.crashed,
       crashReason: ph.crashReason,
       crashHint: crashHint + ` · auto reset in ${auto.toFixed(0)}`,
+      whipDebug: this.settings.graphics.physicsDebug ? this.whipDebugText(ph) : '',
       fpsText: `${this.fps.value.toFixed(0)} FPS · ${Math.round(this.renderer.getPixelRatio() / Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio) * 100)}% res · ${this.renderer.info.render.calls} calls · ${(this.renderer.info.render.triangles / 1000).toFixed(0)}k tris`,
     });
     const hdg = Math.atan2(ph.fwd.x, ph.fwd.z);
     this.ui.drawMinimap(ph.pos.x, ph.pos.z, hdg, tm.nextCheckpoint());
+  }
+
+  /** Text of the physics debug overlay (only built while it is shown). */
+  whipDebugText(ph) {
+    const W = ph.whip, T = W.torque, s = this.input.state, pad = this.input.pad;
+    const D = 180 / Math.PI;
+    const f = (v, n = 1, w = 6) => (Number.isFinite(v) ? v : 0).toFixed(n).padStart(w);
+    const state = ph.crashed ? 'CRASHED' : ph.airborne ? `AIRBORNE ${ph.airTime.toFixed(2)} s` : W.onFace ? 'GROUNDED · ON A JUMP FACE' : 'GROUNDED';
+    return [
+      `WHIP / AIR PHYSICS     ${state}`,
+      `whip angle ${f(W.whipAngle * D)} deg   yaw rate   ${f(W.whipRate * D, 0)} deg/s`,
+      `pitch      ${f(ph.pitchAngle * D)} deg   pitch rate ${f(ph.angVel.dot(ph.right) * D, 0)} deg/s`,
+      `roll       ${f(ph.leanAngle * D)} deg   roll rate  ${f(W.rollRate * D, 0)} deg/s`,
+      `angular velocity ${f(ph.angVel.length() * D, 0)} deg/s`,
+      `torque     yaw ${f(T.yaw, 0)}  roll ${f(T.roll, 0)}  pitch ${f(T.pitch, 0)} N·m`,
+      `recovery   yaw ${f(T.recYaw, 0)}  roll ${f(T.recRoll, 0)} N·m  strength ${f(W.recovery, 2, 4)}`,
+      `gyro       ${f(T.gyro, 0)} N·m  wheel L ${f(W.gyroL, 0)} N·m·s   aero ${f(T.aero, 0)} N·m`,
+      `landing in ${W.landIn > 0 ? f(W.landIn, 2) + ' s' : '     -'}   bars ${f(ph.steerAngle * D)} deg`,
+      `effort     whip ${f(W.whipEffort, 2)}  pitch ${f(W.pitchEffort, 2)}  side ${f(W.sideEffort, 2)}`,
+      `input      steer ${f(s.steer, 2)}  lean ${f(s.lean, 2)}  side ${f(s.side, 2)}  gas ${f(s.throttle, 2)}  rear brake ${f(s.brakeR, 2)}`,
+      pad.connected ? `controller LS ${f(pad.axes[0], 2)} ${f(pad.axes[1], 2)}  RS ${f(pad.axes[2], 2)} ${f(pad.axes[3], 2)}  LT ${f(pad.value(6), 2)}  RT ${f(pad.value(7), 2)}` : 'controller not connected',
+      `rider      twist ${f(W.riderTwist * D)} deg  lean ${f(W.riderLean * D)} deg`,
+    ].join('\n');
   }
 }
 

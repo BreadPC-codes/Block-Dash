@@ -103,6 +103,41 @@ controller* restore the defaults below.
 | Pause | Esc | Menu (Start) |
 | Fullscreen | F11 or Alt+Enter | — |
 
+### Whips and air control
+
+In the air the same inputs become **whips** and **body English** — torque on the bike,
+not an animation:
+
+| In the air | Keyboard | Controller |
+|---|---|---|
+| Whip left / right (rear swings out, bike lays over) | A / D | Left stick ← → |
+| Nose up / down (pitch) | W / S (throttle lifts the nose, rear brake drops it) or ↓ / ↑ | Left stick ↓ ↑ |
+| Throw the body left / right (roll, scrub) | ← / → | Right stick ← → |
+
+- The input builds up rider *effort* over a fraction of a second; effort becomes torque
+  on the bike, and the bike keeps rotating on its own momentum after you let go. A tap
+  is a small tweak, a held input a big, dramatic whip (with full assists a 0.45 s full
+  input whips the bike ~38°, 0.8 s takes it to ~75°).
+- Let go and the rider stops the rotation and straightens the bike gradually, working
+  harder in the last moments before touchdown. A whip still held into the landing, or
+  not brought back in time, lands crossed up or sideways — and crashes.
+- The spinning wheels act as gyroscopes (yawing the bike also rolls it and vice versa;
+  stronger at higher wheel speed), the bike weathervanes into the airflow when sideways,
+  the front wheel turns back toward the direction of travel while the rear swings out,
+  and the rider's upper body counter-rotates and counter-leans against the bike.
+- A whip can be started on the last metres of the jump face: steering there partly turns
+  the bike in the air instead of turning on the ground.
+- Assists (Bike settings) decide how much the bike is straightened for you: *Full*
+  brings it back on its own, *Low* partly, *Off* leaves it to you (counter-whip with the
+  opposite input) — the same input gives a similar whip on every level.
+- *Air control (whips)* in Bike settings scales the rider's strength in the air
+  (50–150 %).
+- **F3** (or Settings → Graphics → *Physics debug overlay*, off by default) shows whip
+  angle, pitch, roll, angular velocities, rider / recovery / gyro / aero torques, the
+  efforts, the keyboard and controller inputs and the time to landing.
+
+All whip tuning values live in one object, `WHIP` in `src/whip.js`.
+
 Controller options: stick deadzone, steering sensitivity, invert rider forward/back,
 and *linked brakes* (the front brake also applies some rear brake, on by default).
 Generic (non-Xbox) controllers work too: their buttons and axes show up as
@@ -170,8 +205,14 @@ Dirt, grass, gravel and sand each have their own grip and rolling resistance.
   rather than slippery. *Tire grip* in Bike settings scales it from 60 % to 160 %.
   The steering compensates for lean angle, so a leaned bike turns as tightly as its
   lean demands (~1.25 g steady cornering on dirt with full assists).
-- Air control: body English (rider forward/back pitches, left/right rolls the bike),
-  throttle/brake gyroscopic pitch, whips that must be straightened before landing.
+- **Whips and air control** (`src/whip.js`): torque-based whips with rider effort
+  build-up, angular momentum, gyroscopic coupling of the spinning wheels, aerodynamic
+  weathervaning and side drag, per-axis damping, soft limits, recovery that stops the
+  rotation and straightens the bike (harder just before touchdown, momentum preserved),
+  whips set up on the jump face, the front wheel steering back toward the direction of
+  travel, and the rider's upper body as a separate counterbalancing spring-damper.
+  Landings account for the bike's remaining whip and roll rate. Body English pitches
+  (forward/back) and rolls (left/right) the bike; throttle/brake pitch it too.
 - Crashes come from the physics: handlebars/head/fenders touching the ground, landing
   leaned or sideways, nose-diving, casing a jump, front-end tucks from overloading the
   front tire (e.g. braking hard while leaned), and hitting obstacles. The rider
@@ -289,6 +330,7 @@ RoostMX/
   src/
     main.js                     game states, main loop, ride logic, effects
     physics.js                  bike physics, engine, crashes, ragdoll
+    whip.js                     whips / air control (all tuning values in WHIP)
     bike-geometry.js            shared bike dimensions (physics and visuals)
     bike.js                     procedural bike model and its animation
     bike-importer.js            GLB/GLTF/FBX/OBJ/PKZ import, part detection, binding
@@ -320,6 +362,14 @@ npm test
 
 Physics checks (rest, acceleration, braking, cornering, jumps, crash cases, rider lean:
 counter-leaning vs neutral vs hanging off, tilting the bike in the air, grip).
+
+```bash
+node tests/whip-sim.mjs
+```
+
+Whips on a big double: small vs big inputs, symmetry, momentum after release, bounded
+angular acceleration, soft limits, straightening before touchdown, a whip held into the
+landing crashing, assist levels, the Air control setting, and W / S / stick pitch.
 `node tests/turn-radius.mjs` prints turn radius by speed for each rider position.
 
 ```bash
@@ -342,7 +392,9 @@ Rides every jump of a track with the real physics at takeoff speeds from 10 to 2
 and reports the safe speed window and the sweet spot (mid-ramp landing) of each.
 
 Browser tests (`tests/smoke.cjs`, `tests/flows.cjs`, `tests/gamepad.cjs` — virtual
-controller, rider lean, button remapping — and `tests/perf.cjs <low|medium|high>`, a
+controller, rider lean, button remapping — `tests/whip.cjs` — keyboard and controller
+whips on the Big Air Line, the F3 overlay, rider counterbalance — and
+`tests/perf.cjs <low|medium|high>`, a
 frame-time / draw-call benchmark) and the Electron smoke test
 (`tests/electron-smoke.cjs`) use [Playwright](https://playwright.dev); start
 `npm run serve` first. `node tests/make-fixtures.mjs` regenerates the importer

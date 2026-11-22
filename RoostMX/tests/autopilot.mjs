@@ -4,6 +4,10 @@ import { Vector3 } from 'three';
 import { Track, generateTerrain } from '../src/track.js';
 import { TRACKS } from '../src/tracks.js';
 import { BikePhysics, PHYSICS_DT } from '../src/physics.js';
+import { WHIP } from '../src/whip.js';
+
+// WHIP='{"gyroScale":0}' overrides whip / air-control tuning values for an experiment
+if (process.env.WHIP) Object.assign(WHIP, JSON.parse(process.env.WHIP));
 
 const only = process.argv[2] && process.argv[2] !== 'all' ? process.argv[2] : null;
 const lapsWanted = +(process.argv[3] || 2);
@@ -17,7 +21,10 @@ for (const def of TRACKS) {
   const b = new BikePhysics(hf, null);
   b.tune.assist = assist;
   const spawn = (s) => { const p = tr.pose(s, 0); b.reset(new Vector3(p.x, 0, p.z), p.heading); };
-  spawn(tr.gateS - 2);
+  // START_S=<m> starts somewhere along the track (debugging one section)
+  // (START_OFF=<m> shifts the usual start a little: a cheap way to see how much the
+  // results depend on chance)
+  spawn(process.env.START_S ? +process.env.START_S : tr.gateS - 2 + +(process.env.START_OFF || 0));
   const crashes = [];
   let hint = -1, prevS = null, dist = 0, t = 0, lapStart = null, laps = [], maxAir = 0, maxSpeed = 0, sinceAir = 9;
   const dt = PHYSICS_DT;

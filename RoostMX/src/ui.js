@@ -16,7 +16,9 @@ const TIPS = [
   'Every key and controller button can be remapped in Settings > Controls.',
   'Dynamic resolution (Settings > Graphics) keeps the game at 60 FPS on slower computers.',
   'Throttle in the air lifts the nose; tapping the rear brake drops it.',
-  'Steer in the air to whip the bike — straighten it before you land!',
+  'Steer in the air (A / D, left stick) to whip the bike: a tap is a tweak, holding it throws it sideways. Let go early enough to straighten it before you land!',
+  'Start a whip on the last metres of the jump face and the bike leaves the lip already turning.',
+  'Press F3 to see the whip physics: angles, rotation speeds, torques and your inputs.',
   'The rear brake (S) helps you slide the bike around tight corners.',
   'Berms let you lean deeper and carry more speed through turns.',
   'Sand has less grip and much more drag: keep the throttle on.',
@@ -34,6 +36,7 @@ export const SETTINGS_SCHEMA = {
     { type: 'range', path: 'bike.brakeFront', label: 'Front brake strength', min: 0.4, max: 1.4, step: 0.05, fmt: pct },
     { type: 'range', path: 'bike.brakeRear', label: 'Rear brake strength', min: 0.4, max: 1.4, step: 0.05, fmt: pct },
     { type: 'range', path: 'bike.grip', label: 'Tire grip', min: 0.6, max: 1.6, step: 0.05, fmt: pct },
+    { type: 'range', path: 'bike.airControl', label: 'Air control (whips)', min: 0.5, max: 1.5, step: 0.05, fmt: pct },
     { type: 'seg', path: 'bike.assist', label: 'Rider assists', options: [[0, 'Off'], [1, 'Low'], [2, 'Full']] },
     { type: 'seg', path: 'bike.autoGearbox', label: 'Gearbox', options: [[true, 'Auto'], [false, 'Manual']] },
     { section: 'Camera & controller' },
@@ -62,6 +65,7 @@ export const SETTINGS_SCHEMA = {
     { type: 'toggle', path: 'graphics.minimap', label: 'Minimap' },
     { type: 'toggle', path: 'graphics.freeRideTimer', label: 'Lap timer in Free Ride' },
     { type: 'toggle', path: 'graphics.showFps', label: 'Show FPS' },
+    { type: 'toggle', path: 'graphics.physicsDebug', label: 'Physics debug overlay (F3)' },
   ],
   audio: [
     { section: 'Volume' },
@@ -773,6 +777,13 @@ export class UI {
     if (this.hudCache.showFps !== showFps) {
       this.hudCache.showFps = showFps;
       $('fps').style.display = showFps ? 'block' : 'none';
+    }
+    // whip / air physics debug overlay (F3)
+    const showDbg = !!this.settings.graphics.physicsDebug && !!h.whipDebug;
+    if (showDbg) this._set('whip-debug', h.whipDebug);
+    if (this.hudCache.showDbg !== showDbg) {
+      this.hudCache.showDbg = showDbg;
+      $('whip-debug').style.display = showDbg ? 'block' : 'none';
     }
     const showMap = !!this.settings.graphics.minimap;
     if (this.hudCache.showMap !== showMap) {

@@ -257,6 +257,7 @@ select option { background: #18181b; }
 .crash-reason { font-weight: 700; font-style: italic; font-size: 24px; text-transform: uppercase; letter-spacing: 1px; }
 .crash-hint { font-family: var(--body); font-size: 15px; color: var(--muted); margin-top: 6px; }
 .fps { position: absolute; right: 26px; top: 218px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: rgba(255,255,255,.7); text-align: right; }
+.whip-debug { position: absolute; left: 26px; top: 50%; transform: translateY(-50%); display: none; margin: 0; padding: 10px 14px; max-width: calc(100vw - 52px); overflow: hidden; background: rgba(8,8,10,.66); border: 1px solid rgba(255,255,255,.1); border-left: 3px solid var(--orange); font-family: ui-monospace, Consolas, monospace; font-size: 12px; line-height: 1.5; color: rgba(255,255,255,.9); white-space: pre; pointer-events: none; }
 
 /* ---------- toasts & modal */
 #toasts { position: absolute; right: 24px; bottom: 140px; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none; }

@@ -58,7 +58,7 @@ function solveIK(a, t, l1, l2, pole, outJoint, outEnd) {
   return outJoint;
 }
 const _ikD = V(0, 0, 0), _ikP = V(0, 0, 0), _spine = V(0, 1, 0), _pole = V(0, 0, 1);
-const _q = new THREE.Quaternion();
+const _q = new THREE.Quaternion(), _qTw = new THREE.Quaternion();
 const _d = V(0, 0, 0);
 
 function place(mesh, a, b) {
@@ -170,7 +170,7 @@ export class Rider {
     this.j = {};
     for (const k of ['pelvis', 'chest', 'neck', 'headC', 'hipL', 'hipR', 'kneeL', 'kneeR', 'ankleL', 'ankleR', 'shL', 'shR', 'elL', 'elR', 'handL', 'handR', 'footL', 'footR']) this.j[k] = V(0, 0, 0);
     // smoothed pose parameters
-    this.pose = { stand: 1, fore: 0, side: 0, crouch: 0, dabL: 0, dabR: 0, twist: 0, look: 0 };
+    this.pose = { stand: 1, fore: 0, side: 0, crouch: 0, dabL: 0, dabR: 0, twist: 0, upper: 0, look: 0 };
     this.flail = 0;
     this.firstPerson = false;
     void secondary; void number;
@@ -194,7 +194,10 @@ export class Rider {
   /**
    * Pose the rider on the bike. s = {
    *  stance, riderLean (-1..1 fore/aft), side (-1..1 body left/right, + = right),
-   *  legE (m), lean (bike roll rad), steer, speed, airborne, whip, brake }
+   *  legE (m), lean (bike roll rad), steer, speed, airborne, whip (effort -1..1), brake,
+   *  twist / upper (rad, + = right: the upper body's yaw / roll relative to the bike, from
+   *  the whip physics), lookAt (rad: whip angle in the air, the head turns back toward the
+   *  direction of travel; null on the ground) }
    */
   updateRiding(dt, s, gripL, gripR) {
     const P = this.pose;
@@ -208,8 +211,12 @@ export class Rider {
     const cornering = !s.airborne && P.stand < 0.6 && Math.abs(s.lean) > 0.22 && s.speed < 16 && s.speed > 1;
     P.dabL = damp(P.dabL, cornering && s.lean < 0 ? 1 : 0, 5, t);
     P.dabR = damp(P.dabR, cornering && s.lean > 0 ? 1 : 0, 5, t);
-    P.twist = damp(P.twist, s.whip * 0.3, 6, t);
-    P.look = damp(P.look, clamp(-s.steer * 1.2, -0.5, 0.5), 5, t);
+    // upper body: counter-rotation and counter-lean against the bike during a whip (already
+    // smooth physics values, only filtered against frame-rate jitter here)
+    P.twist = damp(P.twist, s.twist !== undefined ? s.twist : s.whip * 0.3, 24, t);
+    P.upper = damp(P.upper, s.upper || 0, 24, t);
+    const lookGoal = s.lookAt != null ? clamp(s.lookAt * 0.9 - P.twist * 0.3, -0.95, 0.95) : clamp(-s.steer * 1.2, -0.5, 0.5);
+    P.look = damp(P.look, lookGoal, s.lookAt != null ? 8 : 5, t);
     const st = P.stand, fore = P.fore;
     const j = this.j;
     // pelvis (slides across the seat / between the pegs with the side lean)
@@ -219,7 +226,8 @@ export class Rider {
     j.pelvis.set(P.side * lerp(0.1, 0.16, st), py, pz);
     // spine leaning forward (attack position) and sideways with the body lean
     const spineAng = lerp(0.42, 0.62, st) + fore * 0.32 + P.crouch * 0.18 - (s.brake || 0) * 0.08;
-    const sideAng = P.side * 0.75;
+    // bike space +X is the bike's left: a counter-lean to the right tilts the spine to -X
+    const sideAng = P.side * 0.75 - P.upper;
     const spineDir = _spine.set(Math.sin(sideAng) * 0.6, Math.cos(spineAng), Math.sin(spineAng)).normalize();
     j.chest.copy(j.pelvis).addScaledVector(spineDir, LEN.spine);
     j.neck.copy(j.chest).addScaledVector(spineDir, 0.08);
@@ -228,12 +236,13 @@ export class Rider {
     j.headC.x += P.look * 0.05 - P.side * 0.02;
     j.headC.y += 0.13;
     j.headC.z += 0.05;
-    // shoulders
-    const shW = 0.19;
+    // shoulders, turned with the upper body (a twist to the right brings the left shoulder
+    // forward)
+    const shW = 0.19, twC = Math.cos(P.twist), twS = Math.sin(P.twist);
     j.shL.copy(j.chest);
-    j.shL.x += shW; j.shL.y -= 0.03; j.shL.z += P.twist * 0.08;
+    j.shL.x += shW * twC; j.shL.y -= 0.03; j.shL.z += shW * twS;
     j.shR.copy(j.chest);
-    j.shR.x -= shW; j.shR.y -= 0.03; j.shR.z -= P.twist * 0.08;
+    j.shR.x -= shW * twC; j.shR.y -= 0.03; j.shR.z -= shW * twS;
     // hips
     j.hipL.copy(j.pelvis);
     j.hipL.x += 0.1; j.hipL.y -= 0.03;
@@ -286,9 +295,10 @@ export class Rider {
 
   _applyMeshes(spineDir, ragdoll) {
     const j = this.j, L = this.limbs;
-    // torso oriented along spine with forward = +Z
+    // torso oriented along spine with forward = +Z, turned about the spine by the twist
     this.torso.position.copy(j.pelvis);
     _q.setFromUnitVectors(UP, spineDir);
+    if (!ragdoll && this.pose.twist !== 0) _q.multiply(_qTw.setFromAxisAngle(UP, -this.pose.twist));
     this.torso.quaternion.copy(_q);
     this.hips.position.copy(j.pelvis);
     this.hips.quaternion.identity();
