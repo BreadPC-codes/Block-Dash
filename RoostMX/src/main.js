@@ -334,6 +334,7 @@ class Game {
       suspDamping: b.suspDamping,
       brakeFront: b.brakeFront,
       brakeRear: b.brakeRear,
+      grip: b.grip,
       assist: b.assist,
       autoGearbox: b.autoGearbox,
     });

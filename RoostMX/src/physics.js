@@ -24,14 +24,21 @@ import { GEO, AXIS_FRONT, AXIS_REAR } from './bike-geometry.js';
 
 /** Lateral reach of the rider's centre of mass when leaning fully left/right (m). */
 const RIDER_SIDE_REACH = 0.28;
-/** How much a full body lean steers on its own, relative to full steering input. */
-const BODY_STEER = 0.3;
+// Counter-leaning (rider's body to the OUTSIDE of the turn, opposite the bike's lean, weight
+// on the outside peg) is the motocross way to corner: it presses the knobs into the dirt
+// and lets the bike lean further under the rider, so the bike turns tighter and faster.
+const COUNTER_GRIP = 0.22; // extra tyre grip at a full counter-lean
+const COUNTER_LEAN = 0.3; // extra lean the bike may take at a full counter-lean
+const COUNTER_STEER = 0.35; // a partial steering input is amplified this much
+const HANGOFF_GRIP = 0.08; // leaning INTO the turn unweights the outside peg: a little less grip
+const MAX_BIKE_LEAN = 1.05; // rad (~60 deg): deeper and the footpegs dig in
 export const PHYSICS_DT = 1 / 240;
 const G = 9.81;
 const RPM_PER_RADS = 60 / (2 * Math.PI);
 
-// Tire curve: sin(C * atan(B * s)), peak at s = 1
-const SHAPE_C = 1.65;
+// Tire curve: sin(C * atan(B * s)), peak at s = 1. C = 1.35 keeps ~85 % of the peak grip
+// once the tyre slides (1.65 used to drop to ~52 %, which felt slippery).
+const SHAPE_C = 1.35;
 const SHAPE_B = Math.tan(Math.PI / (2 * SHAPE_C));
 const SHAPE_SLOPE0 = SHAPE_C * SHAPE_B;
 const tireShape = (s) => Math.sin(SHAPE_C * Math.atan(SHAPE_B * s));
@@ -48,6 +55,7 @@ export const DEFAULT_TUNE = {
   brakeRear: 1.0,
   assist: 2, // 0 = off, 1 = low, 2 = full
   autoGearbox: true,
+  grip: 1.0, // tyre grip multiplier (Bike settings)
 };
 
 // ---------------------------------------------------------------------------
@@ -375,6 +383,11 @@ export class BikePhysics {
     }
   }
 
+  /** Tyre grip on a surface: surface grip x grip setting x counter-lean bonus. */
+  _mu(surface) {
+    return SURFACES[surface].mu * (this.tune.grip || 1) * (1 + COUNTER_GRIP * this.counter - HANGOFF_GRIP * this.hangoff);
+  }
+
   /** Place the bike upright on the terrain at (x,z) facing heading (radians, 0 = +Z). */
   reset(pos, heading) {
     this.crashed = false;
@@ -388,6 +401,8 @@ export class BikePhysics {
     this.riderSide = 0; // rider body across the bike, -1 (left) .. 1 (right)
     this.riderSideUser = 0; // the part of it that comes from the player's input
     this.comLean = 0; // extra lean of the combined CoM over the bike's own lean (rad)
+    this.counter = 0; // 0..1 how much the rider counter-leans (body to the outside of the turn)
+    this.hangoff = 0; // 0..1 how much the rider leans into the turn
     // rider legs: offset of the rider along the bike's up axis (m) and its rate
     this.riderE = 0;
     this.riderEv = 0;
@@ -535,7 +550,7 @@ export class BikePhysics {
       // body across the bike: the player's input, plus (with assists) a little natural lean
       // into the turn when the player is not moving the rider
       this.riderSideUser += clamp(this.sideIn - this.riderSideUser, -dt * 3.6, dt * 3.6);
-      const autoSide = assist > 0 && !this.airborne ? 0.3 * this.steerIn * (1 - Math.abs(this.sideIn)) : 0;
+      const autoSide = assist > 0 && !this.airborne ? -0.2 * this.steerIn * (1 - Math.abs(this.sideIn)) : 0;
       const sideGoal = clamp(this.sideIn + autoSide, -1, 1);
       this.riderSide += clamp(sideGoal - this.riderSide, -dt * 3.6, dt * 3.6);
       this._updateCom(false);
@@ -545,6 +560,13 @@ export class BikePhysics {
     const right = this.right, up = this.up, fwd = this.fwd;
     const phi = Math.asin(clamp(-right.y, -1, 1));
     this.leanAngle = phi;
+    // counter-lean: the player moves the rider opposite to the way the bike turns / leans
+    const turnDir = Math.abs(this.steerIn) > 0.05 ? Math.sign(this.steerIn) : Math.abs(phi) > 0.12 ? Math.sign(phi) : 0;
+    const counterGoal = crashed || this.airborne ? 0 : clamp(-this.riderSideUser * turnDir, 0, 1);
+    const hangGoal = crashed || this.airborne ? 0 : clamp(this.riderSideUser * turnDir, 0, 1);
+    const kc = 1 - Math.exp(-dt / 0.12);
+    this.counter += (counterGoal - this.counter) * kc;
+    this.hangoff += (hangGoal - this.hangoff) * kc;
     this.pitchAngle = Math.asin(clamp(fwd.y, -1, 1));
     const phiDot = this.angVel.dot(fwd);
 
@@ -553,7 +575,7 @@ export class BikePhysics {
     for (const w of this.wheels) {
       if (w.contact) {
         nAvgX += w.normal.x; nAvgY += w.normal.y; nAvgZ += w.normal.z;
-        muAvg += SURFACES[w.surface].mu;
+        muAvg += this._mu(w.surface);
         cnt++;
       }
     }
@@ -571,35 +593,49 @@ export class BikePhysics {
       // lateral grip actually left in each tire's friction circle (drive/brake use some of it)
       // each axle must carry its share of the cornering force (yaw-moment balance), so the
       // weaker axle (e.g. a front unloaded by throttle) limits how far the bike can lean
-      let muNow = 1.4;
+      let muNow = 3.0;
       let anyContact = false;
       for (const w of this.wheels) {
         if (!w.contact) continue;
         anyContact = true;
-        const Fm = SURFACES[w.surface].mu * w.loadF;
+        const Fm = this._mu(w.surface) * w.loadF;
         const lat = Math.sqrt(Math.max(0, Fm * Fm - w.fx * w.fx));
         const share = w.isFront ? 0.49 : 0.51;
         muNow = Math.min(muNow, lat / (this.mass * G * share));
       }
-      muNow = anyContact && !this.airborne ? clamp(muNow, 0.12, 1.4) : muAvg;
+      muNow = anyContact && !this.airborne ? clamp(muNow, 0.12, 3.0) : muAvg;
       this.muLat += (muNow - this.muLat) * (1 - Math.exp(-dt / 0.15));
       const muBase = assist === 0 ? muAvg : Math.min(muAvg, this.muLat);
       const muEst = muBase * (assist === 2 ? 0.82 : assist === 1 ? 0.87 : 1.15);
       const tb = Math.tan(beta);
       const tanMax = clamp((muEst + tb) / Math.max(0.2, 1 - muEst * tb), 0.15, 2.0);
-      const leanSpeed = lerp(0.12, 0.98, smoothstep(0.6, 11.5, speed));
+      const leanSpeed = lerp(0.12, 0.98, smoothstep(0.6, 11.5, speed)) * (1 + COUNTER_LEAN * this.counter);
       const leanLimit = Math.min(leanSpeed, Math.atan(tanMax));
-      // the turn is set by the lean of the COMBINED centre of mass: steering asks for it,
-      // the rider's body adds a little ("body steering"); the bike itself leans by that
-      // minus the rider's offset (hang off -> bike more upright, counter-lean -> more lean)
+      // The turn is set by the lean of the COMBINED centre of mass (bike + rider). Steering
+      // asks for it; a counter-leaning rider adds grip and lean (tighter, faster turn). The
+      // bike itself leans by that minus the rider's offset: hang off -> bike more upright,
+      // counter-lean -> the bike is laid down further under the rider.
       this.comLean = Math.atan2(-this.com.x, Math.max(0.3, this.com.y));
-      const comTarget = clamp(this.steerIn + BODY_STEER * this.riderSideUser, -1, 1) * leanLimit;
-      this.leanTarget = comTarget - this.comLean;
+      const comTarget = clamp(this.steerIn * (1 + COUNTER_STEER * this.counter), -1, 1) * leanLimit;
+      let bikeLean = comTarget - this.comLean;
+      if (Math.abs(bikeLean) > MAX_BIKE_LEAN && this.comLean * comTarget < 0) {
+        // the bike is already laid down as far as it goes: the rider's body cannot hang any
+        // further outside, so the offset is limited (the grip / turn bonus stays)
+        const allowed = Math.max(0, MAX_BIKE_LEAN - Math.abs(comTarget));
+        this.riderSide *= allowed / Math.max(1e-4, Math.abs(this.comLean));
+        this._updateCom(false);
+        this.comLean = Math.atan2(-this.com.x, Math.max(0.3, this.com.y));
+        bikeLean = comTarget - this.comLean;
+      }
+      this.leanTarget = clamp(bikeLean, -MAX_BIKE_LEAN, MAX_BIKE_LEAN);
 
       // steering angle derived from the lean that has to be balanced
       const tanPhi = Math.tan(clamp(phi + this.comLean, -1.25, 1.25));
       const v2 = Math.max(speed * speed, 1);
-      const deltaLean = Math.atan((GEO.wheelbase * G * tanPhi) / v2);
+      // a leaned bike turns wider for the same handlebar angle (ground-plane steer ~ steer x
+      // cos(lean)), so steer more to get the radius the lean needs
+      const cosLean = Math.max(0.42, Math.cos(phi));
+      const deltaLean = Math.atan((GEO.wheelbase * G * tanPhi) / v2 / cosLean);
       const deltaDirect = this.steerIn * 0.6;
       const wl = smoothstep(1.0, 4.5, speed);
       let delta = lerp(deltaDirect, deltaLean, wl);
@@ -621,11 +657,12 @@ export class BikePhysics {
     // ---- engine
     let throttle = throttleIn;
     const pitchRate = this.angVel.dot(right);
-    if (!crashed && assist > 0 && this.rear.contact && !this.front.contact) {
+    if (!crashed && this.rear.contact && !this.front.contact) {
       // wheelie control (rider modulating throttle), anticipating the pitch rate
-      // with full assists the front is kept just skimming the ground, and lower still when turning
+      // with full assists the front is kept just skimming the ground, and lower still when turning;
+      // with assists off only the instinctive roll-off before looping out remains
       const turning = Math.min(1, Math.abs(this.steerIn) * 2);
-      const lim = (assist === 2 ? 0.07 : 0.2) * (1 - 0.6 * turning);
+      const lim = assist === 0 ? 0.55 : (assist === 2 ? 0.07 : 0.2) * (1 - 0.6 * turning);
       const predicted = this.wheelieAngle + 0.25 * pitchRate;
       throttle *= 1 - smoothstep(lim, lim + 0.12, predicted);
     }
@@ -634,10 +671,11 @@ export class BikePhysics {
       if (this.rear.slip > 1.3) this.brakeR *= 0.45;
       if (this.front.slip > 1.6) this.brakeF *= 0.6;
     }
-    if (!crashed && assist > 0 && this.front.contact && !this.rear.contact && !this.airborne) {
-      // stoppie control: ease off the front brake when the rear lifts
+    if (!crashed && this.front.contact && !this.rear.contact && !this.airborne) {
+      // stoppie control: ease off the front brake when the rear lifts (assists off: only
+      // the instinctive release before going over the bars)
       const stoppie = -Math.asin(clamp(fwd.dot(this.front.normal), -1, 1)) - 0.2 * pitchRate;
-      const lim = assist === 2 ? 0.12 : 0.3;
+      const lim = assist === 2 ? 0.12 : assist === 1 ? 0.3 : 0.5;
       this.brakeF *= 1 - smoothstep(lim, lim + 0.18, stoppie);
     }
     this.throttle = throttle;
@@ -1016,7 +1054,7 @@ export class BikePhysics {
     w.loadF += (N - w.loadF) * (1 - Math.exp(-dt / tau));
     const Ng = Math.min(w.loadF, N * 2.5 + 200);
     const loadFactor = 1 - 0.07 * (Ng / 1000 - 1);
-    const mu = surf.mu * clamp(loadFactor, 0.75, 1.1);
+    const mu = this._mu(w.surface) * clamp(loadFactor, 0.75, 1.1);
     const Fmax = mu * Ng;
     const denom = Math.max(Math.abs(vLong), V_SLIP_MIN);
     const aN = vLat / denom / (TAN_ALPHA_PEAK * (1 + surf.loose));

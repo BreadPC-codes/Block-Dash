@@ -6,10 +6,11 @@ export const SURF = { DIRT: 0, GRASS: 1, SAND: 2, GRAVEL: 3 };
 
 export const SURFACES = [
   // mu: peak grip, rr: rolling resistance coefficient, dust: particle amount, loose: lateral looseness
-  { id: SURF.DIRT, name: 'Dirt', mu: 1.05, rr: 0.032, dust: 1.0, loose: 0.0, color: [0.36, 0.25, 0.16] },
-  { id: SURF.GRASS, name: 'Grass', mu: 0.78, rr: 0.05, dust: 0.12, loose: 0.1, color: [0.2, 0.3, 0.12] },
-  { id: SURF.SAND, name: 'Sand', mu: 0.86, rr: 0.11, dust: 1.4, loose: 0.25, color: [0.76, 0.66, 0.47] },
-  { id: SURF.GRAVEL, name: 'Gravel', mu: 0.8, rr: 0.03, dust: 0.7, loose: 0.15, color: [0.45, 0.43, 0.4] },
+  // grip is set high on purpose: knobby tyres biting into prepared dirt, not a slippery sim
+  { id: SURF.DIRT, name: 'Dirt', mu: 1.55, rr: 0.032, dust: 1.0, loose: 0.0, color: [0.36, 0.25, 0.16] },
+  { id: SURF.GRASS, name: 'Grass', mu: 1.2, rr: 0.05, dust: 0.12, loose: 0.04, color: [0.2, 0.3, 0.12] },
+  { id: SURF.SAND, name: 'Sand', mu: 1.3, rr: 0.11, dust: 1.4, loose: 0.1, color: [0.76, 0.66, 0.47] },
+  { id: SURF.GRAVEL, name: 'Gravel', mu: 1.2, rr: 0.03, dust: 0.7, loose: 0.06, color: [0.45, 0.43, 0.4] },
 ];
 
 export class Heightfield {

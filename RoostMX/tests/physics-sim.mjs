@@ -144,37 +144,36 @@ console.log('9) rider lean right while riding straight (no steering)');
   b.reset(new Vector3(0, 0, 0), 0);
   run(b, 3, (t, bk) => I({ throttle: bk.forwardSpeed < 11 ? 1 : 0.4 }));
   const x0 = b.pos.x;
-  let comLeanMax = 0;
-  run(b, 3, (t, bk) => { comLeanMax = Math.max(comLeanMax, bk.leanAngle + bk.comLean); return I({ throttle: bk.forwardSpeed < 11 ? 0.8 : 0.4, side: 1 }); }, 0.5);
+  run(b, 3, (t, bk) => I({ throttle: bk.forwardSpeed < 11 ? 0.8 : 0.4, side: 1 }), 0.5);
   check(!b.crashed, 'no crash' + (b.crashed ? ' (' + b.crashReason + ')' : ''));
   check(b.riderSide > 0.9, `rider body moved right (riderSide ${b.riderSide.toFixed(2)})`);
   check(b.comLean > 0.1, `combined CoM shifted right of the bike (${deg(b.comLean)} deg)`);
-  check(b.leanAngle < b.leanAngle + b.comLean - 0.1, `bike leans less than the rider+bike CoM (bike ${deg(b.leanAngle)}, CoM ${deg(b.leanAngle + b.comLean)})`);
-  check(b.pos.x < x0 - 1.5, `body lean alone turns the bike gently right (x ${x0.toFixed(1)} -> ${b.pos.x.toFixed(1)})`);
+  check(b.leanAngle < -0.08 && Math.abs(b.leanAngle + b.comLean) < 0.05, `bike leans the other way so the CoM stays over the wheels (bike ${deg(b.leanAngle)}, CoM ${deg(b.leanAngle + b.comLean)})`);
+  check(Math.abs(b.pos.x - x0) < 2.5, `body lean alone does not steer (x ${x0.toFixed(1)} -> ${b.pos.x.toFixed(1)})`);
 }
 
-console.log('10) hanging off vs counter-leaning in the same turn');
+console.log('10) counter-leaning vs neutral vs hanging off in the same turn');
 {
-  const turn = (side) => {
+  const turn = (side, steer, vT) => {
     const b = new BikePhysics(flat);
     b.reset(new Vector3(0, 0, 0), 0);
-    run(b, 3, (t, bk) => I({ throttle: bk.forwardSpeed < 11 ? 1 : 0.4 }));
-    let lean = 0, n = 0, minR = 1e9;
-    run(b, 4, (t, bk) => {
-      if (t > 2) {
-        lean += bk.leanAngle; n++;
-        const yr = Math.abs(bk.angVel.y);
-        if (yr > 0.05) minR = Math.min(minR, bk.speed / yr);
-      }
-      return I({ steer: 1, side, throttle: bk.forwardSpeed < 11 ? 0.7 : 0.4 });
+    const ctl = (bk) => Math.min(1, Math.max(0, (vT - bk.forwardSpeed) * 0.9 + 0.3));
+    run(b, 4, (t, bk) => I({ throttle: ctl(bk) }));
+    let lean = 0, yr = 0, v = 0, n = 0;
+    run(b, 5, (t, bk) => {
+      if (t > 2.5) { lean += bk.leanAngle; yr += Math.abs(bk.angVel.y); v += bk.speed; n++; }
+      return I({ steer, side, throttle: ctl(bk) });
     });
-    return { b, lean: lean / n, minR };
+    return { b, lean: lean / n, R: v / n / Math.max(1e-3, yr / n) };
   };
-  const inside = turn(1), outside = turn(-1);
-  check(!inside.b.crashed && !outside.b.crashed, 'no crash either way');
-  console.log(`   bike lean: hanging off ${deg(inside.lean)} deg, counter-leaning ${deg(outside.lean)} deg; radius ${inside.minR.toFixed(1)} m vs ${outside.minR.toFixed(1)} m`);
-  check(outside.lean - inside.lean > 0.06, 'counter-leaning leans the bike further under the rider');
-  check(inside.minR < outside.minR, 'leaning into the turn turns tighter');
+  for (const [steer, vT] of [[1, 6], [1, 12], [0.6, 12]]) {
+    const c = turn(-1, steer, vT), n0 = turn(0, steer, vT), h = turn(1, steer, vT);
+    console.log(`   steer ${steer} @ ${vT} m/s: radius counter ${c.R.toFixed(1)} m / neutral ${n0.R.toFixed(1)} m / hang-off ${h.R.toFixed(1)} m; bike lean ${deg(c.lean)} / ${deg(n0.lean)} / ${deg(h.lean)} deg`);
+    check(!c.b.crashed && !n0.b.crashed && !h.b.crashed, '  no crash in any of them');
+    check(c.R < n0.R * 0.88, `  counter-leaning turns tighter (${((1 - c.R / n0.R) * 100).toFixed(0)} % smaller radius)`);
+    check(c.lean > n0.lean + 0.05 && n0.lean > h.lean + 0.05, '  the bike leans furthest under a counter-leaning rider, least when hanging off');
+    check(h.R > n0.R * 0.97, '  leaning into the turn is no shortcut');
+  }
 }
 
 console.log('11) rider lean in the air rolls the bike');
@@ -195,6 +194,26 @@ console.log('11) rider lean in the air rolls the bike');
   const r0 = fly(0), rR = fly(1), rL = fly(-1);
   console.log(`   max roll in the air: none ${deg(r0)}, right ${deg(rR)}, left ${deg(rL)} deg`);
   check(rR > 0.12 && rL > 0.12 && r0 < 0.06, 'leaning the rider tilts the bike that way in the air');
+}
+
+console.log('12) grip: hard cornering and acceleration without sliding');
+{
+  const b = new BikePhysics(flat);
+  b.reset(new Vector3(0, 0, 0), 0);
+  const ctl = (bk) => Math.min(1, Math.max(0, (12 - bk.forwardSpeed) * 0.9 + 0.3));
+  run(b, 4, (t, bk) => I({ throttle: ctl(bk) }));
+  let ay = 0, n = 0, maxSlipF = 0, maxSlipR = 0;
+  run(b, 5, (t, bk) => {
+    if (t > 2.5) { ay += bk.speed * Math.abs(bk.angVel.y); n++; maxSlipF = Math.max(maxSlipF, bk.front.slip); maxSlipR = Math.max(maxSlipR, bk.rear.slip); }
+    return I({ steer: 1, throttle: ctl(bk) });
+  });
+  ay /= n * 9.81;
+  check(!b.crashed && ay > 1.1, `steady full-lean turn at 43 km/h pulls ${ay.toFixed(2)} g on dirt`);
+  check(maxSlipF < 0.8 && maxSlipR < 0.8, `tyres stay below their grip peak (slip front ${maxSlipF.toFixed(2)}, rear ${maxSlipR.toFixed(2)})`);
+  // full throttle out of the turn: traction, not wheelspin
+  let maxSpin = 0;
+  run(b, 2, (t, bk) => { maxSpin = Math.max(maxSpin, bk.rear.slipRatio); return I({ steer: t < 0.6 ? 0.5 : 0, throttle: 1 }); });
+  check(!b.crashed && maxSpin < 0.35, `full throttle on exit: rear slip ratio peaks at ${maxSpin.toFixed(2)}`);
 }
 
 console.log(failures ? `\n${failures} FAILURES` : '\nALL OK');

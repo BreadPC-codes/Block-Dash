@@ -92,6 +92,7 @@ export const DEFAULT_SETTINGS = {
     suspDamping: 1.0,
     brakeFront: 1.0,
     brakeRear: 1.0,
+    grip: 1.0,
     autoGearbox: true,
     assist: 2,
   },

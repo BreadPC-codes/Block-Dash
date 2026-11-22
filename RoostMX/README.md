@@ -74,9 +74,12 @@ fullscreen if that setting is on. **F11** or **Alt+Enter** toggles fullscreen at
 ## Controls
 
 Bike and rider are controlled **separately**, like in MX Bikes: steering turns and
-leans the bike; *rider lean* moves the rider's body — left/right to hang off into a
-turn or counter-lean the bike under you, forward/back for weight transfer, wheelies
-and pitch in the air. Throwing the body left/right in the air tilts the bike (scrubs).
+leans the bike; *rider lean* moves the rider's body. **Counter-lean to turn faster:**
+lean the rider to the *outside* of the turn (opposite to the way the bike leans) and
+the bike lays down further under you with more grip — the turn gets roughly 20–45 %
+tighter. Leaning into the turn just keeps the bike more upright. Forward/back moves
+weight for wheelies, braking and pitch in the air; throwing the body left/right in the
+air tilts the bike (scrubs).
 
 Every action can be remapped for the keyboard **and** the controller in
 **Settings → Controls** (two slots each). Click a slot — or select it with the
@@ -149,9 +152,15 @@ Dirt, grass, gravel and sand each have their own grip and rolling resistance.
   available grip (including berm banking); the front wheel steers to balance the lean.
   Front and rear brakes with weight transfer, stoppies, wheelies, countersteering.
 - Separate rider body: the rider's weight moves fore/aft and across the bike (up to
-  28 cm), shifting the combined centre of mass. The bike balances around that combined
-  centre, so hanging off into a turn keeps the bike more upright and turns tighter,
-  counter-leaning lays the bike down under the rider, and body lean alone steers gently.
+  28 cm), shifting the combined centre of mass, and the bike balances around that
+  combined centre. Counter-leaning (body to the outside, weight on the outside peg)
+  lays the bike down under the rider, adds grip and tightens the turn; hanging off into
+  the turn keeps the bike more upright; body lean alone does not steer.
+- High grip: knobby tyres bite hard into the dirt (dirt grip 1.55, sand 1.3, grass and
+  gravel 1.2) and keep ~85 % of their grip when they do slide, so the bike is planted
+  rather than slippery. *Tire grip* in Bike settings scales it from 60 % to 160 %.
+  The steering compensates for lean angle, so a leaned bike turns as tightly as its
+  lean demands (~1.25 g steady cornering on dirt with full assists).
 - Air control: body English (rider forward/back pitches, left/right rolls the bike),
   throttle/brake gyroscopic pitch, whips that must be straightened before landing.
 - Crashes come from the physics: handlebars/head/fenders touching the ground, landing
@@ -159,7 +168,8 @@ Dirt, grass, gravel and sand each have their own grip and rolling resistance.
   front tire (e.g. braking hard while leaned), and hitting obstacles. The rider
   separates and tumbles as a ragdoll; reset with R / A (or your binding) or automatically.
 - **Rider assists** (Full / Low / Off): wheelie and stoppie control, traction control,
-  brake modulation when leaned, grip-aware lean and landing assist. Off = raw sim.
+  brake modulation when leaned, grip-aware lean and landing assist. Off = raw sim (only
+  the rider's instinctive roll-off before looping a wheelie or going over the bars).
 
 **Visuals** — procedural bike with spoked wheels, knobby tires, USD forks, swingarm,
 linkage shock, exhaust, plastics and number plates; rider with helmet, goggles, jersey,
@@ -178,7 +188,7 @@ AudioWorklet (pitch and tone follow rpm and load), wind, tire skids, roost, land
 crashes, gear shifts, countdown, checkpoint and menu sounds. Master/engine/effects volume.
 
 **Settings** (saved automatically) — steering sensitivity, engine power, suspension
-stiffness and damping, front/rear brake strength, rider assists, gearbox, camera
+stiffness and damping, front/rear brake strength, tire grip, rider assists, gearbox, camera
 sensitivity and distance, controller sensitivity and deadzone, bike color and race
 number, keyboard and controller bindings, graphics quality, render scale, dynamic
 resolution, anti-aliasing, fullscreen, speed units, minimap, FPS, volumes.
@@ -296,7 +306,8 @@ npm test
 ```
 
 Physics checks (rest, acceleration, braking, cornering, jumps, crash cases, rider lean:
-body steering, hanging off vs counter-leaning, tilting the bike in the air).
+counter-leaning vs neutral vs hanging off, tilting the bike in the air, grip).
+`node tests/turn-radius.mjs` prints turn radius by speed for each rider position.
 
 ```bash
 node tests/timing-test.mjs

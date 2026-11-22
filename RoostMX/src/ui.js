@@ -11,7 +11,7 @@ const num = (v) => v.toFixed(2);
 
 const TIPS = [
   'Lean the rider forward (↑ / right stick up) on the takeoff to keep the front end down.',
-  'Bike and rider lean separately: hang off into a turn (← → / right stick) to keep the bike upright, or counter-lean to lay it down under you.',
+  'Counter-lean to turn faster: lean the rider (← → / right stick) to the OUTSIDE of the turn while the bike leans in. More grip, tighter line.',
   'Throw the rider\'s body left or right in the air (← → / right stick) to tilt the bike for a scrub.',
   'Every key and controller button can be remapped in Settings > Controls.',
   'Dynamic resolution (Settings > Graphics) keeps the game at 60 FPS on slower computers.',
@@ -33,6 +33,7 @@ export const SETTINGS_SCHEMA = {
     { type: 'range', path: 'bike.suspDamping', label: 'Suspension damping', min: 0.5, max: 1.6, step: 0.05, fmt: pct },
     { type: 'range', path: 'bike.brakeFront', label: 'Front brake strength', min: 0.4, max: 1.4, step: 0.05, fmt: pct },
     { type: 'range', path: 'bike.brakeRear', label: 'Rear brake strength', min: 0.4, max: 1.4, step: 0.05, fmt: pct },
+    { type: 'range', path: 'bike.grip', label: 'Tire grip', min: 0.6, max: 1.6, step: 0.05, fmt: pct },
     { type: 'seg', path: 'bike.assist', label: 'Rider assists', options: [[0, 'Off'], [1, 'Low'], [2, 'Full']] },
     { type: 'seg', path: 'bike.autoGearbox', label: 'Gearbox', options: [[true, 'Auto'], [false, 'Manual']] },
     { section: 'Camera & controller' },
@@ -339,7 +340,7 @@ export class UI {
       n.className = 'note';
       n.style.gridColumn = '1 / -1';
       n.style.marginTop = '10px';
-      n.innerHTML = 'Bike and rider are controlled separately: <b>steering</b> turns and leans the bike, <b>rider lean</b> moves the rider\'s body — left/right to hang off or counter-lean, forward/back for weight transfer, wheelies and pitch in the air. Rider lean left/right also tilts the bike in the air.<br>Menus always use the d-pad / left stick to move, A to select, B to go back. Free camera: drag with the mouse, scroll to move, I/J/K/L to fly, U/O down/up, Shift for speed.';
+      n.innerHTML = 'Bike and rider are controlled separately: <b>steering</b> turns and leans the bike, <b>rider lean</b> moves the rider\'s body. <b>Counter-lean to turn faster</b>: lean the rider to the outside of the turn (opposite to the bike) for more grip and a tighter line. Forward/back moves weight for wheelies, braking and pitch in the air; left/right also tilts the bike in the air.<br>Menus always use the d-pad / left stick to move, A to select, B to go back. Free camera: drag with the mouse, scroll to move, I/J/K/L to fly, U/O down/up, Shift for speed.';
       grid.appendChild(n);
     }
     const f = this._focusables();
